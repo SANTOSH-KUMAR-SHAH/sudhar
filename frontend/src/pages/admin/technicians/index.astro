@@ -1,0 +1,280 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+
+const technicians = [
+  {
+    id: 'BT', name: 'Bikash Thapa',    phone: '98XX XXX XXX', area: 'Baneshwor / Koteshwor',
+    status: 'online',  currentJob: 'SL-000122', currentStatus: 'On the Way',
+    skills: ['Washing Machine', 'Refrigerator'],
+    weekDone: 5, color: '#10263D'
+  },
+  {
+    id: 'RK', name: 'Ramesh KC',       phone: '98XX XXX XXX', area: 'Lalitpur / Patan',
+    status: 'online',  currentJob: 'SL-000123', currentStatus: 'Diagnosing',
+    skills: ['TV', 'AC', 'Washing Machine'],
+    weekDone: 4, color: '#0C7C82'
+  },
+  {
+    id: 'SR', name: 'Suman Rai',       phone: '98XX XXX XXX', area: 'Maharajgunj / Baluwatar',
+    status: 'online',  currentJob: 'SL-000118', currentStatus: 'In Progress',
+    skills: ['AC', 'Refrigerator'],
+    weekDone: 3, color: '#8B5CF6'
+  },
+  {
+    id: 'PS', name: 'Prabin Shrestha', phone: '98XX XXX XXX', area: 'Kirtipur / Kalanki',
+    status: 'offline', currentJob: null, currentStatus: null,
+    skills: ['TV', 'Washing Machine'],
+    weekDone: 6, color: '#4A4E52'
+  },
+  {
+    id: 'NG', name: 'Nabin Gurung',    phone: '98XX XXX XXX', area: 'Bhaktapur / Dhulikhel',
+    status: 'offline', currentJob: null, currentStatus: null,
+    skills: ['AC', 'TV'],
+    weekDone: 2, color: '#4A4E52'
+  },
+  {
+    id: 'DS', name: 'Dev Shrestha',    phone: '98XX XXX XXX', area: 'Budhanilkantha',
+    status: 'offline', currentJob: null, currentStatus: null,
+    skills: ['Refrigerator', 'Washing Machine'],
+    weekDone: 1, color: '#4A4E52'
+  },
+];
+---
+
+<AdminDashboardLayout title="Technicians - Sudhar Lab Admin" activeNav="technicians">
+
+  <!-- HEADER -->
+  <div class="tc-header">
+    <div>
+      <h1 class="tc-title">Technicians</h1>
+      <p class="tc-sub">Manage availability and see who's where</p>
+    </div>
+    <div class="tc-hdr-right">
+      <div class="tc-online-count">
+        <div class="online-dot-big"></div>
+        <span><strong>3</strong> online</span>
+      </div>
+      <button class="btn btn-secondary btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Technician
+      </button>
+    </div>
+  </div>
+
+  <!-- STATUS FILTER TABS -->
+  <div class="tc-tabs">
+    <button class="tc-tab active">All <span class="tc-tab-count">6</span></button>
+    <button class="tc-tab">Online <span class="tc-tab-count online-count">3</span></button>
+    <button class="tc-tab">Offline <span class="tc-tab-count">3</span></button>
+  </div>
+
+  <!-- TECHNICIAN CARD GRID -->
+  <div class="tc-grid">
+    {technicians.map(tech => (
+      <div class="tc-card" onclick={`window.location.href='/admin/technicians/${tech.id}'`}>
+        
+        <!-- Card top: Avatar + Name + Status -->
+        <div class="tc-card-top">
+          <div class="tc-avatar-wrap">
+            <div class="tc-avatar" style={`background: ${tech.color}`}>{tech.id}</div>
+            <div class={`tc-status-dot ${tech.status}`}></div>
+          </div>
+          <div class="tc-info">
+            <div class="tc-name">{tech.name}</div>
+            <div class="tc-area">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              {tech.area}
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Job or Available -->
+        {tech.currentJob
+          ? <div class="tc-current-job">
+              <div class="tc-cj-id">{tech.currentJob}</div>
+              <span class={`badge ${tech.currentStatus === 'Diagnosing' ? 'badge-progress' : tech.currentStatus === 'In Progress' ? 'badge-progress' : 'badge-assigned'}`}>{tech.currentStatus}</span>
+            </div>
+          : <div class="tc-available">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Available for assignment
+            </div>
+        }
+
+        <!-- Skills -->
+        <div class="tc-skills">
+          {tech.skills.map(s => (
+            <span class="skill-chip">{s}</span>
+          ))}
+        </div>
+
+        <!-- Footer: week count + actions -->
+        <div class="tc-card-footer">
+          <div class="tc-week">
+            <span class="tc-week-num">{tech.weekDone}</span> done this week
+          </div>
+          <div class="tc-card-actions">
+            <button class="btn btn-ghost btn-sm" data-stop-prop>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              Call
+            </button>
+            {!tech.currentJob &&
+              <button class="btn btn-primary btn-sm" data-stop-prop onclick={`window.location.href='/admin/requests'`}>
+                Assign Job
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+
+</AdminDashboardLayout>
+
+<script is:inline>
+// Business: Card action buttons must not trigger the card navigation.
+// Technical: Stop click propagation on action buttons (replaces deprecated inline event handler).
+document.querySelectorAll('[data-stop-prop]').forEach((btn) => {
+  btn.addEventListener('click', (e) => e.stopPropagation());
+});
+</script>
+
+<style is:global>
+  .tc-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  .tc-title { font-family: var(--font-h); font-size: 1.75rem; font-weight: 800; color: var(--navy); }
+  .tc-sub { color: var(--graphite-lt); font-size: 0.875rem; margin-top: 0.25rem; }
+  .tc-hdr-right { display: flex; align-items: center; gap: 1rem; }
+  .tc-online-count {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.875rem; color: var(--graphite-mid);
+  }
+  .tc-online-count strong { color: var(--navy); }
+  .online-dot-big {
+    width: 10px; height: 10px; border-radius: 50%; background: #16A34A;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.2);
+  }
+
+  /* Tabs */
+  .tc-tabs {
+    display: flex; gap: 0;
+    border-bottom: 2px solid var(--border); margin-bottom: 1.5rem;
+  }
+  .tc-tab {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.6875rem 1rem; background: none; border: none;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+    font-size: 0.875rem; font-weight: 500;
+    color: var(--graphite-mid); cursor: pointer;
+  }
+  .tc-tab:hover { color: var(--navy); }
+  .tc-tab.active { color: var(--teal); font-weight: 700; border-bottom-color: var(--teal); }
+  .tc-tab-count {
+    font-size: 0.6875rem; font-weight: 700;
+    background: var(--border); color: var(--graphite-mid);
+    padding: 0.0625rem 0.4375rem; border-radius: 20px;
+  }
+  .online-count { background: #DCFCE7; color: #16A34A; }
+
+  /* Grid */
+  .tc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.125rem;
+  }
+
+  .tc-card {
+    background: var(--pure-white); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 1rem;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tc-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); transform: translateY(-1px); }
+
+  /* Card top */
+  .tc-card-top { display: flex; align-items: center; gap: 0.875rem; }
+  .tc-avatar-wrap { position: relative; flex-shrink: 0; }
+  .tc-avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    color: #fff; font-family: var(--font-h); font-size: 1rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tc-status-dot {
+    position: absolute; bottom: 1px; right: 1px;
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid var(--pure-white);
+  }
+  .tc-status-dot.online  { background: #16A34A; }
+  .tc-status-dot.offline { background: #9CA3AF; }
+
+  .tc-info {}
+  .tc-name { font-size: 1rem; font-weight: 700; color: var(--navy); }
+  .tc-area {
+    display: flex; align-items: center; gap: 0.25rem;
+    font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
+  }
+
+  /* Current job */
+  .tc-current-job {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg); border-radius: 8px; padding: 0.625rem 0.875rem;
+  }
+  .tc-cj-id { font-size: 0.875rem; font-weight: 700; color: var(--teal); }
+
+  .tc-available {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.8125rem; font-weight: 600; color: #16A34A;
+    background: #F0FDF4; border-radius: 8px;
+    padding: 0.5rem 0.875rem;
+  }
+
+  /* Skills */
+  .tc-skills { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+  .skill-chip {
+    font-size: 0.6875rem; font-weight: 600;
+    padding: 0.1875rem 0.5625rem; border-radius: 20px;
+    background: var(--bg); color: var(--graphite-mid);
+    border: 1px solid var(--border);
+  }
+
+  /* Footer */
+  .tc-card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--border); padding-top: 0.875rem;
+  }
+  .tc-week { font-size: 0.75rem; color: var(--graphite-lt); }
+  .tc-week-num { font-weight: 700; color: var(--navy); }
+  .tc-card-actions { display: flex; gap: 0.5rem; }
+
+  @media (max-width: 767px) {
+    .tc-header { flex-direction: column; gap: 0.75rem; align-items: stretch; }
+    .tc-hdr-right { justify-content: space-between; }
+
+    /* 2-column grid on mobile — shows 2 cards per row, easy to scan */
+    .tc-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+
+    /* Single column on very small phones */
+    @media (max-width: 420px) {
+      .tc-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Compact card on mobile */
+    .tc-card { padding: 1rem; gap: 0.75rem; }
+    .tc-name { font-size: 0.9375rem; }
+
+    /* Tabs scroll */
+    .tc-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tc-tab { white-space: nowrap; }
+
+    /* Footer: stack buttons */
+    .tc-card-footer { flex-wrap: wrap; gap: 0.625rem; }
+    .tc-card-actions .btn { flex: 1; justify-content: center; }
+  }
+
+  @media (max-width: 420px) {
+    .tc-hdr-right { align-items: flex-start; flex-direction: column; gap: 0.5rem; }
+    .tc-card-footer { align-items: stretch; }
+    .tc-card-actions { width: 100%; }
+  }
+</style>

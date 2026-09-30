@@ -1,0 +1,347 @@
+---
+import '../styles/tailwind.css';
+const { title = "Technician Portal", activeNav = "home" } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style is:global>
+    :root {
+      --navy: #10263D;
+      --teal: #0C7C82;
+      --teal-light: #E9F6F7;
+      --gold: #E8A324;
+      --gold-light: #FFF8EB;
+      --green: #22C55E;
+      --green-light: #F0FDF4;
+      --white: #F7F6F2;
+      --pure-white: #FFFFFF;
+      --graphite: #2B2E31;
+      --graphite-mid: #4A4E52;
+      --graphite-lt: #7C8186;
+      --border: #E5E7EB;
+      --bg-off: #F3F4F6;
+
+      --font-h: 'Outfit', sans-serif;
+      --font-b: 'Inter', sans-serif;
+
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      
+      --sidebar-width: 250px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-b);
+      color: var(--navy);
+      background-color: var(--bg-off);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .app-wrapper {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+      overflow-x: clip;
+      background-color: var(--bg-off);
+    }
+
+    /* Desktop Sidebar */
+    .desktop-sidebar {
+      display: none; /* Hidden on mobile */
+      width: var(--sidebar-width);
+      background-color: var(--navy);
+      color: var(--pure-white);
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      font-family: var(--font-h);
+      font-size: 1.5rem;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1rem;
+    }
+    
+    .sidebar-header span { color: var(--teal); }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0 1rem;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-weight: 500;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .sidebar-link:hover {
+      background-color: rgba(255,255,255,0.1);
+      color: var(--pure-white);
+    }
+
+    .sidebar-link.active {
+      background-color: var(--teal);
+      color: var(--pure-white);
+    }
+
+    /* Main Content Container */
+    .app-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: #FAFAFA;
+      position: relative;
+      min-width: 0;
+      width: 100%;
+    }
+
+    /* Mobile App Header */
+    .app-header {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      border-bottom: 1px solid var(--border);
+      background-color: var(--pure-white);
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .app-title {
+      font-family: var(--font-h);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -0.01em;
+    }
+
+    .app-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--navy);
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+    }
+
+    .app-actions .badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      height: 8px;
+      background-color: #EF4444;
+      border-radius: 50%;
+    }
+
+    /* Main Scrollable Area */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Space for bottom nav on mobile */
+      max-width: 600px;
+      width: 100%;
+      margin: 0 auto; /* Center on desktop */
+      min-width: 0;
+    }
+
+    /* Bottom Tab Bar (Mobile Only) */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background-color: var(--pure-white);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 100;
+    }
+
+    .nav-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      color: var(--graphite-lt);
+      text-decoration: none;
+      flex: 1;
+      height: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-tab svg { width: 24px; height: 24px; stroke-width: 2; }
+    .nav-tab span { font-size: 0.6875rem; font-weight: 600; }
+    .nav-tab.active { color: var(--navy); }
+    .nav-tab.active svg { fill: var(--navy); stroke: var(--navy); }
+
+    /* Desktop Breakpoint */
+    @media (min-width: 768px) {
+      .desktop-sidebar {
+        display: flex;
+      }
+      .app-container {
+        margin-left: var(--sidebar-width);
+      }
+      .bottom-nav {
+        display: none; /* Hide bottom tabs on PC */
+      }
+      .app-header {
+        display: none; /* Optional: Hide mobile header on PC, rely on sidebar */
+      }
+      .app-content {
+        padding-bottom: 2rem;
+        padding-top: 2rem;
+        max-width: 720px; /* Slightly wider readable area on PC */
+      }
+    }
+
+    @media (max-width: 380px) {
+      .app-header { padding: 0 0.75rem; }
+      .app-title { font-size: 1.125rem; }
+      .nav-tab span { font-size: 0.625rem; }
+      .nav-tab svg { width: 22px; height: 22px; }
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-wrapper">
+    
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="desktop-sidebar">
+      <div class="sidebar-header">
+        <img src="/logo.png" alt="Sudhar Lab" style="height: 32px; width: auto;" />
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/tech/dashboard" class={`sidebar-link ${activeNav === 'home' ? 'active' : ''}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          Home
+        </a>
+        <a href="/tech/jobs" class={`sidebar-link ${activeNav === 'jobs' ? 'active' : ''}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Jobs
+        </a>
+        <a href="/tech/profile" class={`sidebar-link ${activeNav === 'profile' ? 'active' : ''}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          Profile
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN APP AREA -->
+    <div class="app-container">
+      
+      <!-- MOBILE TOP HEADER -->
+      <header class="app-header">
+        <div class="app-title">
+          <img src="/logo.png" alt="Sudhar Lab" style="height: 24px; width: auto;" />
+        </div>
+        <div class="app-actions">
+          <button class="icon-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="badge"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <main class="app-content">
+        <slot />
+      </main>
+
+      <!-- MOBILE BOTTOM TAB BAR -->
+      <nav class="bottom-nav">
+      <a href="/tech/dashboard" class={`nav-tab ${activeNav === 'home' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>Home</span>
+      </a>
+      
+      <a href="/tech/jobs" class={`nav-tab ${activeNav === 'jobs' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Jobs</span>
+      </a>
+      
+      <a href="/tech/profile" class={`nav-tab ${activeNav === 'profile' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>Profile</span>
+      </a>
+    </nav>
+    </div> <!-- Close app-container -->
+  </div> <!-- Close app-wrapper -->
+
+</body>
+</html>

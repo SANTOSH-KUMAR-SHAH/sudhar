@@ -1,0 +1,321 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+
+const requests = [
+  { id: 'SL-000126', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'New Request',    statusClass: 'badge-new',      technician: null,       time: 'Just now',   urgent: true },
+  { id: 'SL-000125', customer: 'Sunita Rai',     area: 'Lalitpur',  appliance: 'Samsung Refrigerator',  status: 'New Request',    statusClass: 'badge-new',      technician: null,       time: '14 min ago', urgent: true },
+  { id: 'SL-000124', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'Confirmed',      statusClass: 'badge-confirm',  technician: null,       time: 'Yesterday', urgent: false },
+  { id: 'SL-000123', customer: 'Suresh Rai',    area: 'Koteshwor', appliance: 'Samsung AC',            status: 'Diagnosing',     statusClass: 'badge-progress', technician: 'Ramesh',   time: 'Today 11 AM', urgent: false },
+  { id: 'SL-000122', customer: 'Anita Gurung',  area: 'Maharajgunj', appliance: 'Sony TV',             status: 'On the Way',     statusClass: 'badge-assigned', technician: 'Bikash',   time: 'Today 9 AM', urgent: false },
+  { id: 'SL-000121', customer: 'Mina Shrestha', area: 'Lalitpur',  appliance: 'Samsung AC',            status: 'Price Approval', statusClass: 'badge-progress', technician: 'Suman',    time: '2 hrs ago',  urgent: false },
+  { id: 'SL-000118', customer: 'Bikash Rai',    area: 'Kirtipur',  appliance: 'Whirlpool Fridge',      status: 'In Progress',    statusClass: 'badge-progress', technician: 'Suman',    time: 'Today 8 AM', urgent: false },
+  { id: 'SL-000117', customer: 'Anita Gurung',  area: 'Bagbazar',  appliance: 'Sony TV',               status: 'Completed',      statusClass: 'badge-done',     technician: 'Ramesh',   time: 'Today 3 PM', urgent: false },
+];
+---
+
+<AdminDashboardLayout title="Requests - Sudhar Lab Admin" activeNav="requests">
+
+  <!-- HEADER -->
+  <div class="rq-header">
+    <div>
+      <h1 class="rq-title">Service Requests</h1>
+      <p class="rq-sub">Every request, from submission to billing</p>
+    </div>
+    <button class="btn btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      New Request
+    </button>
+  </div>
+
+  <!-- SMART TABS -->
+  <div class="rq-tabs">
+    <button class="rq-tab" id="tab-action" onclick="switchTab('action')">
+      Needs Action
+      <span class="tab-pill urgent">3</span>
+    </button>
+    <button class="rq-tab active" id="tab-all" onclick="switchTab('all')">
+      All
+      <span class="tab-pill">8</span>
+    </button>
+    <button class="rq-tab" id="tab-active" onclick="switchTab('active')">In Progress</button>
+    <button class="rq-tab" id="tab-done" onclick="switchTab('done')">Completed</button>
+  </div>
+
+  <!-- SEARCH + SIMPLE FILTERS -->
+  <div class="rq-filter-bar">
+    <div class="rq-search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" placeholder="Search by ID, customer, area, or appliance…" class="rq-search" />
+    </div>
+    <div class="rq-filter-chips">
+      <select class="filter-select">
+        <option value="">All Appliances</option>
+        <option>Washing Machine</option>
+        <option>AC</option>
+        <option>Refrigerator</option>
+        <option>TV</option>
+      </select>
+      <select class="filter-select">
+        <option value="">All Technicians</option>
+        <option>Ramesh</option>
+        <option>Bikash</option>
+        <option>Suman</option>
+        <option>Prabin</option>
+      </select>
+      <select class="filter-select">
+        <option value="">All Areas</option>
+        <option>Baneshwor</option>
+        <option>Lalitpur</option>
+        <option>Koteshwor</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- REQUESTS TABLE -->
+  <div class="rq-table-card card">
+    <table class="rq-table">
+      <thead>
+        <tr>
+          <th>Request</th>
+          <th>Customer &amp; Area</th>
+          <th>Status</th>
+          <th>Technician</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {requests.map(req => (
+          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
+            <td>
+              <div class="req-id-cell">
+                {req.urgent && <div class="urgent-dot"></div>}
+                <div>
+                  <div class="req-id">{req.id}</div>
+                  <div class="req-appliance">{req.appliance}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="req-customer">{req.customer}</div>
+              <div class="req-area">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>
+                {req.area}
+              </div>
+            </td>
+            <td>
+              <span class={`badge ${req.statusClass}`}>{req.status}</span>
+              <div class="req-time">{req.time}</div>
+            </td>
+            <td>
+              {req.technician
+                ? <div class="req-tech">
+                    <div class="req-tech-av">{req.technician.charAt(0)}</div>
+                    {req.technician}
+                  </div>
+                : <span class="no-tech">—</span>
+              }
+            </td>
+            <td data-stop-prop>
+              <div class="req-action-cell">
+                {req.status === 'New Request'    && <button class="btn btn-primary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Call &amp; Confirm</button>}
+                {req.status === 'Confirmed'      && <button class="btn btn-primary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Assign</button>}
+                {req.status === 'Price Approval' && <button class="btn btn-primary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Follow Up</button>}
+                {!['New Request','Confirmed','Price Approval'].includes(req.status) && <button class="btn btn-secondary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Open</button>}
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+</AdminDashboardLayout>
+
+<script is:inline>
+function switchTab(tab) {
+  document.querySelectorAll('.rq-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById(`tab-${tab}`);
+  if (el) el.classList.add('active');
+}
+
+// Business: Action buttons inside a row must not trigger the row navigation.
+// Technical: Stop click propagation on action cells (replaces deprecated inline event handler).
+document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
+  cell.addEventListener('click', (e) => e.stopPropagation());
+});
+</script>
+
+<style is:global>
+  .rq-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  .rq-title {
+    font-family: var(--font-h); font-size: 1.75rem; font-weight: 800; color: var(--navy);
+  }
+  .rq-sub { color: var(--graphite-lt); font-size: 0.875rem; margin-top: 0.25rem; }
+
+  /* Tabs */
+  .rq-tabs {
+    display: flex; gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .rq-tab {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.125rem;
+    background: none; border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    font-family: var(--font-b); font-size: 0.875rem; font-weight: 500;
+    color: var(--graphite-mid); cursor: pointer; white-space: nowrap;
+  }
+  .rq-tab:hover { color: var(--navy); }
+  .rq-tab.active {
+    color: var(--teal); font-weight: 700;
+    border-bottom-color: var(--teal);
+  }
+  .tab-pill {
+    font-size: 0.6875rem; font-weight: 700;
+    padding: 0.125rem 0.5rem; border-radius: 20px;
+    background: var(--border); color: var(--graphite-mid);
+  }
+  .tab-pill.urgent { background: #FEE2E2; color: #DC2626; }
+
+  /* Filter bar */
+  .rq-filter-bar {
+    display: flex; align-items: center; gap: 0.875rem;
+    margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .rq-search-wrap {
+    position: relative; flex: 1; min-width: 260px;
+  }
+  .rq-search-wrap svg {
+    position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+    color: var(--graphite-lt);
+  }
+  .rq-search {
+    width: 100%;
+    padding: 0.5625rem 1rem 0.5625rem 2.25rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--font-b); font-size: 0.875rem;
+    background: var(--pure-white); color: var(--navy); outline: none;
+  }
+  .rq-search:focus { border-color: var(--teal); }
+
+  .rq-filter-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .filter-select {
+    appearance: none;
+    background: var(--pure-white); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    font-family: var(--font-b); font-size: 0.8125rem; color: var(--navy);
+    cursor: pointer; outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8186' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+  }
+
+  /* Table */
+  .rq-table-card { overflow: hidden; }
+  .rq-table { width: 100%; border-collapse: collapse; }
+  .rq-table thead th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.6875rem; font-weight: 700; color: var(--graphite-mid);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    text-align: left; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .rq-row {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.12s;
+  }
+  .rq-row:last-child { border-bottom: none; }
+  .rq-row:hover { background: #FAFBFC; }
+  .rq-row:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; background: #FAFBFC; }
+  .rq-row.row-urgent { border-left: 3px solid #EF4444; }
+  .rq-row.row-urgent td:first-child { padding-left: calc(1.25rem - 3px); }
+  .rq-table td { padding: 1rem 1.25rem; vertical-align: middle; }
+
+  .req-id-cell { display: flex; align-items: center; gap: 0.5rem; }
+  .urgent-dot { width: 8px; height: 8px; border-radius: 50%; background: #EF4444; flex-shrink: 0; }
+  .req-id { font-size: 0.875rem; font-weight: 700; color: var(--teal); }
+  .req-appliance { font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem; }
+
+  .req-customer { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+  .req-area {
+    display: flex; align-items: center; gap: 0.25rem;
+    font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
+  }
+  .req-time { font-size: 0.6875rem; color: var(--graphite-lt); margin-top: 0.25rem; }
+
+  .req-tech {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.875rem; font-weight: 500; color: var(--navy);
+  }
+  .req-tech-av {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--teal); color: #fff;
+    font-size: 0.625rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .no-tech { color: var(--graphite-lt); font-size: 0.875rem; }
+
+  .req-action-cell { display: flex; }
+
+  /* ─── MOBILE ──────────────────────────────── */
+  @media (max-width: 767px) {
+    /* Header stacks on mobile */
+    .rq-header { flex-direction: column; gap: 0.75rem; }
+
+    /* Tabs scroll horizontally */
+    .rq-tabs {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .rq-tabs::-webkit-scrollbar { display: none; }
+    .rq-tab { white-space: nowrap; padding: 0.625rem 0.875rem; }
+
+    /* Filter bar stacks */
+    .rq-filter-bar { flex-direction: column; align-items: stretch; gap: 0.625rem; }
+    .rq-search-wrap { min-width: unset; }
+    .rq-filter-chips { flex-wrap: wrap; }
+    .filter-select { flex: 1; min-width: 130px; }
+
+    /* CONVERT TABLE TO CARD STACK */
+    .rq-table-card { background: transparent; border: none; overflow: visible; }
+    .rq-table thead { display: none; }  /* hide column headers */
+
+    .rq-table tbody { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .rq-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "id   status"
+        "cust cust"
+        "act  act";
+      gap: 0.5rem 0.75rem;
+      background: var(--pure-white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      border-left: none !important;
+      border-bottom: 1px solid var(--border) !important;
+    }
+    .rq-row.row-urgent { border-left: 3px solid #EF4444 !important; padding-left: calc(1rem - 3px); }
+    .rq-row:hover { background: var(--pure-white); }
+
+    /* Map columns to grid areas */
+    .rq-table td { display: block; padding: 0; border: none; vertical-align: unset; }
+    .rq-table td:nth-child(1) { grid-area: id; }    /* Request ID + appliance */
+    .rq-table td:nth-child(2) { grid-area: cust; }  /* Customer */
+    .rq-table td:nth-child(3) { grid-area: status; text-align: right; } /* Status */
+    .rq-table td:nth-child(4) { display: none; }    /* Technician — hide on mobile */
+    .rq-table td:nth-child(5) { grid-area: act; }   /* Action */
+
+    /* Bigger action button on mobile */
+    .req-action-cell .btn { width: 100%; justify-content: center; padding: 0.625rem; }
+  }
+</style>

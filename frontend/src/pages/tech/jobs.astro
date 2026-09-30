@@ -1,0 +1,215 @@
+---
+import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
+---
+
+<TechDashboardLayout title="Jobs" activeNav="jobs">
+  <div class="feed-container">
+    
+    <div class="page-header">
+      <h2>My Jobs</h2>
+    </div>
+
+    <!-- Filter Pills (Scrollable) -->
+    <div class="filter-scroll">
+      <div class="pill active">Today</div>
+      <div class="pill">Upcoming</div>
+      <div class="pill">Completed</div>
+      <div class="pill">All</div>
+    </div>
+
+    <!-- Job Feed -->
+    <div class="job-list">
+      
+      <!-- Card 1 -->
+      <a href="/tech/jobs/1042" class="job-card">
+        <div class="card-header">
+          <span class="req">REQ-1042</span>
+          <span class="badge active">Assigned</span>
+        </div>
+        <div class="card-body">
+          <div class="time">Today, 11:30 AM</div>
+          <h3 class="appliance">LG Washing Machine</h3>
+          <p class="location">Hari Thapa &middot; Baneshwor</p>
+        </div>
+        <div class="card-footer">
+          <span class="action-text">Open Job</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </div>
+      </a>
+
+      <!-- Card 2 -->
+      <a href="/tech/jobs/1055" class="job-card">
+        <div class="card-header">
+          <span class="req">REQ-1055</span>
+          <span class="badge upcoming">Upcoming</span>
+        </div>
+        <div class="card-body">
+          <div class="time">Tomorrow, 10:00 AM</div>
+          <h3 class="appliance">Samsung AC</h3>
+          <p class="location">Bina Shrestha &middot; Lalitpur</p>
+        </div>
+        <div class="card-footer">
+          <span class="action-text">Open Job</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </div>
+      </a>
+
+      <!-- Card 3 (Completed) -->
+      <a href="/tech/jobs/1021" class="job-card completed">
+        <div class="card-header">
+          <span class="req">REQ-1021</span>
+          <span class="badge completed">Completed</span>
+        </div>
+        <div class="card-body">
+          <div class="time">Yesterday, 02:00 PM</div>
+          <h3 class="appliance">Sony TV</h3>
+          <p class="location">Ram Kumar &middot; Maharajgunj</p>
+        </div>
+      </a>
+
+    </div>
+  </div>
+</TechDashboardLayout>
+
+<style is:global>
+  .feed-container {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .page-header h2 {
+    font-family: var(--font-h);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  /* Filters */
+  .filter-scroll {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    margin-top: -0.5rem;
+    /* Hide scrollbar */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .filter-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pill {
+    padding: 0.5rem 1.25rem;
+    background-color: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--graphite-mid);
+    white-space: nowrap;
+  }
+
+  .pill.active {
+    background-color: var(--navy);
+    color: var(--pure-white);
+    border-color: var(--navy);
+  }
+
+  /* Job Cards */
+  .job-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .job-card {
+    background-color: var(--pure-white);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .job-card:active {
+    transform: scale(0.98);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--bg-off);
+  }
+
+  .req {
+    font-family: var(--font-h);
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--graphite-lt);
+  }
+
+  .badge {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    text-transform: uppercase;
+  }
+  
+  .badge.active { background-color: var(--teal-light); color: var(--teal); }
+  .badge.upcoming { background-color: var(--gold-light); color: #9A6A00; }
+  .badge.completed { background-color: var(--bg-off); color: var(--graphite-mid); }
+
+  .card-body {
+    padding: 1.25rem;
+  }
+
+  .time {
+    font-size: 0.8125rem;
+    color: var(--teal);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .appliance {
+    font-family: var(--font-h);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+
+  .location {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+  }
+
+  .card-footer {
+    padding: 1rem 1.25rem;
+    background-color: #FAFAFA;
+    border-top: 1px solid var(--bg-off);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--teal);
+  }
+
+  .action-text {
+    font-weight: 700;
+    font-size: 0.9375rem;
+  }
+
+  .job-card.completed .card-body {
+    opacity: 0.6;
+  }
+</style>
+

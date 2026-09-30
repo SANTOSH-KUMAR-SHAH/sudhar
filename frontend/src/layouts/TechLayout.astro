@@ -1,0 +1,58 @@
+---
+import '../styles/tailwind.css';
+const { title = "Technician Portal - Sudhar Lab" } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style is:global>
+    /* ================================================
+       DESIGN TOKENS (Shared with Customer)
+    ================================================ */
+    :root {
+      --navy: #10263D;
+      --navy-deep: #0A1E30;
+      --teal: #0C7C82;
+      --teal-hover: #0E9198;
+      --gold: #E8A324;
+      --white: #F7F6F2;
+      --pure-white: #FFFFFF;
+      --graphite: #2B2E31;
+      --graphite-mid: #4A4E52;
+      --graphite-lt: #7C8186;
+      --border: #E0DDD7;
+      --bg-off: #EFEDE8;
+
+      --font-h: 'Outfit', sans-serif;
+      --font-b: 'Inter', sans-serif;
+
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-b);
+      color: var(--navy);
+      background-color: var(--white);
+      min-height: 100vh;
+      display: flex;
+    }
+  </style>
+</head>
+<body>
+  <slot />
+</body>
+</html>

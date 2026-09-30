@@ -1,0 +1,985 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+
+export function getStaticPaths() {
+  return [
+    { params: { id: 'BT' } },
+    { params: { id: 'RK' } },
+    { params: { id: 'SR' } },
+    { params: { id: 'PS' } },
+    { params: { id: 'NG' } },
+    { params: { id: 'DS' } },
+  ];
+}
+
+const { id } = Astro.params;
+
+// Business: Admin technician profile shows one mock record per ID before the API exists.
+// Technical: Explicit interfaces keep strict TypeScript happy without changing any markup.
+interface TechScheduleItem {
+  time: string;
+  task: string;
+  loc: string;
+  reqId: string;
+  status: string;
+  state: string;
+}
+
+interface TechAssignedRequest {
+  id: string;
+  time: string;
+  title: string;
+  customer: string;
+  status: string;
+}
+
+interface TechActivityEntry {
+  action: string;
+  desc: string;
+  time: string;
+}
+
+interface TechnicianMock {
+  name: string;
+  subtitle: string;
+  phone: string;
+  techId: string;
+  joined: string;
+  status: string;
+  statusLabel: string;
+  lastActive: string;
+  avatarColor: string;
+  banner: { type: string; title: string; desc: string; time: string };
+  kpi: {
+    visits: string;
+    visitsSub: string;
+    job: string;
+    jobSub: string;
+    completed: string;
+    completedSub: string;
+    next: string;
+    nextSub: string;
+  };
+  schedule: TechScheduleItem[];
+  assignedRequests: TechAssignedRequest[];
+  skills: string[];
+  areas: string[];
+  preference: string;
+  workload: { label: string; desc: string; level: number };
+  activity: TechActivityEntry[];
+  notes: string;
+}
+
+// Mock data per technician
+const techData: Record<string, TechnicianMock> = {
+  'BT': {
+    name: 'Bikash Thapa',
+    subtitle: 'Appliance Repair Technician · Kathmandu Valley',
+    phone: '9841 445 220',
+    techId: 'TECH-006',
+    joined: 'March 2026',
+    status: 'online',
+    statusLabel: 'Online · Available',
+    lastActive: 'Active now',
+    avatarColor: 'var(--teal)',
+    banner: {
+      type: 'available',
+      title: 'Available now',
+      desc: 'No active job. Ready to receive a new assignment.',
+      time: 'Last active: Active now'
+    },
+    kpi: {
+      visits: '3', visitsSub: '2 completed',
+      job: 'None', jobSub: 'Available for assignment',
+      completed: '11', completedSub: '1 awaiting update',
+      next: 'Now', nextSub: 'Ready for assignment'
+    },
+    schedule: [
+      { time: '9:00 AM', task: 'Washing machine inspection', loc: 'Baneshwor', reqId: '#SL-1042', status: 'Completed', state: 'done' },
+      { time: '12:30 PM', task: 'Refrigerator repair', loc: 'Koteshwor', reqId: '#SL-1045', status: 'Confirmed', state: 'upcoming' },
+      { time: '4:00 PM', task: 'Available slot', loc: 'Open for assignment', reqId: '', status: 'Available', state: 'empty' },
+    ],
+    assignedRequests: [
+      { id: '#SL-1045', time: 'Tomorrow · Afternoon', title: 'TV turns off after a few minutes', customer: 'Rita Shrestha · Kalanki', status: 'Confirmed' },
+      { id: '#SL-1039', time: 'Yesterday', title: 'Refrigerator making unusual noise', customer: 'Suresh KC · Koteshwor', status: 'Diagnosis submitted' }
+    ],
+    skills: ['Washing machines', 'Refrigerators', 'TVs', 'Basic AC diagnosis'],
+    areas: ['Baneshwor', 'Koteshwor', 'Chabahil', 'Boudha'],
+    preference: 'Full-time · Kathmandu Valley · Same-day visits',
+    workload: { label: 'Light workload', desc: '3 visits scheduled today', level: 2 },
+    activity: [
+      { action: 'Marked online', desc: 'Available to receive assignments', time: 'Today · 8:45 AM' },
+      { action: 'Completed washing machine inspection', desc: 'Request #SL-1042', time: 'Today · 10:20 AM' },
+      { action: 'Admin assigned refrigerator repair', desc: 'Request #SL-1045', time: 'Yesterday · 4:15 PM' },
+      { action: 'Submitted diagnosis', desc: 'Request #SL-1039', time: 'Yesterday · 2:40 PM' }
+    ],
+    notes: 'Strong with washing machines and refrigerators. Confirm spare-parts availability before assigning complex AC work.'
+  },
+  'RK': {
+    name: 'Ramesh KC',
+    subtitle: 'Senior AC Technician · Kathmandu Valley',
+    phone: '9802 778 451',
+    techId: 'TECH-002',
+    joined: 'January 2025',
+    status: 'on_visit',
+    statusLabel: 'Online · On a visit',
+    lastActive: 'Active 5 min ago',
+    avatarColor: 'var(--navy)',
+    banner: {
+      type: 'busy',
+      title: 'Currently on a visit',
+      desc: 'Working on Request #SL-1044 in Chabahil.',
+      time: 'Last active: 5 min ago'
+    },
+    kpi: {
+      visits: '4', visitsSub: '1 completed',
+      job: '#SL-1044', jobSub: 'AC diagnosis',
+      completed: '8', completedSub: 'All updated',
+      next: '3:30 PM', nextSub: 'After current visit'
+    },
+    schedule: [
+      { time: '10:00 AM', task: 'AC Repair', loc: 'Maharajgunj', reqId: '#SL-1038', status: 'Completed', state: 'done' },
+      { time: '1:00 PM', task: 'AC diagnosis', loc: 'Chabahil', reqId: '#SL-1044', status: 'In progress', state: 'current' },
+      { time: '4:00 PM', task: 'AC Installation', loc: 'Baluwatar', reqId: '#SL-1049', status: 'Confirmed', state: 'upcoming' },
+    ],
+    assignedRequests: [
+      { id: '#SL-1044', time: 'Today · 2-4 PM', title: 'Washing machine is leaking', customer: 'Prakash Adhikari · Chabahil', status: 'In progress' },
+    ],
+    skills: ['ACs', 'Washing machines'],
+    areas: ['Maharajgunj', 'Baluwatar', 'Chabahil'],
+    preference: 'Full-time · Morning preferred',
+    workload: { label: 'Busy workload', desc: '4 visits scheduled today', level: 4 },
+    activity: [
+      { action: 'Arrived at location', desc: 'Request #SL-1044', time: 'Today · 1:15 PM' },
+      { action: 'Started travel', desc: 'Request #SL-1044', time: 'Today · 12:45 PM' },
+      { action: 'Completed AC Repair', desc: 'Request #SL-1038', time: 'Today · 11:30 AM' }
+    ],
+    notes: 'Expert in AC installations and complex diagnoses.'
+  }
+};
+
+const tech: TechnicianMock = techData[id ?? ""] ?? techData["BT"] as TechnicianMock;
+---
+
+<AdminDashboardLayout title={`${tech.name} - Technicians - Sudhar Lab`} activeNav="technicians">
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb-row">
+    <a href="/admin/technicians" class="breadcrumb-link">Technicians</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current">{tech.name}</span>
+  </div>
+
+  <div class="profile-layout">
+    
+    <!-- MAIN COLUMN -->
+    <div class="main-col">
+      
+      <!-- HERO -->
+      <div class="hero-card card">
+        <div class="hero-content">
+          <div class="hero-left">
+            <div class="hero-avatar" style={`background-color: ${tech.avatarColor}`}>{id}</div>
+            <div class="hero-info">
+              <h1 class="hero-name">{tech.name}</h1>
+              <div class="hero-sub">{tech.subtitle}</div>
+              <div class="hero-meta-row">
+                <div class="hero-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                  {tech.phone}
+                </div>
+                <div class="hero-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  {tech.techId}
+                </div>
+                <div class="hero-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                  Joined: {tech.joined}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-right">
+            <div class="hero-status">
+              {tech.status === 'online' && <span class="status-dot green"></span>}
+              {tech.status === 'on_visit' && <span class="status-dot blue"></span>}
+              <span class="status-text">{tech.statusLabel}</span>
+            </div>
+            <div class="hero-active-time">{tech.lastActive}</div>
+            
+            <div class="hero-actions">
+              <button class="btn-primary" onclick="alert('Assign request')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Assign a request
+              </button>
+              <button class="btn-secondary" onclick="alert('Contact')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Contact technician
+              </button>
+              <button class="btn-more">
+                More actions
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANNER -->
+      <div class={`banner-card ${tech.banner.type}`}>
+        <div class="banner-left">
+          <div class="banner-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div>
+            <div class="banner-title">{tech.banner.title}</div>
+            <div class="banner-desc">{tech.banner.desc}</div>
+          </div>
+        </div>
+        <div class="banner-right">{tech.banner.time}</div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <div class="kpi-val">{tech.kpi.visits}</div>
+          </div>
+          <div class="kpi-label">Today's visits</div>
+          <div class="kpi-sub">{tech.kpi.visitsSub}</div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <div class="kpi-val">{tech.kpi.job}</div>
+          </div>
+          <div class="kpi-label">Current job</div>
+          <div class="kpi-sub teal">{tech.kpi.jobSub}</div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <div class="kpi-val">{tech.kpi.completed}</div>
+          </div>
+          <div class="kpi-label">Completed this week</div>
+          <div class="kpi-sub">{tech.kpi.completedSub}</div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div class="kpi-val">{tech.kpi.next}</div>
+          </div>
+          <div class="kpi-label">Next available</div>
+          <div class="kpi-sub">{tech.kpi.nextSub}</div>
+        </div>
+      </div>
+
+      <!-- TODAY'S SCHEDULE -->
+      <div class="section-card card">
+        <div class="section-header">
+          <h2 class="section-title">Today's schedule</h2>
+          <div class="section-sub">Visits and open time for today</div>
+        </div>
+
+        <div class="schedule-list">
+          {tech.schedule.map((item, idx) => (
+            <div class="sched-row">
+              <div class="sched-left">
+                <div class="sched-node-wrap">
+                  <div class={`sched-node ${item.state}`}>
+                    {item.state === 'done' && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                    {item.state === 'current' && <div class="node-inner"></div>}
+                  </div>
+                  {idx < tech.schedule.length - 1 && <div class={`sched-line ${item.state === 'done' ? 'done' : ''}`}></div>}
+                </div>
+                <div class="sched-time">{item.time}</div>
+              </div>
+              <div class="sched-body">
+                <div>
+                  <div class={`sched-task-title ${item.state === 'empty' ? 'empty' : ''}`}>{item.task}</div>
+                  <div class="sched-meta-list">
+                    {item.loc && (
+                      <span class="sched-meta-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        {item.loc}
+                      </span>
+                    )}
+                    {item.reqId && (
+                      <span class="sched-meta-item req-link">{item.reqId}</span>
+                    )}
+                  </div>
+                </div>
+                <div class="sched-actions">
+                  <span class={`status-badge badge-${item.status.toLowerCase().replace(' ', '-')}`}>{item.status}</span>
+                  {item.reqId && (
+                    <button class="btn-link" onclick={`window.location.href='/admin/requests/${item.reqId.replace('#','')}'`}>Open request</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- ASSIGNED REQUESTS -->
+      <div class="section-card card">
+        <div class="section-header">
+          <h2 class="section-title">Assigned requests</h2>
+          <div class="section-sub">Recent work assigned to this technician</div>
+        </div>
+
+        <div class="assigned-list">
+          {tech.assignedRequests.map(req => (
+            <div class="assigned-row">
+              <div class="assigned-left">
+                <div class="assigned-id">{req.id}</div>
+                <div class="assigned-time">{req.time}</div>
+              </div>
+              <div class="assigned-main">
+                <div class="assigned-title">{req.title}</div>
+                <div class="assigned-customer">{req.customer}</div>
+              </div>
+              <div class="assigned-right">
+                <span class={`status-badge badge-${req.status.toLowerCase().replace(' ', '-')}`}>{req.status}</span>
+                <button class="btn-link" onclick={`window.location.href='/admin/requests/${req.id.replace('#','')}'`}>Open request</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div><!-- /main-col -->
+
+    <!-- SIDEBAR COLUMN -->
+    <div class="side-col">
+      
+      <!-- TECH INFO CARD -->
+      <div class="side-card card">
+        <h3 class="side-card-title">Technician information</h3>
+        
+        <div class="info-group">
+          <div class="info-label">Appliance skills</div>
+          <div class="chip-list">
+            {tech.skills.map(skill => <span class="chip">{skill}</span>)}
+          </div>
+        </div>
+
+        <div class="info-group">
+          <div class="info-label">Service area</div>
+          <div class="chip-list">
+            {tech.areas.map(area => (
+              <span class="chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                {area}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div class="info-group">
+          <div class="info-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Availability preference
+          </div>
+          <div class="info-text">{tech.preference}</div>
+        </div>
+      </div>
+
+      <!-- WORKLOAD CARD -->
+      <div class="side-card card">
+        <h3 class="side-card-title with-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Workload
+        </h3>
+        <div class="workload-label">{tech.workload.label}</div>
+        <div class="workload-desc">{tech.workload.desc}</div>
+        <div class="workload-bar">
+          {Array.from({ length: 5 }).map((_: unknown, i: number) => (
+            <div class={`workload-segment ${i < tech.workload.level ? 'filled' : ''}`}></div>
+          ))}
+        </div>
+      </div>
+
+      <!-- RECENT ACTIVITY CARD -->
+      <div class="side-card card">
+        <h3 class="side-card-title with-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          Recent activity
+        </h3>
+        <div class="activity-timeline">
+          {tech.activity.map((act, i) => (
+            <div class="act-row">
+              <div class="act-node-wrap">
+                <div class={`act-node ${i === 0 ? 'solid' : ''}`}></div>
+                {i < tech.activity.length - 1 && <div class="act-line"></div>}
+              </div>
+              <div class="act-body">
+                <div class="act-title">{act.action}</div>
+                <div class="act-desc">{act.desc}</div>
+                <div class="act-time">{act.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- INTERNAL NOTES -->
+      <div class="side-card card internal-notes-card">
+        <h3 class="side-card-title with-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Internal notes
+        </h3>
+        <div class="notes-sub">Visible only to Sudhar Lab admins</div>
+        <p class="notes-text">{tech.notes}</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</AdminDashboardLayout>
+
+<style is:global>
+  /* BREADCRUMB */
+  .breadcrumb-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+  }
+  .breadcrumb-row svg { color: var(--graphite-lt); }
+  .breadcrumb-link {
+    color: var(--graphite-mid);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+  .breadcrumb-link:hover { color: var(--teal); }
+  .breadcrumb-current { color: var(--navy); font-weight: 600; }
+
+  /* LAYOUT */
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  .main-col { display: flex; flex-direction: column; gap: 1.5rem; }
+  .side-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* CARD BASE */
+  .card {
+    background: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  /* HERO */
+  .hero-card { padding: 1.5rem 2rem; }
+  .hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 2rem;
+  }
+  .hero-left {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  .hero-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-h);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--pure-white);
+    flex-shrink: 0;
+  }
+  .hero-name {
+    font-family: var(--font-h);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .hero-sub {
+    font-size: 0.9375rem;
+    color: var(--graphite-mid);
+    margin-bottom: 0.75rem;
+  }
+  .hero-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+    font-weight: 500;
+  }
+
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .hero-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .status-dot.green { background: #22C55E; }
+  .status-dot.blue { background: #0284C7; }
+  .status-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .hero-active-time {
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    margin-bottom: 1rem;
+  }
+  
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--teal);
+    color: var(--pure-white);
+    border: none;
+    padding: 0.5625rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .btn-primary:hover { background: var(--teal-hover); }
+  .btn-secondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--pure-white);
+    color: var(--teal);
+    border: 1px solid var(--teal);
+    padding: 0.5625rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .btn-secondary:hover { background: var(--teal-light); }
+  .btn-more {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5625rem 0.5rem;
+  }
+
+  /* BANNER */
+  .banner-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 2rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+  .banner-card.available {
+    background: var(--teal-light);
+    border-color: rgba(12, 124, 130, 0.2);
+  }
+  .banner-card.busy {
+    background: #FEF3C7;
+    border-color: rgba(217, 119, 6, 0.2);
+  }
+  .banner-left { display: flex; align-items: center; gap: 1rem; }
+  .banner-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--pure-white);
+  }
+  .banner-card.available .banner-icon { background: var(--teal); }
+  .banner-card.busy .banner-icon { background: #D97706; }
+  .banner-card.busy .banner-icon svg { display: none; } /* Hack for now */
+  .banner-card.busy .banner-icon::after { content: '!'; font-weight: 700; }
+  
+  .banner-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.125rem;
+  }
+  .banner-desc {
+    font-size: 0.875rem;
+    color: var(--navy);
+    opacity: 0.8;
+  }
+  .banner-right {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--teal); /* Available color */
+  }
+  .banner-card.busy .banner-right { color: #D97706; }
+
+  /* KPI GRID */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+  .kpi-card {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .kpi-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .kpi-icon { color: var(--teal); }
+  .kpi-val {
+    font-family: var(--font-h);
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .kpi-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--graphite-mid);
+  }
+  .kpi-sub.teal { color: var(--teal); font-weight: 500; }
+
+  /* SECTION CARDS */
+  .section-card { padding: 1.5rem 2rem; }
+  .section-header { margin-bottom: 1.5rem; }
+  .section-title {
+    font-family: var(--font-h);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .section-sub {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+  }
+
+  /* SCHEDULE LIST */
+  .schedule-list { display: flex; flex-direction: column; }
+  .sched-row {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sched-row:last-child { border-bottom: none; }
+  
+  .sched-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    width: 100px;
+  }
+  .sched-node-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 20px;
+    height: 100%;
+    position: relative;
+    padding-top: 2px;
+  }
+  .sched-node {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--border);
+    background: var(--pure-white);
+    z-index: 2;
+  }
+  .sched-node.done { background: var(--teal); border-color: var(--teal); color: var(--pure-white); }
+  .sched-node.current { border-color: var(--teal); }
+  .node-inner { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  
+  .sched-line {
+    position: absolute;
+    top: 22px;
+    bottom: -1rem;
+    width: 2px;
+    background: var(--border);
+    z-index: 1;
+  }
+  .sched-line.done { background: var(--teal); }
+  
+  .sched-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+    padding-top: 2px;
+  }
+
+  .sched-body {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .sched-task-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.375rem;
+  }
+  .sched-task-title.empty { color: var(--graphite-mid); }
+  
+  .sched-meta-list {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+  }
+  .sched-meta-item { display: flex; align-items: center; gap: 0.375rem; }
+  .req-link { color: var(--graphite-lt); }
+
+  .sched-actions {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.875rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-completed { background: var(--bg-off); color: var(--graphite-mid); }
+  .badge-confirmed { background: var(--teal-light); color: var(--teal); }
+  .badge-available { background: var(--teal-light); color: var(--teal); }
+  .badge-in-progress { background: #E0F2FE; color: #0284C7; }
+  .badge-diagnosis-submitted { background: var(--bg-off); color: var(--graphite-mid); }
+
+  .btn-link {
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-link:hover { text-decoration: underline; }
+
+  /* ASSIGNED LIST */
+  .assigned-list { display: flex; flex-direction: column; }
+  .assigned-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .assigned-row:last-child { border-bottom: none; }
+  .assigned-left { width: 100px; }
+  .assigned-id { font-size: 0.8125rem; font-weight: 600; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .assigned-time { font-size: 0.75rem; color: var(--graphite-lt); }
+  
+  .assigned-main { flex: 1; }
+  .assigned-title { font-size: 0.875rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
+  .assigned-customer { font-size: 0.8125rem; color: var(--graphite-mid); }
+  
+  .assigned-right { display: flex; align-items: center; gap: 2rem; }
+
+  /* SIDEBAR CARDS */
+  .side-card { padding: 1.5rem; }
+  .side-card-title {
+    font-family: var(--font-h);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 1.25rem;
+  }
+  .side-card-title.with-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* INFO GROUPS */
+  .info-group { margin-bottom: 1.25rem; }
+  .info-group:last-child { margin-bottom: 0; }
+  .info-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--graphite-mid);
+    margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.375rem;
+  }
+  .info-text { font-size: 0.875rem; color: var(--navy); line-height: 1.4; }
+  
+  .chip-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip {
+    padding: 0.375rem 0.75rem;
+    background: var(--bg-off);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--navy);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .chip svg { color: var(--graphite-lt); }
+
+  /* WORKLOAD BAR */
+  .workload-label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .workload-desc {
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+    margin-bottom: 1rem;
+  }
+  .workload-bar {
+    display: flex;
+    gap: 0.25rem;
+    height: 8px;
+  }
+  .workload-segment {
+    flex: 1;
+    background: var(--bg-off);
+    border-radius: 4px;
+  }
+  .workload-segment.filled { background: var(--teal); }
+
+  /* RECENT ACTIVITY */
+  .activity-timeline { display: flex; flex-direction: column; }
+  .act-row {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+    padding-bottom: 1rem;
+  }
+  .act-row:last-child { padding-bottom: 0; }
+  .act-node-wrap {
+    width: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    padding-top: 4px;
+  }
+  .act-node {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--teal);
+    z-index: 2;
+  }
+  .act-node.solid { background: var(--teal); }
+  .act-line {
+    position: absolute;
+    top: 14px; bottom: -4px;
+    width: 2px;
+    background: var(--border);
+    z-index: 1;
+  }
+  .act-body { flex: 1; }
+  .act-title { font-size: 0.875rem; font-weight: 600; color: var(--navy); margin-bottom: 0.125rem; }
+  .act-desc { font-size: 0.8125rem; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .act-time { font-size: 0.75rem; color: var(--graphite-lt); }
+
+  /* INTERNAL NOTES */
+  .internal-notes-card {
+    border-color: rgba(0,0,0,0.05);
+  }
+  .notes-sub {
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    margin-top: -0.875rem;
+    margin-bottom: 1rem;
+  }
+  .notes-text {
+    font-size: 0.875rem;
+    color: var(--navy);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 1024px) {
+    .profile-layout { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 767px) {
+    .profile-hero, .profile-header { gap: 1rem; }
+    .hero-actions, .profile-actions { width: 100%; }
+    .hero-actions .btn, .profile-actions .btn { flex: 1 1 140px; justify-content: center; }
+    .section-card, .side-card { padding: 1rem; }
+    .section-header { margin-bottom: 1rem; }
+    .sched-row { gap: 0.75rem; }
+    .sched-left { width: 72px; gap: 0.5rem; }
+    .sched-body { flex-direction: column; gap: 0.75rem; }
+    .sched-actions { width: 100%; justify-content: space-between; gap: 0.75rem; }
+    .sched-meta-list { flex-wrap: wrap; gap: 0.5rem 0.875rem; }
+    .assigned-row { align-items: flex-start; gap: 0.75rem; }
+    .assigned-left { width: 70px; flex-shrink: 0; }
+    .assigned-right { flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+  }
+
+  @media (max-width: 420px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+    .hero-actions .btn, .profile-actions .btn { flex-basis: 100%; }
+    .assigned-row { flex-wrap: wrap; }
+    .assigned-main { min-width: calc(100% - 82px); }
+    .assigned-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 78px; }
+  }
+</style>

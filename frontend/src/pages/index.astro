@@ -1,0 +1,30 @@
+---
+import CustomerLayout from '../layouts/CustomerLayout.astro';
+import Navigation from '../components/customer/Navigation.astro';
+import Hero from '../components/customer/Hero.astro';
+import Services from '../components/customer/Services.astro';
+import RequestService from '../components/customer/RequestService.astro';
+import HowItWorks from '../components/customer/HowItWorks.astro';
+import TrustSection from '../components/customer/TrustSection.astro';
+import FaqSection from '../components/customer/FaqSection.astro';
+import FinalCta from '../components/customer/FinalCta.astro';
+import Footer from '../components/customer/Footer.astro';
+import ContextPill from '../components/customer/ContextPill.astro';
+import CustomerInteractions from '../components/customer/CustomerInteractions.astro';
+---
+
+<CustomerLayout>
+  <Navigation />
+  <main>
+    <Hero />
+    <Services />
+    <RequestService />
+    <HowItWorks />
+    <TrustSection />
+    <FaqSection />
+    <FinalCta />
+  </main>
+  <Footer />
+  <ContextPill />
+  <CustomerInteractions />
+</CustomerLayout>

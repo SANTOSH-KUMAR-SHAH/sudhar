@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technician Portal - Sudhar Lab</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ================================================
+       DESIGN TOKENS
+    ================================================ */
+    :root {
+      --navy: #10263D;
+      --navy-deep: #0A1E30;
+      --teal: #0C7C82;
+      --teal-hover: #0E9198;
+      --gold: #E8A324;
+      --white: #F7F6F2;
+      --pure-white: #FFFFFF;
+      --graphite: #2B2E31;
+      --graphite-mid: #4A4E52;
+      --graphite-lt: #7C8186;
+      --border: #E0DDD7;
+      --bg-off: #EFEDE8;
+
+      --font-h: 'Outfit', sans-serif;
+      --font-b: 'Inter', sans-serif;
+
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-b);
+      color: var(--navy);
+      background-color: var(--white);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ================================================
+       LAYOUT: SPLIT SCREEN
+    ================================================ */
+    .split-layout {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* LEFT SIDE: BRANDING */
+    .panel-left {
+      flex: 1;
+      position: relative;
+      background-color: var(--navy-deep);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3rem;
+    }
+
+    .panel-left::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('technician.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0.6; /* Darken for text readability */
+      z-index: 1;
+    }
+
+    .panel-left::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(10, 30, 48, 0.4) 0%, rgba(10, 30, 48, 0.9) 100%);
+      z-index: 2;
+    }
+
+    .brand-logo {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .brand-logo span {
+      font-family: var(--font-h);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--pure-white);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-messaging {
+      position: relative;
+      z-index: 10;
+      max-width: 480px;
+    }
+
+    .accent-line {
+      width: 40px;
+      height: 3px;
+      background-color: var(--gold);
+      margin-bottom: 1.5rem;
+    }
+
+    .brand-messaging h1 {
+      font-family: var(--font-h);
+      font-size: 3.5rem;
+      font-weight: 600;
+      color: var(--pure-white);
+      line-height: 1.1;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-messaging p {
+      font-size: 1.125rem;
+      color: rgba(247, 246, 242, 0.8);
+      line-height: 1.5;
+    }
+
+    /* RIGHT SIDE: AUTHENTICATION */
+    .panel-right {
+      flex: 1;
+      background-color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .shield-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1.5rem;
+      color: var(--teal);
+    }
+
+    .auth-header h2 {
+      font-family: var(--font-h);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
+    }
+
+    .auth-header p {
+      font-size: 0.9375rem;
+      color: var(--graphite-mid);
+    }
+
+    .auth-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .form-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--navy);
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      font-family: var(--font-b);
+      font-size: 0.9375rem;
+      color: var(--navy);
+      background-color: var(--pure-white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    }
+
+    .form-input::placeholder {
+      color: var(--graphite-lt);
+    }
+
+    .form-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(12, 124, 130, 0.1);
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 1rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--graphite-lt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .password-toggle:hover {
+      color: var(--navy);
+    }
+
+    .password-toggle svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .forgot-password {
+      align-self: flex-end;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--teal);
+      text-decoration: none;
+      margin-top: -0.5rem;
+      transition: color 0.2s;
+    }
+
+    .forgot-password:hover {
+      color: var(--teal-hover);
+      text-decoration: underline;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 1rem;
+      background-color: var(--teal);
+      color: var(--pure-white);
+      font-family: var(--font-b);
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s var(--ease);
+      margin-top: 0.5rem;
+    }
+
+    .btn-submit:hover {
+      background-color: var(--teal-hover);
+    }
+
+    .security-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      color: var(--graphite-lt);
+      font-size: 0.8125rem;
+    }
+
+    .security-note svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .divider {
+      width: 100%;
+      height: 1px;
+      background-color: var(--border);
+      margin: 2.5rem 0;
+    }
+
+    .help-section {
+      text-align: center;
+      width: 100%;
+    }
+
+    .help-section p {
+      font-size: 0.875rem;
+      color: var(--graphite-mid);
+      margin-bottom: 1rem;
+    }
+
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background-color: transparent;
+      border: 1px solid var(--teal);
+      color: var(--teal);
+      font-family: var(--font-b);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s var(--ease);
+    }
+
+    .btn-outline:hover {
+      background-color: rgba(12, 124, 130, 0.05);
+    }
+
+    .btn-outline svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .footer-note {
+      margin-top: 3rem;
+      font-size: 0.6875rem;
+      color: var(--graphite-lt);
+      text-align: center;
+    }
+
+    /* ================================================
+       RESPONSIVE DESIGN
+    ================================================ */
+    @media (max-width: 900px) {
+      .panel-left {
+        display: none; /* Hide image panel on mobile/tablet */
+      }
+      
+      .panel-right {
+        padding: 2rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="split-layout">
+    
+    <!-- LEFT PANEL: BRANDING -->
+    <section class="panel-left">
+      <div class="brand-logo">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="16" stroke="var(--teal)" stroke-width="4"/>
+          <rect x="14" y="14" width="12" height="12" fill="var(--teal)"/>
+          <path d="M2 20H8M32 20H38M20 2V8M20 32V38" stroke="var(--teal)" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <span>sudhar lab</span>
+      </div>
+
+      <div class="brand-messaging">
+        <div class="accent-line"></div>
+        <h1>Home service,<br>handled professionally.</h1>
+        <p>Your assigned work, clearly organized.</p>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: AUTHENTICATION -->
+    <section class="panel-right">
+      <div class="auth-container">
+        
+        <div class="auth-header">
+          <!-- Technician Shield Icon -->
+          <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+            <path d="M7 14c0-2.2 2.2-4 5-4s5 1.8 5 4"/>
+            <path d="M14 16l-4 4"/>
+            <path d="M13 19l-3 3"/>
+          </svg>
+          <h2>Technician Portal</h2>
+          <p>Sign in to manage your assigned service visits.</p>
+        </div>
+
+        <form class="auth-form" onsubmit="event.preventDefault();">
+          
+          <div class="form-group">
+            <label class="form-label" for="identity">Phone number or email</label>
+            <div class="input-wrapper">
+              <input type="text" id="identity" class="form-input" placeholder="Enter your phone number or email" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-wrapper">
+              <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+              <button type="button" class="password-toggle" id="togglePassword" aria-label="Toggle password visibility">
+                <!-- Eye Icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="eyeIcon">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <a href="#" class="forgot-password">Forgot password?</a>
+
+          <button type="submit" class="btn-submit">Sign in</button>
+
+          <div class="security-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Secure access for Sudhar Lab technicians
+          </div>
+
+        </form>
+
+        <div class="divider"></div>
+
+        <div class="help-section">
+          <p>Need help signing in?</p>
+          <a href="tel:+9779800000000" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            Call Sudhar Lab
+          </a>
+        </div>
+
+        <div class="footer-note">
+          Sudhar Lab • Home Appliance Repair & Maintenance • Kathmandu
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Business: Allow technician to toggle password visibility to avoid typos on mobile
+    // Technical: Swap input type and SVG path for eye open/closed states
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#password');
+    const eyeIcon = document.querySelector('#eyeIcon');
+
+    togglePassword.addEventListener('click', function (e) {
+      const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+      password.setAttribute('type', type);
+      
+      if (type === 'text') {
+        eyeIcon.innerHTML = `
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+        `;
+      } else {
+        eyeIcon.innerHTML = `
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>

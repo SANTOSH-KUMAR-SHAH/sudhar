@@ -1,0 +1,81 @@
+  <nav id="nav" role="banner">
+    <a href="/" class="nav-logo" aria-label="Sudhar Lab home">
+      <img src="/logo.png" alt="Sudhar Lab" />
+    </a>
+
+    <!-- Ambient wrench: rotates with scroll velocity — the tool of the trade -->
+    <svg id="navWrench" class="nav-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path
+        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+        fill="currentColor" />
+    </svg>
+
+    <ul class="nav-links" role="list">
+      <li><a href="#services">Services</a></li>
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#trust">About Us</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+
+    <div class="nav-right">
+      <div class="double-bezel call-bezel">
+        <a href="tel:+977XXXXXXXXXX" class="nav-call" aria-label="Call Sudhar Lab">
+          <span>📞</span> Call Us
+        </a>
+      </div>
+      <div class="double-bezel cta-bezel">
+        <a href="#request" class="btn btn-teal nav-cta-btn">Get Checked</a>
+      </div>
+      <button class="nav-hamburger" id="navHamburger" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav Story Sheet -->
+  <div class="mobile-drawer" id="mobileDrawer" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+    <div class="drawer-handle" id="drawerHandle"></div>
+    <div class="drawer-title-row">
+      <span class="drawer-title">Explore Sudhar Lab</span>
+      <span class="drawer-sub">1 tap to jump</span>
+    </div>
+    <a href="#services" class="drawer-link drawer-card">
+      <img src="/tv.png" alt="" loading="lazy" />
+      <span class="drawer-card-text">
+        <span class="drawer-card-title">Services</span>
+        <span class="drawer-card-sub">TV • Washing • AC • Fridge</span>
+      </span>
+      <span class="drawer-card-go">→</span>
+    </a>
+    <a href="#how-it-works" class="drawer-link drawer-card">
+      <img src="/step1.png" alt="" loading="lazy" />
+      <span class="drawer-card-text">
+        <span class="drawer-card-title">How it works</span>
+        <span class="drawer-card-sub">Request → Visit → Repair</span>
+      </span>
+      <span class="drawer-card-go">→</span>
+    </a>
+    <a href="#faq" class="drawer-link drawer-card">
+      <img src="/unsure.png" alt="" loading="lazy" />
+      <span class="drawer-card-text">
+        <span class="drawer-card-title">FAQ</span>
+        <span class="drawer-card-sub">Price • Visit • Warranty</span>
+      </span>
+      <span class="drawer-card-go">→</span>
+    </a>
+    <a href="#contact" class="drawer-link drawer-card">
+      <img src="/technician-talking.png" alt="" loading="lazy" />
+      <span class="drawer-card-text">
+        <span class="drawer-card-title">Contact</span>
+        <span class="drawer-card-sub">Call • WhatsApp</span>
+      </span>
+      <span class="drawer-card-go">→</span>
+    </a>
+    <div class="mobile-drawer-cta">
+      <a href="#request" class="btn btn-teal drawer-link">Get My Appliance Checked &rarr;</a>
+      <a href="tel:+977XXXXXXXXXX" class="btn btn-ghost-white drawer-link">📞 Call Sudhar Lab</a>
+    </div>
+  </div>
+

@@ -1,0 +1,309 @@
+---
+import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
+---
+
+<TechDashboardLayout title="Home - Sudhar Lab" activeNav="home">
+  <div class="feed-container">
+    
+    <!-- Top Availability Banner -->
+    <div class="availability-banner online">
+      <div class="avail-content">
+        <div class="pulse-ring"></div>
+        <div class="status-dot"></div>
+        <span>You are ONLINE</span>
+      </div>
+      <button class="toggle-switch">Go Offline</button>
+    </div>
+
+    <div class="greeting">
+      <h2>Good morning, Ramesh</h2>
+      <p>Today is Sunday, September 14</p>
+    </div>
+
+    <!-- Massive Next Visit Hero Card -->
+    <div class="hero-card">
+      <div class="hero-header">
+        <div class="badge assigned">Next Visit</div>
+        <div class="time">11:30 AM</div>
+      </div>
+      
+      <div class="hero-body">
+        <h3 class="appliance">LG Washing Machine</h3>
+        <p class="customer">Hari Thapa &middot; Baneshwor</p>
+        <div class="problem-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Not draining
+        </div>
+      </div>
+
+      <div class="hero-footer">
+        <a href="/tech/jobs/1042" class="btn-primary massive">Open Job</a>
+      </div>
+    </div>
+
+    <!-- Later Today -->
+    <div class="section-heading">Later Today</div>
+    
+    <div class="job-list">
+      <a href="/tech/jobs/1055" class="job-item">
+        <div class="time-col">03:00 PM</div>
+        <div class="details-col">
+          <h4>Samsung Refrigerator</h4>
+          <p>Koteshwor</p>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </a>
+    </div>
+
+    <!-- Completed -->
+    <div class="section-heading">Completed</div>
+    
+    <div class="job-list">
+      <a href="/tech/jobs/1021" class="job-item completed">
+        <div class="time-col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="color:var(--green)"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+        <div class="details-col">
+          <h4>Sony TV</h4>
+          <p>Maharajgunj</p>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </a>
+    </div>
+
+  </div>
+</TechDashboardLayout>
+
+<style is:global>
+  .feed-container {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* Availability Banner */
+  .availability-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    border-radius: 12px;
+    background-color: var(--pure-white);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .availability-banner.online {
+    border-color: rgba(34, 197, 94, 0.3);
+    background-color: #FAFDFA;
+  }
+
+  .avail-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--navy);
+    position: relative;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    background-color: var(--green);
+    border-radius: 50%;
+    z-index: 2;
+  }
+
+  .pulse-ring {
+    position: absolute;
+    left: -3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background-color: rgba(34, 197, 94, 0.3);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    z-index: 1;
+  }
+
+  @keyframes pulse {
+    0% { transform: translateY(-50%) scale(0.8); opacity: 1; }
+    100% { transform: translateY(-50%) scale(2.5); opacity: 0; }
+  }
+
+  .toggle-switch {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--graphite-mid);
+    cursor: pointer;
+    background-color: var(--pure-white);
+  }
+
+  /* Greeting */
+  .greeting h2 {
+    font-family: var(--font-h);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+
+  .greeting p {
+    font-size: 0.875rem;
+    color: var(--graphite-lt);
+  }
+
+  /* Hero Card */
+  .hero-card {
+    background-color: var(--pure-white);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+
+  .hero-header {
+    background-color: var(--teal);
+    color: var(--pure-white);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .badge.assigned {
+    align-self: flex-start;
+    background-color: rgba(255,255,255,0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .hero-header .time {
+    font-family: var(--font-h);
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .hero-body {
+    padding: 1.5rem;
+  }
+
+  .hero-body .appliance {
+    font-family: var(--font-h);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .hero-body .customer {
+    font-size: 0.9375rem;
+    color: var(--graphite-mid);
+    margin-bottom: 1rem;
+  }
+
+  .problem-box {
+    background-color: var(--gold-light);
+    color: #9A6A00;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .hero-footer {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+  }
+
+  .btn-primary.massive {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 1.25rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    background-color: var(--teal);
+    color: var(--pure-white);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: transform 0.1s;
+  }
+
+  .btn-primary.massive:active {
+    transform: scale(0.98);
+  }
+
+  /* Lists */
+  .section-heading {
+    font-family: var(--font-h);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 0.5rem;
+  }
+
+  .job-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .job-item {
+    display: flex;
+    align-items: center;
+    background-color: var(--pure-white);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .time-col {
+    font-family: var(--font-h);
+    font-weight: 700;
+    color: var(--navy);
+    width: 70px;
+    flex-shrink: 0;
+    font-size: 0.9375rem;
+  }
+
+  .details-col {
+    flex: 1;
+  }
+
+  .details-col h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.125rem;
+  }
+
+  .details-col p {
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+  }
+  
+  .job-item.completed {
+    background-color: #FAFAFA;
+  }
+  .job-item.completed h4 {
+    color: var(--graphite-mid);
+  }
+</style>
+

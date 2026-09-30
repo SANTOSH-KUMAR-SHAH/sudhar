@@ -1,0 +1,101 @@
+  <section class="sec sec--off" id="services" aria-label="Services">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="hero-eyebrow-row">
+          <div class="hero-eyebrow-bar" style="width:24px;"></div>
+          <span class="eyebrow" style="color:var(--graphite-mid);">HOME SERVICE</span>
+        </div>
+        <h2 style="font-size:42px; margin-bottom: 8px;">What needs help?</h2>
+        <p style="font-size: 17px; max-width:600px;">Choose your appliance and tell us what is wrong. We'll take it from
+          there.</p>
+      </div>
+
+      <div class="services-grid">
+        <!-- TV -->
+        <article class="svc-card reveal" tabindex="0" role="button" aria-label="TV Repair — Start service request"
+          onclick="pickAppliance('TV', this)">
+          <div class="svc-content">
+            <div class="svc-teal-dash"></div>
+            <h3 class="svc-title">TV</h3>
+            <p class="svc-hint">Screen, sound, or power issue?</p>
+            <div class="svc-action">Start request <span class="svc-action-arrow">→</span></div>
+          </div>
+          <div class="svc-img">
+            <img src="/tv.png" alt="Television in a Kathmandu living room" loading="lazy" />
+          </div>
+        </article>
+
+        <!-- Washing Machine -->
+        <article class="svc-card reveal d1" tabindex="0" role="button"
+          aria-label="Washing Machine Repair — Start service request" onclick="pickAppliance('Washing Machine', this)">
+          <div class="svc-content">
+            <div class="svc-teal-dash"></div>
+            <h3 class="svc-title">Washing Machine</h3>
+            <p class="svc-hint">Not spinning, draining, or starting?</p>
+            <div class="svc-action">Start request <span class="svc-action-arrow">→</span></div>
+          </div>
+          <div class="svc-img">
+            <img src="/washing.png" alt="Washing machine at home" loading="lazy" />
+          </div>
+        </article>
+
+        <!-- AC -->
+        <article class="svc-card reveal d2" tabindex="0" role="button" aria-label="AC Repair — Start service request"
+          onclick="pickAppliance('AC', this)">
+          <div class="svc-content">
+            <div class="svc-teal-dash"></div>
+            <h3 class="svc-title">AC</h3>
+            <p class="svc-hint">Not cooling or needing service?</p>
+            <div class="svc-action">Start request <span class="svc-action-arrow">→</span></div>
+          </div>
+          <div class="svc-img">
+            <img src="/ac.png" alt="Air conditioner in a family room" loading="lazy" />
+          </div>
+        </article>
+
+        <!-- Refrigerator -->
+        <article class="svc-card reveal d3" tabindex="0" role="button"
+          aria-label="Refrigerator Repair — Start service request" onclick="pickAppliance('Refrigerator', this)">
+          <div class="svc-content">
+            <div class="svc-teal-dash"></div>
+            <h3 class="svc-title">Refrigerator</h3>
+            <p class="svc-hint">Not cooling, leaking, or making noise?</p>
+            <div class="svc-action">Start request <span class="svc-action-arrow">→</span></div>
+          </div>
+          <div class="svc-img">
+            <img src="/fridge.png" alt="Refrigerator in a kitchen" loading="lazy" />
+          </div>
+        </article>
+      </div>
+
+      <div class="services-unsure reveal">
+        <div class="services-unsure-label">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+            </path>
+          </svg>
+          Not sure what you need?
+        </div>
+        <div class="services-unsure-divider"></div>
+        <div class="services-unsure-btns">
+          <a href="tel:+977XXXXXXXXXX" class="btn-outline-pill">
+            <svg class="teal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+              </path>
+            </svg>
+            Call Us
+          </a>
+          <a href="#request" class="btn-outline-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Tell us what happened
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>

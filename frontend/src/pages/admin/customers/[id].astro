@@ -1,0 +1,912 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+
+export function getStaticPaths() {
+  return [
+    { params: { id: 'HT' } },
+    { params: { id: 'MS' } },
+    { params: { id: 'SR' } },
+    { params: { id: 'AG' } },
+    { params: { id: 'BR' } },
+  ];
+}
+
+const { id } = Astro.params;
+
+const customerData: Record<string, any> = {
+  'HT': {
+    name: 'Hari Thapa',
+    avatarColor: 'var(--navy)',
+    statusBadge: 'Active Request',
+    statusClass: 'active',
+    location: 'Baneshwor, Kathmandu',
+    since: 'September 2026',
+    phone: '98XX XXX XXX',
+    fullName: 'Hari Thapa',
+    area: 'Baneshwor; Kathmandu',
+    preferredContact: 'None',
+    address: 'Near the main road, Baneshwor',
+    customerCreated: 'September 2026',
+    internalNotesCount: 2,
+    kpi: { active: 1, appliances: 2, totalRequests: 3, successfulRepairs: 1 },
+    activeRequest: {
+      id: 'SL-000124', appliance: 'LG Washing Machine',
+      status: 'Diagnosing', statusClass: 'active',
+      technician: 'Ramesh', visit: 'Today, 11:30 AM', area: 'Baneshwor'
+    },
+    appliances: [
+      { name: 'LG Washing Machine', icon: 'washer', model: 'FHM1207', lastService: 'Today', requests: 2, outcome: 'Successful Repair', outcomeClass: 'success' },
+      { name: 'Samsung Refrigerator', icon: 'fridge', model: 'Not provided', lastService: 'August 29', requests: 1, outcome: 'Repair Declined', outcomeClass: 'warning' }
+    ],
+    serviceHistory: [
+      { id: 'SL-000124', appliance: 'LG Washing Machine', problem: 'Not draining', date: 'Today', technician: 'Ramesh', outcome: 'Active — Diagnosing', outcomeClass: 'active' },
+      { id: 'SL-000089', appliance: 'Samsung Refrigerator', problem: 'Not cooling', date: 'August 29', technician: 'Suman', outcome: 'Repair Declined', outcomeClass: 'warning' },
+      { id: 'SL-000056', appliance: 'LG Washing Machine', problem: 'Water leakage', date: 'August 12', technician: 'Ramesh', outcome: 'Customer Cancelled', outcomeClass: 'danger' },
+      { id: 'SL-000031', appliance: 'LG Washing Machine', problem: 'Drain pump blockage', date: 'July 20', technician: 'Ramesh', outcome: 'Successful Repair', outcomeClass: 'success' }
+    ],
+    recentActivity: [
+      { icon: 'tech', text: 'Technician assigned: Ramesh', time: 'Today, 10:42 AM' },
+      { icon: 'admin', text: 'Customer confirmation recorded by admin', time: 'Today, 9:35 AM' },
+      { icon: 'req', text: 'Request submitted', time: 'Today, 9:12 AM' },
+      { icon: 'x', text: 'Repair price declined by customer', time: 'August 29' },
+      { icon: 'check', text: 'Previous service request completed', time: 'August 20' }
+    ],
+    billing: { recorded: 2, paid: 1, pending: 1, latestInvoice: 'INV-00031', paymentStatus: 'Pending' },
+    internalNotes: [
+      { text: 'Customer prefers phone calls.', author: 'Sudhar Lab Admin', date: 'Today' },
+      { text: 'Customer has two appliances at the same address.', author: 'Sudhar Lab Admin', date: 'August 20' }
+    ],
+    communication: [
+      { type: 'Phone call', date: 'Today' },
+      { type: 'Confirmation discussion', date: 'Today' },
+      { type: 'Price discussion', date: 'August 29' }
+    ]
+  },
+  'MS': {
+    name: 'Mina Shrestha',
+    avatarColor: 'var(--teal)',
+    statusBadge: 'Repair Declined',
+    statusClass: 'warning',
+    location: 'Lalitpur',
+    since: 'July 2026',
+    phone: '98XX XXX XXX',
+    fullName: 'Mina Shrestha',
+    area: 'Lalitpur',
+    preferredContact: 'Phone',
+    address: 'Pulchowk, Lalitpur',
+    customerCreated: 'July 2026',
+    internalNotesCount: 0,
+    kpi: { active: 0, appliances: 1, totalRequests: 2, successfulRepairs: 1 },
+    activeRequest: null,
+    appliances: [
+      { name: 'Samsung AC', icon: 'ac', model: 'AR18', lastService: 'Yesterday', requests: 2, outcome: 'Repair Declined', outcomeClass: 'warning' }
+    ],
+    serviceHistory: [
+      { id: 'SL-000115', appliance: 'Samsung AC', problem: 'Not cooling', date: 'Yesterday', technician: 'Ramesh', outcome: 'Repair Declined', outcomeClass: 'warning' },
+      { id: 'SL-000045', appliance: 'Samsung AC', problem: 'Gas refill', date: 'July 15', technician: 'Bikash', outcome: 'Successful Repair', outcomeClass: 'success' }
+    ],
+    recentActivity: [
+      { icon: 'x', text: 'Repair price declined by customer', time: 'Yesterday' },
+      { icon: 'tech', text: 'Technician visited for diagnosis', time: 'Yesterday' },
+      { icon: 'check', text: 'Previous service request completed', time: 'July 15' }
+    ],
+    billing: { recorded: 1, paid: 1, pending: 0, latestInvoice: 'INV-00045', paymentStatus: 'Paid' },
+    internalNotes: [],
+    communication: [
+      { type: 'Price discussion', date: 'Yesterday' }
+    ]
+  }
+};
+
+const cust = customerData[id] || customerData['HT'];
+---
+
+<AdminDashboardLayout title={`${cust.name} - Customers - Sudhar Lab`} activeNav="customers">
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb-row">
+    <a href="/admin/dashboard" class="breadcrumb-link">Operations</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <a href="/admin/customers" class="breadcrumb-link">Customers</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current">{cust.name}</span>
+  </div>
+
+  <!-- HERO SECTION -->
+  <div class="hero-card">
+    <div class="hero-left">
+      <div class="hero-avatar" style={`background-color: ${cust.avatarColor}`}>{id}</div>
+      <div class="hero-info">
+        <div class="hero-name-row">
+          <h1 class="hero-name">{cust.name}</h1>
+          <span class={`hero-badge badge-${cust.statusClass}`}>{cust.statusBadge}</span>
+        </div>
+        <div class="hero-meta-list">
+          <div class="hero-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            {cust.location}
+          </div>
+          <div class="hero-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Customer since {cust.since}
+          </div>
+          <div class="hero-meta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            {cust.phone}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <button class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        Call Customer
+      </button>
+      <button class="btn-outline">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        Edit Details
+      </button>
+      <button class="btn-outline">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Request
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      </div>
+      <div>
+        <div class="kpi-num">{cust.kpi.active}</div>
+        <div class="kpi-label">Active Requests</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </div>
+      <div>
+        <div class="kpi-num">{cust.kpi.appliances}</div>
+        <div class="kpi-label">Appliances</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+      </div>
+      <div>
+        <div class="kpi-num">{cust.kpi.totalRequests}</div>
+        <div class="kpi-label">Total Requests</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap teal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+      </div>
+      <div>
+        <div class="kpi-num">{cust.kpi.successfulRepairs}</div>
+        <div class="kpi-label">Successful Repairs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVE REQUEST BANNER -->
+  {cust.activeRequest && (
+    <div class="active-req-banner">
+      <div class="banner-icon-wrap">
+        <div class="banner-pulse"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      </div>
+      <div class="banner-label">Active service request</div>
+      <div class="banner-sep"></div>
+      <div class="banner-field"><div class="banner-key">Request No.</div><div class="banner-val">{cust.activeRequest.id}</div></div>
+      <div class="banner-field"><div class="banner-key">Appliance</div><div class="banner-val">{cust.activeRequest.appliance}</div></div>
+      <div class="banner-field">
+        <div class="banner-key">Status</div>
+        <div class="banner-val"><span class={`status-badge badge-${cust.activeRequest.statusClass}`}>{cust.activeRequest.status}</span></div>
+      </div>
+      <div class="banner-field"><div class="banner-key">Technician</div><div class="banner-val">{cust.activeRequest.technician}</div></div>
+      <div class="banner-field"><div class="banner-key">Visit</div><div class="banner-val">{cust.activeRequest.visit}</div></div>
+      <div class="banner-field"><div class="banner-key">Area</div><div class="banner-val">{cust.activeRequest.area}</div></div>
+      <button class="btn-open-req" onclick={`window.location.href='/admin/requests/${cust.activeRequest.id}'`}>
+        Open Request
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+    </div>
+  )}
+
+  <!-- NO ACTIVE REQUEST STATE (for customers without active requests) -->
+  {!cust.activeRequest && (
+    <div class="no-request-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <div>
+        <div class="no-req-title">No active service request</div>
+        <div class="no-req-desc">New requests from this customer will appear here.</div>
+      </div>
+    </div>
+  )}
+
+  <!-- MAIN CONTENT GRID: LEFT + RIGHT -->
+  <div class="content-grid">
+
+    <!-- LEFT / CENTER COLUMN -->
+    <div class="main-col">
+
+      <!-- CUSTOMER INFORMATION -->
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-head-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <h2 class="section-title">Customer Information</h2>
+          </div>
+          <div class="section-head-right">
+            {cust.internalNotesCount > 0 && (
+              <div class="notes-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {cust.internalNotesCount} internal notes
+              </div>
+            )}
+            <button class="btn-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              Edit Details
+            </button>
+          </div>
+        </div>
+
+        <div class="info-cols">
+          <div class="info-col">
+            <div class="info-field">
+              <div class="info-label">Full name</div>
+              <div class="info-val">{cust.fullName}</div>
+            </div>
+            <div class="info-field">
+              <div class="info-label">Phone</div>
+              <div class="info-val">{cust.phone}</div>
+            </div>
+            <div class="info-field">
+              <div class="info-label">Address</div>
+              <div class="info-val">{cust.address}</div>
+            </div>
+          </div>
+          <div class="info-col">
+            <div class="info-field">
+              <div class="info-label">Area</div>
+              <div class="info-val">{cust.area}</div>
+            </div>
+            <div class="info-field">
+              <div class="info-label">Preferred contact</div>
+              <div class="info-val">{cust.preferredContact}</div>
+            </div>
+            <div class="info-field">
+              <div class="info-label">Customer created</div>
+              <div class="info-val">{cust.customerCreated}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- APPLIANCES -->
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-head-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+            <div>
+              <h2 class="section-title">Appliances</h2>
+              <div class="section-desc">Appliances connected to this customer and their service history.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="appliance-grid">
+          {cust.appliances.map((app: any) => (
+            <div class="appliance-card">
+              <div class="appliance-header">
+                <div class="appliance-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="18" rx="2" ry="2"></rect><line x1="2" y1="9" x2="22" y2="9"></line><path d="M12 3v6"></path></svg>
+                </div>
+                <div class="appliance-name">{app.name}</div>
+              </div>
+              <div class="appliance-details">
+                <div class="appl-detail">
+                  <span class="appl-key">Model</span>
+                  <span class="appl-val">{app.model}</span>
+                </div>
+                <div class="appl-detail">
+                  <span class="appl-key">Last service</span>
+                  <span class="appl-val">{app.lastService}</span>
+                </div>
+                <div class="appl-detail">
+                  <span class="appl-key">Service requests</span>
+                  <span class="appl-val">{app.requests}</span>
+                </div>
+                <div class="appl-detail">
+                  <span class="appl-key">Latest outcome</span>
+                  <span class={`status-badge badge-${app.outcomeClass}`}>{app.outcome}</span>
+                </div>
+              </div>
+              <button class="btn-view-history">View History</button>
+            </div>
+          ))}
+
+          <!-- ADD APPLIANCE CARD -->
+          <div class="appliance-add-card">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <div class="add-appliance-text">Add another appliance</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SERVICE HISTORY -->
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-head-left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            <h2 class="section-title">Service History</h2>
+          </div>
+        </div>
+
+        <!-- SERVICE HISTORY TABS -->
+        <div class="sh-tabs">
+          <button class="sh-tab active">All</button>
+          <button class="sh-tab">Active</button>
+          <button class="sh-tab">No Technician Visit</button>
+          <button class="sh-tab">Customer Cancelled</button>
+          <button class="sh-tab">Repair Declined</button>
+          <button class="sh-tab">Successful Repair</button>
+        </div>
+
+        <div class="sh-table-wrap">
+          <table class="sh-table">
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th>Appliance</th>
+                <th>Problem</th>
+                <th>Date</th>
+                <th>Technician</th>
+                <th>Outcome</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cust.serviceHistory.map((req: any) => (
+                <tr class="sh-row">
+                  <td><div class="req-id">{req.id}</div></td>
+                  <td><div class="cell-text">{req.appliance}</div></td>
+                  <td><div class="cell-text">{req.problem}</div></td>
+                  <td><div class="cell-text">{req.date}</div></td>
+                  <td><div class="cell-text">{req.technician}</div></td>
+                  <td><span class={`status-badge badge-${req.outcomeClass}`}>{req.outcome}</span></td>
+                  <td>
+                    <div class="action-cell">
+                      <button class="btn-link-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>
+                        {req.outcomeClass === 'active' ? 'Open Request' : 'View Record'}
+                      </button>
+                      <button class="btn-dots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- EMPTY STATE: No appliance records -->
+        <div class="sh-empty-row">
+          <div class="sh-empty-col">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div class="sh-empty-text">No active service request</div>
+            <div class="sh-empty-desc">New requests from this customer will appear here.</div>
+          </div>
+          <div class="sh-empty-col">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+            <div class="sh-empty-text">No appliance records yet.</div>
+            <div class="sh-empty-desc">Appliances will appear after the first request.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main-col -->
+
+    <!-- RIGHT SIDEBAR COLUMN -->
+    <div class="side-col">
+
+      <!-- QUICK ACTIONS -->
+      <div class="side-card">
+        <div class="side-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <h3 class="side-card-title">Quick Actions</h3>
+        </div>
+        <div class="quick-actions-list">
+          <button class="qa-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            Call Customer
+          </button>
+          <button class="qa-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Request
+          </button>
+          <button class="qa-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            Edit Details
+          </button>
+          {cust.activeRequest && (
+            <button class="qa-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              View Active Request
+            </button>
+          )}
+          <button class="qa-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            Add Internal Note
+          </button>
+        </div>
+      </div>
+
+      <!-- RECENT ACTIVITY -->
+      <div class="side-card">
+        <div class="side-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <h3 class="side-card-title">Recent Activity</h3>
+        </div>
+        <div class="activity-timeline">
+          {cust.recentActivity.map((act: any, i: number) => (
+            <div class="act-row">
+              <div class="act-node-wrap">
+                <div class="act-node"></div>
+                {i < cust.recentActivity.length - 1 && <div class="act-line"></div>}
+              </div>
+              <div class="act-body">
+                <div class="act-text">{act.text}</div>
+                <div class="act-time">{act.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- BILLING HISTORY -->
+      <div class="side-card">
+        <div class="side-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+          <h3 class="side-card-title">Billing History</h3>
+        </div>
+        <div class="billing-stats">
+          <div class="billing-stat">
+            <div class="billing-stat-label">Inspection fees recorded</div>
+            <div class="billing-stat-num">{cust.billing.recorded}</div>
+          </div>
+          <div class="billing-stat">
+            <div class="billing-stat-label">Paid</div>
+            <div class="billing-stat-num">{cust.billing.paid}</div>
+          </div>
+          <div class="billing-stat">
+            <div class="billing-stat-label">Pending</div>
+            <div class="billing-stat-num">{cust.billing.pending}</div>
+          </div>
+        </div>
+        <div class="billing-invoice-row">
+          <div>
+            <div class="billing-inv-label">Latest Invoice</div>
+            <div class="billing-inv-val">{cust.billing.latestInvoice}</div>
+          </div>
+          <div>
+            <div class="billing-inv-label">Latest payment status</div>
+            <span class={`status-badge badge-${cust.billing.paymentStatus === 'Paid' ? 'success' : 'warning'}`}>{cust.billing.paymentStatus}</span>
+          </div>
+        </div>
+        <button class="btn-view-billing">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          View Billing
+        </button>
+      </div>
+
+      <!-- INTERNAL NOTES -->
+      <div class="side-card">
+        <div class="side-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          <div class="side-card-header-right">
+            <h3 class="side-card-title">Internal Notes</h3>
+            <button class="btn-link-sm">+ Add Internal Note</button>
+          </div>
+        </div>
+        {cust.internalNotes.length > 0 ? (
+          <div class="notes-list">
+            {cust.internalNotes.map((note: any) => (
+              <div class="note-item">
+                <div class="note-text">{note.text}</div>
+                <div class="note-meta">Added by {note.author} · {note.date}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="empty-notes">No internal notes yet.</div>
+        )}
+      </div>
+
+      <!-- COMMUNICATION -->
+      <div class="side-card">
+        <div class="side-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <h3 class="side-card-title">Communication</h3>
+        </div>
+        <div class="comm-list">
+          {cust.communication.map((c: any) => (
+            <div class="comm-row">
+              <div class="comm-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              </div>
+              <div class="comm-text">{c.type}</div>
+              <div class="comm-date">{c.date}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div><!-- /side-col -->
+
+  </div><!-- /content-grid -->
+
+</AdminDashboardLayout>
+
+<style is:global>
+  /* BREADCRUMB */
+  .breadcrumb-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem; color: var(--graphite-mid);
+  }
+  .breadcrumb-row svg { color: var(--graphite-lt); }
+  .breadcrumb-link { color: var(--graphite-mid); text-decoration: none; font-weight: 500; }
+  .breadcrumb-link:hover { color: var(--teal); }
+  .breadcrumb-current { color: var(--navy); font-weight: 600; }
+
+  /* HERO */
+  .hero-card {
+    background: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .hero-left { display: flex; align-items: center; gap: 1.25rem; }
+  .hero-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    color: var(--pure-white);
+    font-family: var(--font-h); font-size: 1.75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .hero-name-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .hero-name { font-family: var(--font-h); font-size: 1.75rem; font-weight: 700; color: var(--navy); }
+  .hero-badge {
+    padding: 0.25rem 0.75rem; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .badge-active { background: #E0F2FE; color: #0284C7; }
+  .badge-success { background: #DCFCE7; color: #16A34A; }
+  .badge-warning { background: #FEF3C7; color: #D97706; }
+  .badge-danger { background: #FEE2E2; color: #DC2626; }
+  .badge-neutral { background: var(--bg-off); color: var(--graphite-mid); }
+  .hero-meta-list { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .hero-meta {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.875rem; color: var(--graphite-mid);
+  }
+  .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn-primary {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--teal); color: var(--pure-white); border: none;
+    padding: 0.625rem 1.25rem; border-radius: 6px;
+    font-family: var(--font-b); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--teal-hover); }
+  .btn-outline {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--pure-white); color: var(--navy);
+    border: 1px solid var(--border);
+    padding: 0.625rem 1.25rem; border-radius: 6px;
+    font-family: var(--font-b); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  }
+  .btn-outline:hover { background: var(--bg-off); }
+
+  /* KPI */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .kpi-card {
+    background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.25rem; display: flex; align-items: center; gap: 1rem;
+  }
+  .kpi-icon-wrap {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: var(--bg-off); color: var(--navy);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .kpi-icon-wrap.teal { background: var(--teal-light); color: var(--teal); }
+  .kpi-num { font-family: var(--font-h); font-size: 1.5rem; font-weight: 700; color: var(--navy); }
+  .kpi-label { font-size: 0.8125rem; color: var(--graphite-mid); font-weight: 500; }
+
+  /* ACTIVE REQUEST BANNER */
+  .active-req-banner {
+    background: linear-gradient(135deg, #E9F6F7 0%, #F0FAFB 100%);
+    border: 1px solid rgba(12,124,130,0.25);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    display: flex; align-items: center; gap: 1.5rem;
+    margin-bottom: 1.5rem; flex-wrap: wrap;
+  }
+  .banner-icon-wrap {
+    position: relative; width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--teal); border-radius: 50%; color: var(--pure-white);
+    flex-shrink: 0;
+  }
+  .banner-pulse {
+    position: absolute; width: 100%; height: 100%; border-radius: 50%;
+    background: var(--teal); opacity: 0.3;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+  .banner-label { font-weight: 700; color: var(--navy); white-space: nowrap; }
+  .banner-sep { width: 1px; height: 32px; background: rgba(12,124,130,0.2); }
+  .banner-field { display: flex; flex-direction: column; gap: 0.125rem; }
+  .banner-key { font-size: 0.6875rem; color: var(--graphite-lt); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .banner-val { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+  .btn-open-req {
+    display: flex; align-items: center; gap: 0.375rem;
+    background: var(--teal); color: var(--pure-white); border: none;
+    padding: 0.5rem 1rem; border-radius: 6px;
+    font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+    margin-left: auto; white-space: nowrap;
+  }
+  .btn-open-req:hover { background: var(--teal-hover); }
+  .no-request-banner {
+    display: flex; align-items: center; gap: 1rem;
+    background: var(--bg-off); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.5rem;
+    color: var(--graphite-mid); margin-bottom: 1.5rem;
+  }
+  .no-req-title { font-weight: 600; color: var(--navy); font-size: 0.9375rem; }
+  .no-req-desc { font-size: 0.8125rem; color: var(--graphite-lt); }
+
+  /* MAIN CONTENT GRID */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  .main-col { display: flex; flex-direction: column; gap: 1.5rem; }
+  .side-col { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  /* SECTION CARDS */
+  .section-card {
+    background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden;
+  }
+  .section-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-head-left { display: flex; align-items: center; gap: 0.75rem; }
+  .section-head-right { display: flex; align-items: center; gap: 1rem; }
+  .section-title { font-family: var(--font-h); font-size: 1rem; font-weight: 700; color: var(--navy); }
+  .section-desc { font-size: 0.8125rem; color: var(--graphite-mid); margin-top: 0.125rem; }
+  
+  .notes-badge {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.75rem; color: #D97706; background: #FEF3C7;
+    padding: 0.25rem 0.625rem; border-radius: 20px; font-weight: 600;
+  }
+  .btn-link {
+    display: flex; align-items: center; gap: 0.25rem;
+    background: none; border: none; color: var(--teal);
+    font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+  }
+
+  /* CUSTOMER INFO GRID */
+  .info-cols {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem;
+    padding: 1.5rem;
+  }
+  .info-field { margin-bottom: 1.25rem; }
+  .info-field:last-child { margin-bottom: 0; }
+  .info-label { font-size: 0.75rem; color: var(--graphite-mid); font-weight: 500; margin-bottom: 0.25rem; }
+  .info-val { font-size: 0.9375rem; color: var(--navy); font-weight: 500; }
+
+  /* APPLIANCES */
+  .appliance-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;
+    padding: 1.5rem;
+  }
+  .appliance-card {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;
+  }
+  .appliance-header { display: flex; align-items: center; gap: 0.75rem; }
+  .appliance-icon {
+    width: 36px; height: 36px; border-radius: 6px;
+    background: var(--bg-off); color: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .appliance-name { font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
+  .appliance-details { display: flex; flex-direction: column; gap: 0.625rem; }
+  .appl-detail { display: flex; flex-direction: column; gap: 0.125rem; }
+  .appl-key { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--graphite-lt); font-weight: 600; }
+  .appl-val { font-size: 0.8125rem; color: var(--navy); font-weight: 500; }
+  .btn-view-history {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--navy); padding: 0.4375rem 0.75rem;
+    font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+  }
+  .btn-view-history:hover { border-color: var(--teal); color: var(--teal); }
+  
+  .appliance-add-card {
+    border: 1px dashed var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.5rem; padding: 1.25rem; min-height: 160px;
+    color: var(--graphite-lt); cursor: pointer; transition: all 0.2s;
+  }
+  .appliance-add-card:hover { border-color: var(--teal); color: var(--teal); }
+  .add-appliance-text { font-size: 0.8125rem; font-weight: 500; }
+
+  /* SERVICE HISTORY */
+  .sh-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto; padding: 0 1.5rem;
+  }
+  .sh-tab {
+    padding: 0.875rem 0.875rem; background: none; border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--graphite-mid); font-family: var(--font-b); font-size: 0.8125rem;
+    font-weight: 500; cursor: pointer; white-space: nowrap; margin-bottom: -1px;
+  }
+  .sh-tab.active { color: var(--teal); border-bottom-color: var(--teal); font-weight: 700; }
+  
+  .sh-table-wrap { overflow-x: auto; }
+  .sh-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  .sh-table thead th {
+    padding: 0.75rem 1.5rem; text-align: left;
+    font-size: 0.6875rem; font-weight: 700; color: var(--navy);
+    border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .sh-row { border-bottom: 1px solid var(--border); }
+  .sh-row:last-child { border-bottom: none; }
+  .sh-table td { padding: 1rem 1.5rem; vertical-align: middle; }
+  .req-id { font-size: 0.8125rem; font-weight: 700; color: var(--teal); }
+  .cell-text { font-size: 0.8125rem; color: var(--graphite-mid); }
+  .status-badge {
+    padding: 0.25rem 0.75rem; border-radius: 20px;
+    font-size: 0.6875rem; font-weight: 700; white-space: nowrap;
+  }
+  .action-cell { display: flex; align-items: center; gap: 0.5rem; }
+  .btn-link-sm {
+    background: none; border: none; color: var(--teal);
+    font-family: var(--font-b); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-dots { background: none; border: none; color: var(--graphite-mid); cursor: pointer; }
+  
+  .sh-empty-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    padding: 2rem 1.5rem; border-top: 1px solid var(--border);
+  }
+  .sh-empty-col {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 0.5rem; padding: 1.5rem; background: var(--bg-off); border-radius: 8px;
+    color: var(--graphite-lt);
+  }
+  .sh-empty-text { font-size: 0.9375rem; font-weight: 600; color: var(--navy); }
+  .sh-empty-desc { font-size: 0.8125rem; }
+
+  /* SIDE CARDS */
+  .side-card {
+    background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .side-card-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 0.75rem; margin-bottom: 1.25rem; color: var(--navy);
+  }
+  .side-card-header > svg { flex-shrink: 0; margin-top: 2px; color: var(--teal); }
+  .side-card-header-right { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
+  .side-card-title { font-family: var(--font-h); font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
+  
+  /* QUICK ACTIONS */
+  .quick-actions-list { display: flex; flex-direction: column; gap: 0.25rem; }
+  .qa-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: none; border: none;
+    padding: 0.625rem 0.5rem; border-radius: 6px;
+    font-family: var(--font-b); font-size: 0.875rem; font-weight: 500;
+    color: var(--navy); cursor: pointer; text-align: left;
+    transition: background-color 0.15s;
+  }
+  .qa-item:hover { background: var(--bg-off); }
+  .qa-item svg { color: var(--teal); flex-shrink: 0; }
+
+  /* ACTIVITY */
+  .activity-timeline { display: flex; flex-direction: column; }
+  .act-row { display: flex; gap: 0.875rem; position: relative; padding-bottom: 1.25rem; }
+  .act-row:last-child { padding-bottom: 0; }
+  .act-node-wrap { display: flex; flex-direction: column; align-items: center; width: 10px; }
+  .act-node { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); flex-shrink: 0; z-index: 2; }
+  .act-line { flex: 1; width: 2px; background: var(--border); margin-top: 4px; }
+  .act-text { font-size: 0.8125rem; font-weight: 500; color: var(--navy); margin-bottom: 0.125rem; line-height: 1.4; }
+  .act-time { font-size: 0.75rem; color: var(--graphite-lt); }
+
+  /* BILLING */
+  .billing-stats { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; }
+  .billing-stat-label { font-size: 0.75rem; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .billing-stat-num { font-family: var(--font-h); font-size: 1.25rem; font-weight: 700; color: var(--navy); }
+  .billing-invoice-row { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; }
+  .billing-inv-label { font-size: 0.75rem; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .billing-inv-val { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+  .btn-view-billing {
+    display: flex; align-items: center; gap: 0.375rem; width: 100%;
+    justify-content: center;
+    background: var(--pure-white); border: 1px solid var(--border); border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer; color: var(--navy);
+  }
+  .btn-view-billing:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* NOTES */
+  .notes-list { display: flex; flex-direction: column; gap: 1rem; }
+  .note-item {
+    background: var(--bg-off); border-radius: 6px; padding: 0.875rem;
+  }
+  .note-text { font-size: 0.875rem; color: var(--navy); margin-bottom: 0.5rem; line-height: 1.4; }
+  .note-meta { font-size: 0.75rem; color: var(--graphite-lt); }
+  .empty-notes { font-size: 0.875rem; color: var(--graphite-lt); text-align: center; padding: 1rem 0; }
+
+  /* COMMUNICATION */
+  .comm-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .comm-row { display: flex; align-items: center; gap: 0.75rem; }
+  .comm-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--bg-off); color: var(--graphite-mid);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .comm-text { flex: 1; font-size: 0.875rem; color: var(--navy); font-weight: 500; }
+  .comm-date { font-size: 0.75rem; color: var(--graphite-lt); white-space: nowrap; }
+
+  @media (max-width: 1100px) {
+    .content-grid { grid-template-columns: minmax(0, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 767px) {
+    .main-col, .side-col { min-width: 0; }
+    .customer-hero, .hero-header { gap: 1rem; }
+    .hero-actions { width: 100%; }
+    .hero-actions .btn-primary, .hero-actions .btn-outline { flex: 1 1 145px; justify-content: center; }
+    .hero-meta-list { gap: 0.5rem 1rem; }
+    .active-req-banner, .no-request-banner { align-items: flex-start; gap: 0.875rem; padding: 1rem; }
+    .banner-sep { display: none; }
+    .btn-open-req { width: 100%; justify-content: center; margin-left: 0; }
+    .section-head { padding: 1rem; gap: 0.75rem; }
+    .info-cols { grid-template-columns: 1fr; gap: 0; padding: 1rem; }
+    .appliance-grid { grid-template-columns: 1fr; padding: 1rem; }
+    .sh-tabs { padding: 0 0.75rem; }
+    .sh-empty-row { grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; }
+    .side-card { padding: 1rem; }
+  }
+
+  @media (max-width: 420px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+    .hero-actions .btn-primary, .hero-actions .btn-outline { flex-basis: 100%; }
+    .billing-stats, .billing-invoice-row { gap: 1rem; flex-wrap: wrap; }
+  }
+</style>
