@@ -67,7 +67,9 @@ import AdminAuthLayout from '../../layouts/AdminAuthLayout.astro';
           <a href="#" class="forgot-link">Forgot password?</a>
         </div>
 
-        <button type="submit" class="btn-submit">
+        <p id="adminLoginError" class="form-notice form-notice-error" role="alert" style="display:none"></p>
+
+        <button type="submit" class="btn-submit" id="adminSubmitBtn">
           Sign in &rarr;
         </button>
 
@@ -83,29 +85,17 @@ import AdminAuthLayout from '../../layouts/AdminAuthLayout.astro';
   </main>
 
   <script>
-    // Business: Mock admin sign-in navigates to the dashboard before real auth exists.
-    // Technical: Typed submit listener replaces the deprecated inline event handler.
-    const adminLoginForm = document.getElementById("adminLoginForm");
-    adminLoginForm?.addEventListener("submit", (submitEvent: SubmitEvent) => {
-      submitEvent.preventDefault();
-      window.location.href = "/admin/dashboard";
-    });
-
-    // Business: Let admin verify password entry without retyping on mobile.
-    // Technical: Toggle password type and pressed state for assistive tech.
-    const adminToggle = document.getElementById("adminTogglePassword");
-    const adminPassword = document.getElementById("admin-password") as HTMLInputElement | null;
-    adminToggle?.addEventListener("click", () => {
-      if (!adminPassword) return;
-      const showing = adminPassword.type === "password";
-      adminPassword.type = showing ? "text" : "password";
-      adminToggle.setAttribute("aria-label", showing ? "Hide password" : "Show password");
-    });
+    import "../../features/authentication/login-form.ts";
   </script>
 
 </AdminAuthLayout>
 
 <style is:global>
+  /* Business: Inline auth errors must be readable without a popup. */
+  /* Technical: Local .form-notice mirrors common/FormNotice for auth pages. */
+  .form-notice { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin: 0.75rem 0; }
+  .form-notice-error { background: #FEE2E2; color: #991B1B; }
+  .btn-submit:disabled { opacity: 0.7; cursor: wait; }
   /* Logos */
   .logo {
     display: flex;
@@ -295,7 +285,7 @@ import AdminAuthLayout from '../../layouts/AdminAuthLayout.astro';
 
   .footer-note {
     text-align: center;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: var(--graphite-lt);
     line-height: 1.6;
     border-top: 1px solid var(--border);

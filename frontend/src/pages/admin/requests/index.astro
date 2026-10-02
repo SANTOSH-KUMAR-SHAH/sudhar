@@ -1,15 +1,19 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import StatusBadge from '../../../components/common/StatusBadge.astro';
+import { normaliseStatus } from '../../../lib/service-status';
 
+// Business: Demo rows mirror the dashboard queue until GET /api/requests exists.
+// Technical: Badge tone derives from the canonical status — never a parallel string.
 const requests = [
-  { id: 'SL-000126', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'New Request',    statusClass: 'badge-new',      technician: null,       time: 'Just now',   urgent: true },
-  { id: 'SL-000125', customer: 'Sunita Rai',     area: 'Lalitpur',  appliance: 'Samsung Refrigerator',  status: 'New Request',    statusClass: 'badge-new',      technician: null,       time: '14 min ago', urgent: true },
-  { id: 'SL-000124', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'Confirmed',      statusClass: 'badge-confirm',  technician: null,       time: 'Yesterday', urgent: false },
-  { id: 'SL-000123', customer: 'Suresh Rai',    area: 'Koteshwor', appliance: 'Samsung AC',            status: 'Diagnosing',     statusClass: 'badge-progress', technician: 'Ramesh',   time: 'Today 11 AM', urgent: false },
-  { id: 'SL-000122', customer: 'Anita Gurung',  area: 'Maharajgunj', appliance: 'Sony TV',             status: 'On the Way',     statusClass: 'badge-assigned', technician: 'Bikash',   time: 'Today 9 AM', urgent: false },
-  { id: 'SL-000121', customer: 'Mina Shrestha', area: 'Lalitpur',  appliance: 'Samsung AC',            status: 'Price Approval', statusClass: 'badge-progress', technician: 'Suman',    time: '2 hrs ago',  urgent: false },
-  { id: 'SL-000118', customer: 'Bikash Rai',    area: 'Kirtipur',  appliance: 'Whirlpool Fridge',      status: 'In Progress',    statusClass: 'badge-progress', technician: 'Suman',    time: 'Today 8 AM', urgent: false },
-  { id: 'SL-000117', customer: 'Anita Gurung',  area: 'Bagbazar',  appliance: 'Sony TV',               status: 'Completed',      statusClass: 'badge-done',     technician: 'Ramesh',   time: 'Today 3 PM', urgent: false },
+  { id: 'SL-000126', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'New Request',    technician: null,       time: 'Just now',   urgent: true },
+  { id: 'SL-000125', customer: 'Sunita Rai',     area: 'Lalitpur',  appliance: 'Samsung Refrigerator',  status: 'New Request',    technician: null,       time: '14 min ago', urgent: true },
+  { id: 'SL-000124', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'Confirmed',      technician: null,       time: 'Yesterday', urgent: false },
+  { id: 'SL-000123', customer: 'Suresh Rai',    area: 'Koteshwor', appliance: 'Samsung AC',            status: 'Diagnosing',     technician: 'Ramesh',   time: 'Today 11 AM', urgent: false },
+  { id: 'SL-000122', customer: 'Anita Gurung',  area: 'Maharajgunj', appliance: 'Sony TV',             status: 'On the Way',     technician: 'Bikash',   time: 'Today 9 AM', urgent: false },
+  { id: 'SL-000121', customer: 'Mina Shrestha', area: 'Lalitpur',  appliance: 'Samsung AC',            status: 'Price Approval', technician: 'Suman',    time: '2 hrs ago',  urgent: false },
+  { id: 'SL-000118', customer: 'Bikash Rai',    area: 'Kirtipur',  appliance: 'Whirlpool Fridge',      status: 'In Progress',    technician: 'Suman',    time: 'Today 8 AM', urgent: false },
+  { id: 'SL-000117', customer: 'Anita Gurung',  area: 'Bagbazar',  appliance: 'Sony TV',               status: 'Completed',      technician: 'Ramesh',   time: 'Today 3 PM', urgent: false },
 ];
 ---
 
@@ -21,7 +25,7 @@ const requests = [
       <h1 class="rq-title">Service Requests</h1>
       <p class="rq-sub">Every request, from submission to billing</p>
     </div>
-    <button class="btn btn-primary">
+    <button class="btn btn-primary" type="button" disabled title="Manual phone-order entry arrives with the backend API">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
       New Request
     </button>
@@ -45,24 +49,24 @@ const requests = [
   <div class="rq-filter-bar">
     <div class="rq-search-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" placeholder="Search by ID, customer, area, or appliance…" class="rq-search" />
+      <input type="text" id="rqSearch" placeholder="Search by ID, customer, area, or appliance…" class="rq-search" />
     </div>
     <div class="rq-filter-chips">
-      <select class="filter-select">
+      <select class="filter-select" id="rqFilterAppliance">
         <option value="">All Appliances</option>
         <option>Washing Machine</option>
         <option>AC</option>
         <option>Refrigerator</option>
         <option>TV</option>
       </select>
-      <select class="filter-select">
+      <select class="filter-select" id="rqFilterTech">
         <option value="">All Technicians</option>
         <option>Ramesh</option>
         <option>Bikash</option>
         <option>Suman</option>
         <option>Prabin</option>
       </select>
-      <select class="filter-select">
+      <select class="filter-select" id="rqFilterArea">
         <option value="">All Areas</option>
         <option>Baneshwor</option>
         <option>Lalitpur</option>
@@ -85,12 +89,12 @@ const requests = [
       </thead>
       <tbody>
         {requests.map(req => (
-          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
+          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} data-status={req.status} data-appliance={req.appliance} data-technician={req.technician ?? ''} data-area={req.area} data-search={`${req.id} ${req.customer} ${req.area} ${req.appliance}`.toLowerCase()} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
             <td>
               <div class="req-id-cell">
                 {req.urgent && <div class="urgent-dot"></div>}
                 <div>
-                  <div class="req-id">{req.id}</div>
+                  <div class="req-id tnum">{req.id}</div>
                   <div class="req-appliance">{req.appliance}</div>
                 </div>
               </div>
@@ -103,7 +107,7 @@ const requests = [
               </div>
             </td>
             <td>
-              <span class={`badge ${req.statusClass}`}>{req.status}</span>
+              <StatusBadge status={normaliseStatus(req.status)} />
               <div class="req-time">{req.time}</div>
             </td>
             <td>
@@ -132,10 +136,42 @@ const requests = [
 </AdminDashboardLayout>
 
 <script is:inline>
+// Business: Tabs + search + filters narrow the same table so admin finds work fast.
+// Technical: Single applyFilters() combining active tab, search text and 3 selects.
+let activeTab = 'all';
+function matchesTab(status) {
+  if (activeTab === 'all') return true;
+  if (activeTab === 'action') return ['New Request', 'Confirmed', 'Price Approval'].includes(status);
+  if (activeTab === 'active') return ['Diagnosing', 'On the Way', 'In Progress', 'Price Approval', 'Confirmed'].includes(status);
+  if (activeTab === 'done') return ['Completed'].includes(status);
+  return true;
+}
+function applyFilters() {
+  const q = (document.getElementById('rqSearch')?.value || '').toLowerCase().trim();
+  const fa = document.getElementById('rqFilterAppliance')?.value || '';
+  const ft = document.getElementById('rqFilterTech')?.value || '';
+  const ar = document.getElementById('rqFilterArea')?.value || '';
+  document.querySelectorAll('.rq-row').forEach((row) => {
+    const status = row.getAttribute('data-status') || '';
+    const appliance = row.getAttribute('data-appliance') || '';
+    const tech = row.getAttribute('data-technician') || '';
+    const area = row.getAttribute('data-area') || '';
+    const search = row.getAttribute('data-search') || '';
+    const ok =
+      matchesTab(status) &&
+      (!fa || appliance.includes(fa)) &&
+      (!ft || tech === ft) &&
+      (!ar || area === ar) &&
+      (!q || search.includes(q));
+    row.style.display = ok ? '' : 'none';
+  });
+}
 function switchTab(tab) {
+  activeTab = tab;
   document.querySelectorAll('.rq-tab').forEach(t => t.classList.remove('active'));
   const el = document.getElementById(`tab-${tab}`);
   if (el) el.classList.add('active');
+  applyFilters();
 }
 
 // Business: Action buttons inside a row must not trigger the row navigation.
@@ -143,6 +179,10 @@ function switchTab(tab) {
 document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
   cell.addEventListener('click', (e) => e.stopPropagation());
 });
+document.getElementById('rqSearch')?.addEventListener('input', applyFilters);
+document.getElementById('rqFilterAppliance')?.addEventListener('change', applyFilters);
+document.getElementById('rqFilterTech')?.addEventListener('change', applyFilters);
+document.getElementById('rqFilterArea')?.addEventListener('change', applyFilters);
 </script>
 
 <style is:global>
@@ -176,7 +216,7 @@ document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
     border-bottom-color: var(--teal);
   }
   .tab-pill {
-    font-size: 0.6875rem; font-weight: 700;
+    font-size: 0.75rem; font-weight: 700;
     padding: 0.125rem 0.5rem; border-radius: 20px;
     background: var(--border); color: var(--graphite-mid);
   }
@@ -220,7 +260,7 @@ document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
   .rq-table { width: 100%; border-collapse: collapse; }
   .rq-table thead th {
     padding: 0.75rem 1.25rem;
-    font-size: 0.6875rem; font-weight: 700; color: var(--graphite-mid);
+    font-size: 0.75rem; font-weight: 700; color: var(--graphite-mid);
     text-transform: uppercase; letter-spacing: 0.06em;
     text-align: left; border-bottom: 1px solid var(--border);
     white-space: nowrap;
@@ -246,7 +286,7 @@ document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
     display: flex; align-items: center; gap: 0.25rem;
     font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
   }
-  .req-time { font-size: 0.6875rem; color: var(--graphite-lt); margin-top: 0.25rem; }
+  .req-time { font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.25rem; }
 
   .req-tech {
     display: flex; align-items: center; gap: 0.5rem;
@@ -255,7 +295,7 @@ document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
   .req-tech-av {
     width: 24px; height: 24px; border-radius: 50%;
     background: var(--teal); color: #fff;
-    font-size: 0.625rem; font-weight: 700;
+    font-size: 0.6875rem; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
   .no-tech { color: var(--graphite-lt); font-size: 0.875rem; }

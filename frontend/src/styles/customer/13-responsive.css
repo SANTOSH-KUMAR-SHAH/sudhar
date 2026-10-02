@@ -1,0 +1,679 @@
+/* Business: Responsive breakpoints and floating dock.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       RESPONSIVE
+    ================================================ */
+    /* ================================================
+       FLOATING DOCK (Mobile Bottom Navigation)
+    ================================================ */
+    .floating-dock {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 840; /* Just below the mobile drawer (850) */
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 8px;
+      border-radius: 9999px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 1);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      gap: 6px;
+      width: 90%;
+      max-width: 400px;
+      transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .floating-dock.stuck {
+      bottom: 16px;
+      padding: 6px;
+    }
+
+    .dock-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      border-radius: 9999px;
+      font-family: var(--font-h);
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+      border: none;
+      background: transparent;
+      color: var(--navy);
+      cursor: pointer;
+    }
+
+    .dock-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .dock-home, .dock-menu {
+      width: 52px;
+      height: 52px;
+      color: rgba(10, 30, 48, 0.7);
+    }
+    
+    .dock-home:hover, .dock-menu:hover {
+      color: var(--navy);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .dock-call {
+      flex: 1;
+      background: var(--navy);
+      color: var(--white);
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(10, 30, 48, 0.3);
+    }
+
+    .dock-call:hover {
+      background: var(--teal);
+      box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);
+    }
+
+    /* ================================================
+       RESPONSIVE DESIGN & MOBILE OPTIMIZATIONS
+    ================================================ */
+    @media (max-width: 1024px) {
+      .container {
+        padding: 0 32px;
+      }
+
+      .services-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+
+      .trust-proof {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .footer-top {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0;
+        row-gap: 48px;
+      }
+
+      .ft-col:nth-child(3),
+      .ft-col:nth-child(5) {
+        border-right: none;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .qr-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .hiw-storyboard-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+      }
+
+      .hiw-media-column {
+        position: relative;
+        top: 0;
+      }
+
+      .hiw-media-frame {
+        height: 360px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        /* Removed stray padding-bottom that was causing white space below footer */
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .floating-dock {
+        display: flex;
+      }
+
+      /* ── NAV ── */
+      #nav {
+        top: 16px;
+        width: 95%;
+        padding: 12px 20px;
+        justify-content: space-between;
+      }
+
+      .nav-logo {
+        flex: 0 0 auto;
+        min-width: 0;
+      }
+
+      .nav-logo img {
+        width: 140px;
+        height: auto;
+        flex-shrink: 0;
+        transition: transform 0.3s ease;
+      }
+
+      #nav.stuck {
+        top: 12px;
+        padding: 10px 20px;
+      }
+
+      /* Business: Mobile keeps logo + hamburger; call/CTA move into drawer. */
+      /* Technical: Hide links and bezels only — .nav-right must stay flex for hamburger. */
+      .nav-links {
+        display: none;
+      }
+      .nav-right {
+        display: flex;
+      }
+      .nav-right .double-bezel {
+        display: none;
+      }
+
+      /* â”€â”€â”€ HERO â”€â”€â”€ */
+      .hero {
+        max-height: none;
+        height: 100svh;
+        min-height: 100svh;
+      }
+
+      .hero-inner {
+        padding: 100px 40px 52px;
+      }
+
+      .hero-h1 {
+        font-size: clamp(38px, 8.5vw, 56px);
+        line-height: 1.06;
+        max-width: 300px;
+      }
+
+      .hero-mobile-break {
+        display: inline;
+      }
+
+      .hero-btns {
+        gap: 12px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .hero-btn-primary,
+      .hero-btn-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 16px 24px;
+        min-height: 48px;
+      }
+
+      /* â”€â”€â”€ RIBBON â”€â”€â”€ */
+      .ribbon-inner {
+        gap: 20px;
+        padding: 16px 20px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .ribbon-inner::-webkit-scrollbar {
+        display: none;
+      }
+
+      .ribbon-left {
+        gap: 24px;
+      }
+
+      .ribbon-divider {
+        margin: 0 16px;
+      }
+
+      /* â”€â”€â”€ SECTIONS â”€â”€â”€ */
+      .sec {
+        padding: 60px 0;
+      }
+
+      .container {
+        padding: 0 20px;
+      }
+
+      .sec-head {
+        margin-bottom: 32px;
+      }
+
+      .sec-head h2 {
+        font-size: clamp(26px, 6.5vw, 36px);
+      }
+
+      /* â”€â”€â”€ SERVICES GRID â”€â”€â”€ */
+      .services-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .svc-card {
+        flex-direction: column;
+        min-height: auto;
+      }
+
+      .svc-img {
+        width: 100%;
+        height: 200px;
+      }
+
+      .svc-content {
+        padding: 22px 20px;
+      }
+
+      .svc-action {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .services-unsure {
+        flex-direction: column;
+        text-align: center;
+        padding: 24px 20px;
+        gap: 16px;
+      }
+
+      .services-unsure-btns {
+        justify-content: center;
+        flex-wrap: wrap;
+        width: 100%;
+      }
+
+      .services-unsure-btns .btn-outline-pill {
+        width: 100%;
+        justify-content: center;
+        min-height: 46px;
+      }
+
+      /* â”€â”€â”€ QUICK REQUEST FORM & APPLIANCE SELECTOR â”€â”€â”€ */
+      .qr-inner {
+        padding: 0 20px;
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .form-card {
+        padding: 28px 18px;
+        border-radius: 16px;
+      }
+
+      .app-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .app-opt {
+        padding: 12px 8px;
+      }
+
+      .app-opt-img {
+        height: 56px;
+      }
+
+      .app-opt-label {
+        font-size: 12px;
+        padding: 6px 2px 6px;
+      }
+
+      .field-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .field input,
+      .field textarea,
+      .field select {
+        font-size: 16px !important;
+        /* Prevents auto-zoom on iOS mobile */
+        padding: 14px 14px;
+        border-radius: 8px;
+      }
+
+      .time-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .time-opt {
+        padding: 13px 4px;
+        font-size: 12.5px;
+        min-height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .form-nav {
+        flex-direction: column-reverse;
+        gap: 12px;
+      }
+
+      .btn-next,
+      .btn-submit {
+        width: 100%;
+        justify-content: center;
+        padding: 16px 24px;
+        min-height: 48px;
+      }
+
+      .btn-prev {
+        width: 100%;
+        text-align: center;
+      }
+
+      /* â”€â”€â”€ HOW IT WORKS (OPTION A MOBILE STORYBOARD) â”€â”€â”€ */
+      .hiw-media-frame {
+        height: 280px;
+        border-radius: 18px;
+      }
+
+      .hiw-item {
+        padding: 18px 18px;
+        border-radius: 14px;
+      }
+
+      .hiw-item-title {
+        font-size: 15px;
+      }
+
+      .hiw-strip {
+        flex-direction: column;
+        text-align: center;
+        padding: 24px 20px;
+        gap: 16px;
+      }
+
+      .hiw-strip-btns {
+        justify-content: center;
+        width: 100%;
+      }
+
+      .hiw-strip-btns .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* â”€â”€â”€ TRUST SECTION â”€â”€â”€ */
+      .trust-sec {
+        padding: 64px 0 80px;
+      }
+
+      .trust-grid {
+        grid-template-columns: 1fr;
+        row-gap: 36px;
+      }
+
+      .trust-block {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+      }
+
+      .trust-icon-wrap {
+        margin: 0 auto;
+        width: 110px;
+        height: 110px;
+      }
+
+      .trust-num {
+        margin: 0 auto 10px;
+      }
+
+      .trust-proof {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .tp-card {
+        height: auto;
+        min-height: 100px;
+      }
+
+      .tp-img {
+        width: 40%;
+      }
+
+      .tp-body {
+        width: 60%;
+        padding: 14px 16px;
+      }
+
+      .trust-cta-btns {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+      }
+
+      .trust-cta-btns .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* â”€â”€â”€ FAQ â”€â”€â”€ */
+      .sec-faq {
+        padding: 60px 0;
+      }
+
+      /* Show tabs on mobile, hide on desktop */
+      .faq-mobile-tabs {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+
+      .faq-mobile-tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .faq-tab {
+        flex-shrink: 0;
+        padding: 10px 16px;
+        font-size: 12.5px;
+      }
+
+      /* Switch grid to single column on mobile */
+      .faq-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Hide desktop column headers on mobile */
+      .faq-col-header {
+        display: none;
+      }
+
+      /* Hide "during" and "after" items by default on mobile (tabs control) */
+      .faq-item[data-cat="during"],
+      .faq-item[data-cat="after"] {
+        display: none;
+      }
+
+      /* Show items when tab is active â€” handled by JS switchFaqCat */
+      /* .faq-desktop-col is just a wrapper, still needed for grouping */
+      .faq-desktop-col {
+        display: contents; /* flatten columns into the flex parent */
+      }
+
+      .faq-banner {
+        flex-direction: column;
+        text-align: center;
+        padding: 28px 20px;
+        gap: 20px;
+      }
+
+      .faq-banner-btns {
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 0;
+        width: 100%;
+      }
+
+      .faq-banner-btns .btn-outline-pill {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .faq-banner-img {
+        display: block;
+        position: relative;
+        inset: auto;
+        order: 2;
+        width: 100%;
+        height: 160px;
+        margin-top: 24px;
+        margin-bottom: -40px; /* pull it to the bottom edge of the banner padding */
+        margin-left: -48px;
+        margin-right: -48px;
+        width: calc(100% + 96px); /* stretch past padding */
+        overflow: hidden;
+      }
+
+      .faq-banner-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: right top;
+        clip-path: none;
+        mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
+      }
+
+      .faq-banner-content {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+
+      /* â”€â”€â”€ FINAL CTA â”€â”€â”€ */
+      .final-cta {
+        padding-top: 260px; /* space for the top hero image */
+        padding-bottom: 60px;
+      }
+
+      .final-cta-container {
+        min-height: auto;
+        padding: 0 20px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .final-cta-left {
+        width: 100%;
+        padding: 0;
+      }
+
+      .final-cta-img-wrap {
+        display: block;
+        position: absolute;
+        top: 0;
+        bottom: auto;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 380px;
+        z-index: 0;
+      }
+
+      .final-cta-img {
+        object-position: right 25%;
+        /* Fade out cleanly at the bottom so it blends into the navy background */
+        mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 40%, transparent 100%);
+      }
+
+      .final-cta h2 {
+        font-size: clamp(30px, 7.5vw, 44px);
+      }
+
+      .final-cta-btns {
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 36px;
+      }
+
+      .final-cta-btns .btn,
+      .final-cta-btns .btn-outline-pill,
+      .btn-wa {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+      }
+
+      .cta-trust-divider::before,
+      .cta-trust-divider::after {
+        width: 36px;
+      }
+
+      .final-trust {
+        flex-wrap: wrap;
+        font-size: 13px;
+        justify-content: center;
+      }
+
+      /* â”€â”€â”€ FOOTER â”€â”€â”€ */
+      .footer-top {
+        grid-template-columns: 1fr;
+        padding: 40px 20px 24px;
+        gap: 0;
+      }
+
+      .ft-col {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 24px 0;
+      }
+
+      .ft-col:last-child {
+        border-bottom: none;
+      }
+
+      .ft-col:nth-child(2n) {
+        padding-left: 0;
+      }
+
+      footer::after {
+        opacity: 0.05; /* Barely visible on mobile to keep the footer ultra-clean */
+        background-size: cover;
+        background-position: center center;
+      }
+
+      .ft-watermark {
+        display: none;
+      }
+
+      .footer-bottom-inner {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px 16px;
+        gap: 24px; /* more spacing between elements */
+      }
+
+      .ft-bottom-left {
+        flex-direction: column; /* stack the dot and text vertically instead of breaking */
+        gap: 12px;
+      }
+
+      .ft-line-decor {
+        display: none; /* remove the horizontal lines on mobile to prevent overlapping */
+      }
+
+      .ft-bottom-text {
+        line-height: 1.6;
+        text-align: center;
+      }
+
+      .ft-copyright {
+        text-align: center;
+      }
+    }
+

@@ -1,3 +1,6 @@
+---
+import { SITE_PHONE_HREF } from '../../lib/site';
+---
   <section class="sec sec--off" id="services" aria-label="Services">
     <div class="container">
       <div class="sec-head reveal">
@@ -5,7 +8,7 @@
           <div class="hero-eyebrow-bar" style="width:24px;"></div>
           <span class="eyebrow" style="color:var(--graphite-mid);">HOME SERVICE</span>
         </div>
-        <h2 style="font-size:42px; margin-bottom: 8px;">What needs help?</h2>
+        <h2 style="margin-bottom: 8px;">What needs help?</h2>
         <p style="font-size: 17px; max-width:600px;">Choose your appliance and tell us what is wrong. We'll take it from
           there.</p>
       </div>
@@ -80,7 +83,7 @@
         </div>
         <div class="services-unsure-divider"></div>
         <div class="services-unsure-btns">
-          <a href="tel:+977XXXXXXXXXX" class="btn-outline-pill">
+          <a href={SITE_PHONE_HREF} class="btn-outline-pill">
             <svg class="teal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
               stroke-linejoin="round">
               <path

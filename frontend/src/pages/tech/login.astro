@@ -52,7 +52,9 @@ import TechLayout from '../../layouts/TechLayout.astro';
 
           <a href="#" class="forgot-password">Forgot password?</a>
 
-          <button type="submit" class="btn-submit">Sign in</button>
+          <p id="techLoginError" class="form-notice form-notice-error" role="alert" style="display:none"></p>
+
+          <button type="submit" class="btn-submit" id="techSubmitBtn">Sign in</button>
 
           <div class="security-note">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -87,6 +89,11 @@ import TechLayout from '../../layouts/TechLayout.astro';
 </TechLayout>
 
 <style is:global>
+  /* Business: Inline auth errors must be readable without a popup. */
+  /* Technical: Local .form-notice mirrors common/FormNotice for auth pages. */
+  .form-notice { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin: 0.25rem 0; }
+  .form-notice-error { background: #FEE2E2; color: #991B1B; }
+  .btn-submit:disabled { opacity: 0.7; cursor: wait; }
   /* ================================================
      LAYOUT: SPLIT SCREEN
   ================================================ */
@@ -485,43 +492,6 @@ import TechLayout from '../../layouts/TechLayout.astro';
 </style>
 
 <script>
-  // Business: Mock technician sign-in navigates to the dashboard before real auth exists.
-  // Technical: Typed submit listener replaces the deprecated inline event handler.
-  const techLoginForm = document.getElementById("techLoginForm");
-  techLoginForm?.addEventListener("submit", (submitEvent: SubmitEvent) => {
-    submitEvent.preventDefault();
-    window.location.href = "/tech/dashboard";
-  });
-
-  // Business: Allow technician to toggle password visibility to avoid typos on mobile
-  // Technical: Swap input type and SVG path for eye open/closed states
-  function setupPasswordToggle() {
-    const togglePassword = document.querySelector('#togglePassword');
-    const password = document.querySelector('#password');
-    const eyeIcon = document.querySelector('#eyeIcon');
-
-    if (!togglePassword || !password || !eyeIcon) return;
-
-    togglePassword.addEventListener('click', function () {
-      const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-      password.setAttribute('type', type);
-      
-      if (type === 'text') {
-        eyeIcon.innerHTML = `
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-          <line x1="1" y1="1" x2="23" y2="23"></line>
-        `;
-      } else {
-        eyeIcon.innerHTML = `
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
-        `;
-      }
-    });
-  }
-
-  // Run on initial load and view transitions
-  setupPasswordToggle();
-  document.addEventListener('astro:page-load', setupPasswordToggle);
+  import "../../features/authentication/login-form.ts";
 </script>
 

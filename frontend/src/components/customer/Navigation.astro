@@ -1,3 +1,6 @@
+---
+import { SITE_PHONE_HREF } from '../../lib/site';
+---
   <nav id="nav" role="banner">
     <a href="/" class="nav-logo" aria-label="Sudhar Lab home">
       <img src="/logo.png" alt="Sudhar Lab" />
@@ -21,7 +24,7 @@
 
     <div class="nav-right">
       <div class="double-bezel call-bezel">
-        <a href="tel:+977XXXXXXXXXX" class="nav-call" aria-label="Call Sudhar Lab">
+        <a href={SITE_PHONE_HREF} class="nav-call" aria-label="Call Sudhar Lab">
           <span>📞</span> Call Us
         </a>
       </div>
@@ -75,7 +78,7 @@
     </a>
     <div class="mobile-drawer-cta">
       <a href="#request" class="btn btn-teal drawer-link">Get My Appliance Checked &rarr;</a>
-      <a href="tel:+977XXXXXXXXXX" class="btn btn-ghost-white drawer-link">📞 Call Sudhar Lab</a>
+      <a href={SITE_PHONE_HREF} class="btn btn-ghost-white drawer-link">📞 Call Sudhar Lab</a>
     </div>
   </div>
 

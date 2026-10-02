@@ -1,0 +1,348 @@
+/* Business: Reveal animations, hero badges and mobile drawer.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       SCROLL REVEAL ANIMATION (Handled by GSAP)
+    ================================================ */
+
+    .d1 {
+      transition-delay: 0.10s;
+    }
+
+    .d2 {
+      transition-delay: 0.20s;
+    }
+
+    .d3 {
+      transition-delay: 0.30s;
+    }
+
+    .d4 {
+      transition-delay: 0.40s;
+    }
+
+    .d5 {
+      transition-delay: 0.50s;
+    }
+
+    .reveal {
+      opacity: 1;
+      transform: none;
+      will-change: opacity, transform;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* ================================================
+       FLOATING HERO BADGES
+    ================================================ */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 40px;
+      padding: 8px 16px 8px 10px;
+      font-family: var(--font-h);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 28px;
+      width: fit-content;
+      animation: badge-float 4s ease-in-out infinite;
+    }
+
+    @keyframes badge-float {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-4px);
+      }
+    }
+
+    .hero-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+      animation: pulse-dot 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.10);
+      }
+    }
+
+    /* â”€â”€ GRAIN TEXTURE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       Applied to .hero and .final-cta. The grain lives at z-index 5 so it
+       renders above both the photo (z:1) and overlay layers (z:1-2).
+       The .final-cta::before is now the teal glow, NOT the old grain rule.
+    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .hero::before {
+      z-index: 0; /* hero teal glow â€” behind photo */
+    }
+
+    .grain-overlay {
+      position: absolute;
+      inset: 0;
+      /* 0.045 = barely visible individually, but gives dark sections
+         the physical 'filmic' texture that separates premium from generic */
+      opacity: 0.045;
+      pointer-events: none;
+      z-index: 5; /* Sits above all overlay layers */
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-size: 180px 180px;
+    }
+
+    /* ================================================
+       MOBILE NAV DRAWER
+    ================================================ */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 4px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .nav-hamburger:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .nav-hamburger span {
+      display: block;
+      width: 100%;
+      height: 2px;
+      background: var(--white);
+      border-radius: 2px;
+      transition: transform 0.3s var(--ease), opacity 0.3s, background 0.3s;
+    }
+
+    #nav.stuck .nav-hamburger span {
+      background: var(--navy);
+    }
+
+    .nav-hamburger.open span:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+    }
+
+    .nav-hamburger.open span:nth-child(2) {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+
+    .nav-hamburger.open span:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+    }
+
+    .mobile-drawer {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 850;
+      background: rgba(10, 30, 48, 0.97);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+      border-top-left-radius: 28px;
+      border-top-right-radius: 28px;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 88svh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      transform: translateY(120%);
+      pointer-events: none;
+      transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+      touch-action: pan-y;
+    }
+
+    .mobile-drawer.open {
+      transform: translateY(0);
+      pointer-events: auto;
+      /* Business: Dim background only while menu is open, never when closed. */
+      /* Technical: Shadow moved here so closed drawer can't leak a half-filter. */
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3), 0 0 0 100vmax rgba(0, 0, 0, 0.5);
+    }
+
+    .drawer-handle {
+      width: 48px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 9999px;
+      margin: 4px auto 6px;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    .drawer-title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 6px 4px 2px;
+    }
+
+    .drawer-title {
+      font-family: var(--font-h);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--white);
+    }
+
+    .drawer-sub {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(247, 246, 242, 0.55);
+    }
+
+    /* Business: Story cards — one thumb tap per destination, image-led like social. */
+    /* Technical: Large 76px targets, staggered rise on open. */
+    .mobile-drawer a.drawer-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 76px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: var(--font-h);
+      color: var(--white);
+      text-decoration: none;
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    .mobile-drawer a.drawer-card img {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .drawer-card-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .drawer-card-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .drawer-card-sub {
+      font-family: var(--font-b);
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(247, 246, 242, 0.65);
+    }
+
+    .drawer-card-go {
+      margin-left: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(12, 124, 130, 0.25);
+      color: var(--white);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .mobile-drawer a.drawer-card:active {
+      transform: scale(0.98);
+    }
+
+    .mobile-drawer.open a.drawer-card {
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.55s cubic-bezier(0.32, 0.72, 0, 1), background 0.2s;
+    }
+
+    /* Staggered rise: handle(1) + title(2) + 4 cards */
+    .mobile-drawer.open a.drawer-card:nth-of-type(1) { transition-delay: 0.06s; }
+    .mobile-drawer.open a.drawer-card:nth-of-type(2) { transition-delay: 0.12s; }
+    .mobile-drawer.open a.drawer-card:nth-of-type(3) { transition-delay: 0.18s; }
+    .mobile-drawer.open a.drawer-card:nth-of-type(4) { transition-delay: 0.24s; }
+
+    .mobile-drawer-cta {
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transform: translateY(24px);
+      opacity: 0;
+      position: sticky;
+      bottom: 0;
+      padding-top: 8px;
+      background: linear-gradient(transparent, rgba(10, 30, 48, 0.97) 30%);
+    }
+
+    .mobile-drawer.open .mobile-drawer-cta {
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 0.55s cubic-bezier(0.32, 0.72, 0, 1) 0.3s, opacity 0.55s cubic-bezier(0.32, 0.72, 0, 1) 0.3s;
+    }
+
+    .mobile-drawer-cta .btn {
+      justify-content: center;
+      min-height: 52px;
+      font-size: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .nav-hamburger {
+        display: flex;
+      }
+
+      .mobile-drawer {
+        display: flex;
+      }
+    }
+
+

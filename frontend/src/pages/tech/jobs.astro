@@ -10,20 +10,19 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     </div>
 
     <!-- Filter Pills (Scrollable) -->
-    <div class="filter-scroll">
-      <div class="pill active">Today</div>
-      <div class="pill">Upcoming</div>
-      <div class="pill">Completed</div>
-      <div class="pill">All</div>
+    <div class="filter-scroll" role="tablist" aria-label="Filter jobs">
+      <button type="button" class="pill active" data-filter="today" role="tab" aria-selected="true">Today</button>
+      <button type="button" class="pill" data-filter="upcoming" role="tab" aria-selected="false">Upcoming</button>
+      <button type="button" class="pill" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+      <button type="button" class="pill" data-filter="all" role="tab" aria-selected="false">All</button>
     </div>
 
     <!-- Job Feed -->
-    <div class="job-list">
-      
+    <div class="job-list" id="jobList">
       <!-- Card 1 -->
-      <a href="/tech/jobs/1042" class="job-card">
+      <a href="/tech/jobs/1042" class="job-card" data-group="today">
         <div class="card-header">
-          <span class="req">REQ-1042</span>
+          <span class="req tnum">REQ-1042</span>
           <span class="badge active">Assigned</span>
         </div>
         <div class="card-body">
@@ -38,9 +37,9 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
       </a>
 
       <!-- Card 2 -->
-      <a href="/tech/jobs/1055" class="job-card">
+      <a href="/tech/jobs/1055" class="job-card" data-group="upcoming">
         <div class="card-header">
-          <span class="req">REQ-1055</span>
+          <span class="req tnum">REQ-1055</span>
           <span class="badge upcoming">Upcoming</span>
         </div>
         <div class="card-body">
@@ -55,9 +54,9 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
       </a>
 
       <!-- Card 3 (Completed) -->
-      <a href="/tech/jobs/1021" class="job-card completed">
+      <a href="/tech/jobs/1021" class="job-card completed" data-group="completed">
         <div class="card-header">
-          <span class="req">REQ-1021</span>
+          <span class="req tnum">REQ-1021</span>
           <span class="badge completed">Completed</span>
         </div>
         <div class="card-body">
@@ -67,9 +66,14 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
         </div>
       </a>
 
+      <p id="jobsEmpty" class="jobs-empty" hidden>No jobs in this view.</p>
     </div>
   </div>
 </TechDashboardLayout>
+
+<script>
+  import "../../features/technician/job-filters.ts";
+</script>
 
 <style is:global>
   .feed-container {
@@ -109,9 +113,12 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     border-radius: 20px;
     font-size: 0.875rem;
     font-weight: 600;
+    font-family: inherit;
     color: var(--graphite-mid);
     white-space: nowrap;
+    cursor: pointer;
   }
+  .jobs-empty { text-align: center; color: var(--graphite-mid); font-size: 0.875rem; padding: 1.5rem 0; }
 
   .pill.active {
     background-color: var(--navy);

@@ -18,7 +18,7 @@ const customers = [
       <h1 class="cs-title">Customers</h1>
       <p class="cs-sub">Find any customer by name, phone, or area</p>
     </div>
-    <button class="btn btn-secondary btn-sm">
+    <button class="btn btn-secondary btn-sm" type="button" disabled title="Customer creation arrives with the backend API">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
       Add Customer
     </button>
@@ -157,13 +157,13 @@ const customers = [
   .cs-stats { display: flex; gap: 1.5rem; flex-shrink: 0; }
   .cs-stat { text-align: center; }
   .cs-stat-num { font-family: var(--font-h); font-size: 1.125rem; font-weight: 700; color: var(--navy); }
-  .cs-stat-label { font-size: 0.6875rem; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.04em; }
+  .cs-stat-label { font-size: 0.75rem; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.04em; }
 
   .cs-right {
     display: flex; align-items: center; gap: 1.25rem; flex-shrink: 0;
   }
   .cs-last { text-align: right; }
-  .cs-last-date { font-size: 0.6875rem; color: var(--graphite-lt); margin-top: 0.25rem; }
+  .cs-last-date { font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.25rem; }
 
   @media (max-width: 767px) {
     .cs-header { flex-direction: column; gap: 0.75rem; }

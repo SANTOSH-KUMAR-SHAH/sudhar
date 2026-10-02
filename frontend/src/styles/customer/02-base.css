@@ -1,0 +1,180 @@
+/* Business: Scrollbar, reset, utilities and buttons.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       CUSTOM SCROLLBAR
+    ================================================ */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0A1E30;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--teal);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--teal-hover);
+    }
+
+    /* ================================================
+       RESET
+    ================================================ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      font-family: var(--font-b);
+      color: var(--graphite);
+      background: var(--white);
+      /* Business: Mixed-literacy mobile readers need calm, low-effort body text. */
+      /* Technical: 1.6 rhythm lowers cognitive load; does not touch display type. */
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    /* Business: Request IDs, invoices and prices must not wobble as digits change. */
+    /* Technical: Tabular numerals keep billing-adjacent figures visually stable. */
+    .tnum {
+      font-variant-numeric: tabular-nums;
+    }
+
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    ul,
+    ol {
+      list-style: none;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+    }
+
+    input,
+    textarea,
+    select {
+      font-family: inherit;
+    }
+
+    ::selection {
+      background: rgba(12, 124, 130, 0.18);
+    }
+
+    /* ================================================
+       UTILITY
+    ================================================ */
+    .eyebrow {
+      display: inline-block;
+      font-family: var(--font-h);
+      /* Business: Eyebrows orient low-patience readers; 10.5px whispers. */
+      /* Technical: 12px floor for content-bearing microcopy (font.md §2.2). */
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--teal);
+    }
+
+    .eyebrow--muted {
+      color: rgba(247, 246, 242, 0.50);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 48px;
+    }
+
+    /* ================================================
+       BUTTONS
+    ================================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-h);
+      font-size: 14.5px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      padding: 14px 28px;
+      border-radius: 40px;
+      transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease), background 0.22s, border-color 0.22s, color 0.22s;
+      white-space: nowrap;
+      line-height: 1;
+    }
+
+    .btn:active {
+      transform: scale(0.98) !important;
+    }
+
+    .btn-teal {
+      background: var(--teal);
+      color: var(--white);
+    }
+
+    .btn-teal:hover {
+      background: var(--teal-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(12, 124, 130, 0.38);
+    }
+
+    .btn-ghost-white {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(247, 246, 242, 0.35);
+    }
+
+    .btn-ghost-white:hover {
+      background: rgba(247, 246, 242, 0.08);
+      border-color: rgba(247, 246, 242, 0.65);
+    }
+
+    .btn-ghost-navy {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid var(--navy);
+    }
+
+    .btn-ghost-navy:hover {
+      background: var(--navy);
+      color: var(--white);
+    }
+
+    .btn-ghost-teal {
+      background: transparent;
+      color: var(--teal);
+      border: 1.5px solid var(--teal);
+    }
+
+    .btn-ghost-teal:hover {
+      background: var(--teal);
+      color: var(--white);
+    }
+

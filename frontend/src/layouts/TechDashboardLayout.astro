@@ -8,10 +8,11 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
     <style is:global>
     :root {
@@ -30,8 +31,12 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
       --border: #E5E7EB;
       --bg-off: #F3F4F6;
 
-      --font-h: 'Outfit', sans-serif;
-      --font-b: 'Inter', sans-serif;
+      /* Business: Titles shout job state at a glance, in sunlight, one-thumbed. */
+      /* Technical: Condensed signage voice; Barlow fallback keeps texture on failure. */
+      --font-h: 'Barlow Condensed', 'Barlow', sans-serif;
+      /* Business: Descriptions must disappear into understanding between tasks. */
+      /* Technical: Barlow covers the full 400–700 label range, no synthesis. */
+      --font-b: 'Barlow', 'Barlow Condensed', sans-serif;
 
       --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
       --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
@@ -173,6 +178,10 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
       background-color: #EF4444;
       border-radius: 50%;
     }
+
+    /* Business: Job IDs and visit times must scan stably in the field. */
+    /* Technical: Tabular numerals keep time/ID figures from shifting width. */
+    .tnum { font-variant-numeric: tabular-nums; }
 
     /* Main Scrollable Area */
     .app-content {

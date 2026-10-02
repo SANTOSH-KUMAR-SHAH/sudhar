@@ -1,0 +1,233 @@
+/* Business: Appliance services grid.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       SERVICES SECTION
+    ================================================ */
+    .services-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .svc-card {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      cursor: pointer;
+      background: var(--white);
+      border: 1.5px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 0 rgba(12, 124, 130, 0);
+      transition: transform 0.30s var(--ease), box-shadow 0.30s var(--ease), border-color 0.30s;
+      display: flex;
+      outline: none;
+      min-height: 200px;
+    }
+
+    /* Shimmer sweep on hover */
+    .svc-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%);
+      transform: translateX(-100%);
+      transition: transform 0.55s ease;
+      pointer-events: none;
+    }
+
+    .svc-card:hover::after {
+      transform: translateX(100%);
+    }
+
+    .svc-card:hover,
+    .svc-card:focus-visible {
+      border-color: rgba(12, 124, 130, 0.5);
+      background: linear-gradient(145deg, #fff 60%, rgba(12, 124, 130, 0.04));
+      box-shadow: 0 20px 48px rgba(12, 124, 130, 0.12), 0 0 0 1px rgba(12, 124, 130, 0.15);
+      transform: translateY(-6px);
+    }
+
+    .svc-content {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .svc-teal-dash {
+      width: 24px;
+      height: 2.5px;
+      background: var(--teal);
+      margin-bottom: 16px;
+    }
+
+    .svc-title {
+      font-family: var(--font-h);
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--navy-deep);
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .svc-hint {
+      font-size: 14px;
+      color: var(--graphite-mid);
+      line-height: 1.5;
+      margin-bottom: 24px;
+      max-width: 200px;
+    }
+
+    /* Business: Service card hover glow + shimmer is the primary delight cue. */
+    /* Technical: Single .svc-action definition lives below; hover glow lives on .svc-card:hover. */
+    .svc-img {
+      width: 42%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .svc-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s var(--ease);
+    }
+
+    .svc-card:hover .svc-img img {
+      transform: scale(1.05);
+    }
+
+    /* Business: Unsure strip uses the tinted card style defined below. */
+    /* Technical: Removed duplicate container so only one .services-unsure rule wins. */
+    .services-unsure-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-h);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--navy-deep);
+    }
+
+    .services-unsure-label svg {
+      color: var(--navy-deep);
+    }
+
+    .services-unsure-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+
+    /* Business: Unsure buttons use the canonical row style below. */
+    /* Technical: Removed duplicate .services-unsure-btns to keep one source. */
+    .btn-outline-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      font-family: var(--font-h);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--graphite-mid);
+      background: var(--white);
+      transition: all 0.2s;
+    }
+
+    .btn-outline-pill:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: rgba(12, 124, 130, 0.03);
+    }
+
+    .btn-outline-pill svg {
+      stroke-width: 2;
+      width: 14px;
+      height: 14px;
+    }
+
+    .btn-outline-pill .teal-icon {
+      color: var(--teal);
+    }
+
+    /* Business: Keep secondary contact actions readable against the dark closing CTA.
+       Technical: background-color (never the background shorthand) so production
+       minifiers cannot reintroduce the cream base behind white text. */
+    .final-cta .btn-outline-pill {
+      background-color: transparent;
+    }
+
+    /* Keep sticky navigation from covering the start of a section after an in-page jump. */
+    #services,
+    #request,
+    #how-it-works,
+    #trust,
+    #faq,
+    #contact {
+      scroll-margin-top: 76px;
+    }
+
+    /* Business: Start-request hint fades up on hover/focus, always visible on touch. */
+    /* Technical: Single canonical .svc-action; mobile override forces opacity 1. */
+    .svc-action {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-h);
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--teal);
+      margin-top: auto;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+    }
+
+    .svc-card:hover .svc-action,
+    .svc-card:focus-visible .svc-action {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (hover: none) {
+      .svc-action {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .svc-action-arrow {
+      transition: transform 0.2s var(--ease);
+    }
+
+    .svc-card:hover .svc-action-arrow {
+      transform: translateX(4px);
+    }
+
+    .services-unsure {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 28px 36px;
+      background: rgba(12, 124, 130, 0.06);
+      border: 1.5px solid rgba(12, 124, 130, 0.18);
+      border-radius: 12px;
+    }
+
+    .services-unsure p {
+      font-family: var(--font-h);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--graphite);
+    }
+
+    .services-unsure-btns {
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+

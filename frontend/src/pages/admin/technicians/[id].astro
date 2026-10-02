@@ -158,7 +158,11 @@ const techData: Record<string, TechnicianMock> = {
   }
 };
 
-const tech: TechnicianMock = techData[id ?? ""] ?? techData["BT"] as TechnicianMock;
+// Business: Unknown tech IDs must never silently show Bikash Thapa's record.
+// Technical: Explicit demo fallback with warning flag (no silent alias).
+const rawTech: TechnicianMock | undefined = techData[id ?? ""];
+const isUnknownTech = !rawTech;
+const tech: TechnicianMock = rawTech ?? techData["BT"] as TechnicianMock;
 ---
 
 <AdminDashboardLayout title={`${tech.name} - Technicians - Sudhar Lab`} activeNav="technicians">
@@ -169,6 +173,9 @@ const tech: TechnicianMock = techData[id ?? ""] ?? techData["BT"] as TechnicianM
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
     <span class="breadcrumb-current">{tech.name}</span>
   </div>
+  {isUnknownTech && (
+    <p class="form-notice form-notice-info" role="status" style="display:block">Unknown demo technician — showing BT as a placeholder. Wire to GET /api/technicians/:id when the backend exists.</p>
+  )}
 
   <div class="profile-layout">
     

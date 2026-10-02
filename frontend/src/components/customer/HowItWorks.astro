@@ -1,3 +1,6 @@
+---
+import { SITE_PHONE_HREF } from '../../lib/site';
+---
   <section id="how-it-works" aria-label="How it works" style="background: var(--bg-off); padding: 100px 0;">
     <div class="container" style="max-width: 1200px;">
 
@@ -7,8 +10,7 @@
           <div class="hero-eyebrow-bar" style="width:24px; background:var(--gold);"></div>
           <span class="eyebrow" style="color:var(--graphite-mid);">OUR SIMPLE PROCESS</span>
         </div>
-        <h2
-          style="font-family: var(--font-h); font-size: clamp(32px, 3.8vw, 44px); font-weight: 800; color: var(--navy-deep); letter-spacing: -0.022em; line-height: 1.15; margin-bottom: 16px;">
+        <h2 style="color: var(--navy-deep); margin-bottom: 16px;">
           From request to repair, we keep it clear.
         </h2>
         <p style="font-size: 16px; color: var(--graphite-mid); line-height: 1.6;">
@@ -25,6 +27,7 @@
             <!-- Card 1 -->
             <div class="hiw-mob-card">
               <div class="hiw-mob-photo">
+                <div class="hiw-mob-bg" style="background-image:url('/step1.png')" aria-hidden="true"></div>
                 <img src="/step1.png" alt="Customer submits service request on phone" loading="lazy" />
                 <span class="hiw-mob-pill">STEP 01 OF 06</span>
                 <div class="hiw-mob-live">
@@ -42,6 +45,7 @@
             <!-- Card 2 -->
             <div class="hiw-mob-card">
               <div class="hiw-mob-photo">
+                <div class="hiw-mob-bg" style="background-image:url('/step2.png')" aria-hidden="true"></div>
                 <img src="/step2.png" alt="Sudhar Lab team calls to confirm request" loading="lazy" />
                 <span class="hiw-mob-pill">STEP 02 OF 06</span>
                 <div class="hiw-mob-live">
@@ -59,6 +63,7 @@
             <!-- Card 3 -->
             <div class="hiw-mob-card">
               <div class="hiw-mob-photo">
+                <div class="hiw-mob-bg" style="background-image:url('/step3.png')" aria-hidden="true"></div>
                 <img src="/step3.png" alt="Technician dispatched to customer home" loading="lazy" />
                 <span class="hiw-mob-pill">STEP 03 OF 06</span>
                 <div class="hiw-mob-live">
@@ -76,6 +81,7 @@
             <!-- Card 4 -->
             <div class="hiw-mob-card">
               <div class="hiw-mob-photo">
+                <div class="hiw-mob-bg" style="background-image:url('/step4.png')" aria-hidden="true"></div>
                 <img src="/step4.png" alt="Technician inspects and diagnoses the appliance" loading="lazy" />
                 <span class="hiw-mob-pill">STEP 04 OF 06</span>
                 <div class="hiw-mob-live">
@@ -93,6 +99,7 @@
             <!-- Card 5 -->
             <div class="hiw-mob-card">
               <div class="hiw-mob-photo">
+                <div class="hiw-mob-bg" style="background-image:url('/step5.png')" aria-hidden="true"></div>
                 <img src="/step5.png" alt="Repair quote discussed with customer and office" loading="lazy" />
                 <span class="hiw-mob-pill">STEP 05 OF 06</span>
                 <div class="hiw-mob-live">
@@ -110,6 +117,7 @@
             <!-- Card 6 -->
             <div class="hiw-mob-card">
               <div class="hiw-mob-photo">
+                <div class="hiw-mob-bg" style="background-image:url('/step6.png')" aria-hidden="true"></div>
                 <img src="/step6.png" alt="Customer approves and repair begins" loading="lazy" />
                 <span class="hiw-mob-pill">STEP 06 OF 06</span>
                 <div class="hiw-mob-live">
@@ -161,13 +169,31 @@
         <div class="hiw-media-column">
           <div class="hiw-media-frame">
 
-            <!-- Dynamic Images -->
-            <img src="/step1.png" alt="Customer submits request on phone" class="hiw-slide-img is-active" id="hiwImg0" loading="lazy" />
-            <img src="/step2.png" alt="Sudhar Lab calls to confirm" class="hiw-slide-img" id="hiwImg1" loading="lazy" />
-            <img src="/step3.png" alt="Technician arrives at door" class="hiw-slide-img" id="hiwImg2" loading="lazy" />
-            <img src="/step4.png" alt="Technician inspects the appliance" class="hiw-slide-img" id="hiwImg3" loading="lazy" />
-            <img src="/step5.png" alt="Repair quote presented to customer" class="hiw-slide-img" id="hiwImg4" loading="lazy" />
-            <img src="/step6.png" alt="Customer approves and repair begins" class="hiw-slide-img" id="hiwImg5" loading="lazy" />
+            <!-- Dynamic Images: blurred self-fill behind each full photo -->
+            <div class="hiw-slide is-active" id="hiwImg0">
+              <div class="hiw-slide-bg" style="background-image:url('/step1.png')" aria-hidden="true"></div>
+              <img src="/step1.png" alt="Customer submits request on phone" class="hiw-slide-img" loading="lazy" />
+            </div>
+            <div class="hiw-slide" id="hiwImg1">
+              <div class="hiw-slide-bg" style="background-image:url('/step2.png')" aria-hidden="true"></div>
+              <img src="/step2.png" alt="Sudhar Lab calls to confirm" class="hiw-slide-img" loading="lazy" />
+            </div>
+            <div class="hiw-slide" id="hiwImg2">
+              <div class="hiw-slide-bg" style="background-image:url('/step3.png')" aria-hidden="true"></div>
+              <img src="/step3.png" alt="Technician arrives at door" class="hiw-slide-img" loading="lazy" />
+            </div>
+            <div class="hiw-slide" id="hiwImg3">
+              <div class="hiw-slide-bg" style="background-image:url('/step4.png')" aria-hidden="true"></div>
+              <img src="/step4.png" alt="Technician inspects the appliance" class="hiw-slide-img" loading="lazy" />
+            </div>
+            <div class="hiw-slide" id="hiwImg4">
+              <div class="hiw-slide-bg" style="background-image:url('/step5.png')" aria-hidden="true"></div>
+              <img src="/step5.png" alt="Repair quote presented to customer" class="hiw-slide-img" loading="lazy" />
+            </div>
+            <div class="hiw-slide" id="hiwImg5">
+              <div class="hiw-slide-bg" style="background-image:url('/step6.png')" aria-hidden="true"></div>
+              <img src="/step6.png" alt="Customer approves and repair begins" class="hiw-slide-img" loading="lazy" />
+            </div>
 
             <!-- Top Floating Overlay Badges -->
             <div class="hiw-media-overlay-top">
@@ -323,7 +349,7 @@
         <div class="hiw-strip-btns">
           <a href="#request" class="btn btn-teal" style="font-size:14px;padding:14px 28px;">Get My Appliance Checked
             &rarr;</a>
-          <a href="tel:+977XXXXXXXXXX" class="btn-outline-pill">
+          <a href={SITE_PHONE_HREF} class="btn-outline-pill">
             <svg class="teal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
               stroke-linejoin="round">
               <path

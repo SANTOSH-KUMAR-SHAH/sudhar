@@ -1,3 +1,6 @@
+---
+import { SITE_PHONE_HREF } from '../../lib/site';
+---
   <section class="sec-faq" id="faq" aria-label="Frequently asked questions">
     <div class="container" style="max-width: 1200px;">
       <div class="sec-head reveal" style="margin-bottom: 48px;">
@@ -5,8 +8,7 @@
           <div class="hero-eyebrow-bar" style="background:var(--gold);"></div>
           <span class="eyebrow" style="color:var(--graphite-mid);">NEED TO KNOW?</span>
         </div>
-        <h2
-          style="font-family: var(--font-h); font-size: clamp(32px, 3.8vw, 42px); font-weight: 800; color: var(--navy-deep); letter-spacing: -0.022em; line-height: 1.15; margin-bottom: 16px;">
+        <h2 style="color: var(--navy-deep); margin-bottom: 16px;">
           Questions before you request?</h2>
         <p style="font-size: 15.5px; color: var(--graphite-mid); line-height: 1.6;">Here are the things customers
           usually want to know before arranging a home visit.</p>
@@ -270,7 +272,7 @@
           <div class="faq-banner-btns">
             <a href="#request" class="btn btn-teal" style="font-size:14px;padding:14px 28px;">Get My Appliance Checked
               &rarr;</a>
-            <a href="tel:+977XXXXXXXXXX" class="btn-outline-pill"
+            <a href={SITE_PHONE_HREF} class="btn-outline-pill"
               style="border-color:var(--teal); color:var(--teal); background:var(--white);">
               <svg class="teal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
                 stroke-linejoin="round" style="color:var(--teal);">

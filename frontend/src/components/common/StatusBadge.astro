@@ -1,0 +1,13 @@
+---
+// Business: Every status pill (admin list, detail, tech jobs) must look identical.
+// Technical: Single component mapping canonical status -> existing .badge-* class.
+import { getBadgeClass, getStatusLabel, type ServiceStatusKey } from '../../lib/service-status';
+
+interface Props {
+  status: ServiceStatusKey;
+}
+const { status } = Astro.props as Props;
+const label = getStatusLabel(status);
+const tone = getBadgeClass(status);
+---
+<span class={`badge ${tone}`} data-status={status}>{label}</span>

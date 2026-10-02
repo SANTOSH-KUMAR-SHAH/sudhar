@@ -1,0 +1,225 @@
+/* Business: Trust promises section.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       TRUST SECTION
+    ================================================ */
+    .trust-sec {
+      background: var(--navy-deep);
+      padding: 100px 0 120px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 
+        inset 0px 12px 24px rgba(0, 0, 0, 0.35),
+        inset 0px -12px 24px rgba(0, 0, 0, 0.35); /* Micro-depth transitions to light sections above/below */
+    }
+
+    /* Background topography lines (optional decoration) */
+    .trust-bg-lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      opacity: 0.15;
+      background-image:
+        radial-gradient(circle at 0% 50%, transparent 20%, rgba(255, 255, 255, 0.2) 21%, transparent 22%),
+        radial-gradient(circle at 0% 50%, transparent 40%, rgba(255, 255, 255, 0.2) 41%, transparent 42%),
+        radial-gradient(circle at 100% 50%, transparent 20%, rgba(255, 255, 255, 0.2) 21%, transparent 22%),
+        radial-gradient(circle at 100% 50%, transparent 40%, rgba(255, 255, 255, 0.2) 41%, transparent 42%);
+      background-size: 100% 100%;
+    }
+
+    .trust-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 80px;
+      row-gap: 60px;
+      margin-bottom: 80px;
+      position: relative;
+    }
+
+    .trust-connecting-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .trust-connecting-line svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .trust-block {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .trust-icon-wrap {
+      width: 140px;
+      height: 140px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(12, 124, 130, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: var(--navy-deep);
+      box-shadow: inset 0 0 40px rgba(12, 124, 130, 0.1);
+    }
+
+    .trust-icon-wrap::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: -6px;
+      right: -6px;
+      bottom: -6px;
+      border-radius: 50%;
+      border: 1px dashed rgba(12, 124, 130, 0.2);
+    }
+
+    .trust-icon-wrap svg {
+      width: 60%;
+      height: 60%;
+    }
+
+    .trust-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: var(--font-h);
+      font-size: 10px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .trust-title {
+      font-family: var(--font-h);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .trust-desc {
+      font-size: 14.5px;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.6;
+    }
+
+    /* Divider */
+    .trust-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 80px 0 40px;
+    }
+
+    /* Trust proof cards */
+    .trust-cards-head {
+      margin-bottom: 32px;
+    }
+
+    .trust-proof {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .tp-card {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.02);
+      transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      height: 120px;
+    }
+
+    .tp-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tp-img {
+      width: 45%;
+      position: relative;
+      background: var(--navy);
+    }
+
+    .tp-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      display: block;
+    }
+
+    .tp-body {
+      width: 55%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .tp-icon {
+      color: var(--white);
+    }
+
+    .tp-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 1.5;
+    }
+
+    .tp-label {
+      font-family: var(--font-h);
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--white);
+      line-height: 1.4;
+    }
+
+    .trust-footer-note {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .trust-cta {
+      display: flex;
+      justify-content: center;
+      margin-top: 64px;
+    }
+
+    .trust-cta-btns {
+      display: flex;
+      gap: 16px;
+    }
+
+    /* Business: Secondary action must read as an outline on dark navy, not a blank pill. */
+    /* Technical: background-color longhand only — the background shorthand gets
+       mangled by the production minifier (see 06-services .final-cta fix). */
+    .trust-cta .btn-outline-pill {
+      background-color: transparent;
+    }
+

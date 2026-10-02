@@ -13,7 +13,63 @@ export function getStaticPaths() {
 
 const { id } = Astro.params;
 
-const customerData: Record<string, any> = {
+// Business: Customer 360 view must be typed so billing/activity cannot drift silently.
+// Technical: Explicit detail shape replaces `any`; unknown IDs show a warning banner.
+interface CustomerAppliance {
+  name: string;
+  icon: string;
+  model: string;
+  lastService: string;
+  requests: number;
+  outcome: string;
+  outcomeClass: string;
+}
+interface HistoryRow {
+  id: string;
+  appliance: string;
+  problem: string;
+  date: string;
+  technician: string;
+  outcome: string;
+  outcomeClass: string;
+}
+interface ActivityRow {
+  icon: string;
+  text: string;
+  time: string;
+}
+interface CustomerDetailMock {
+  name: string;
+  avatarColor: string;
+  statusBadge: string;
+  statusClass: string;
+  location: string;
+  since: string;
+  phone: string;
+  fullName: string;
+  area: string;
+  preferredContact: string;
+  address: string;
+  customerCreated: string;
+  internalNotesCount: number;
+  kpi: { active: number; appliances: number; totalRequests: number; successfulRepairs: number };
+  activeRequest: {
+    id: string;
+    appliance: string;
+    status: string;
+    statusClass: string;
+    technician: string;
+    visit: string;
+    area: string;
+  } | null;
+  appliances: CustomerAppliance[];
+  serviceHistory: HistoryRow[];
+  recentActivity: ActivityRow[];
+  billing: { recorded: number; paid: number; pending: number; latestInvoice: string; paymentStatus: string };
+  internalNotes: Array<{ text: string; author: string; date: string }>;
+  communication: Array<{ type: string; date: string }>;
+}
+const customerData: Record<string, CustomerDetailMock> = {
   'HT': {
     name: 'Hari Thapa',
     avatarColor: 'var(--navy)',
@@ -98,7 +154,9 @@ const customerData: Record<string, any> = {
   }
 };
 
-const cust = customerData[id] || customerData['HT'];
+const rawCust: CustomerDetailMock | undefined = customerData[id ?? ""];
+const isUnknownCustomer = !rawCust;
+const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetailMock;
 ---
 
 <AdminDashboardLayout title={`${cust.name} - Customers - Sudhar Lab`} activeNav="customers">
@@ -111,6 +169,9 @@ const cust = customerData[id] || customerData['HT'];
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
     <span class="breadcrumb-current">{cust.name}</span>
   </div>
+  {isUnknownCustomer && (
+    <p class="form-notice form-notice-info" role="status" style="display:block">Unknown demo customer — showing HT as a placeholder. Wire to GET /api/customers/:id when the backend exists.</p>
+  )}
 
   <!-- HERO SECTION -->
   <div class="hero-card">
@@ -491,7 +552,7 @@ const cust = customerData[id] || customerData['HT'];
         <div class="billing-invoice-row">
           <div>
             <div class="billing-inv-label">Latest Invoice</div>
-            <div class="billing-inv-val">{cust.billing.latestInvoice}</div>
+            <div class="billing-inv-val tnum">{cust.billing.latestInvoice}</div>
           </div>
           <div>
             <div class="billing-inv-label">Latest payment status</div>

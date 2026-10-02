@@ -38,7 +38,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
 
       <div class="queue-card urgent">
         <div class="qc-top">
-          <div class="qc-id">SL-000126</div>
+          <div class="qc-id tnum">SL-000126</div>
           <span class="badge badge-new">New Request</span>
           <div class="qc-time">Just now</div>
         </div>
@@ -64,7 +64,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
 
       <div class="queue-card urgent">
         <div class="qc-top">
-          <div class="qc-id">SL-000125</div>
+          <div class="qc-id tnum">SL-000125</div>
           <span class="badge badge-new">New Request</span>
           <div class="qc-time">14 min ago</div>
         </div>
@@ -106,7 +106,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
 
       <div class="queue-card">
         <div class="qc-top">
-          <div class="qc-id">SL-000124</div>
+          <div class="qc-id tnum">SL-000124</div>
           <span class="badge badge-confirm">Confirmed</span>
           <div class="qc-time">Yesterday</div>
         </div>
@@ -152,7 +152,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
 
       <div class="queue-card">
         <div class="qc-top">
-          <div class="qc-id">SL-000121</div>
+          <div class="qc-id tnum">SL-000121</div>
           <span class="badge badge-progress">Price Approval</span>
           <div class="qc-time">2 hrs ago</div>
         </div>
@@ -200,21 +200,21 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
       <div class="live-jobs-list">
         <div class="live-job-row">
           <div class="live-job-info">
-            <div class="lj-id">SL-000123</div>
+            <div class="lj-id tnum">SL-000123</div>
             <div class="lj-detail">Ramesh · LG Washing Machine · Koteshwor</div>
           </div>
           <span class="badge badge-progress">Diagnosing</span>
         </div>
         <div class="live-job-row">
           <div class="live-job-info">
-            <div class="lj-id">SL-000122</div>
+            <div class="lj-id tnum">SL-000122</div>
             <div class="lj-detail">Bikash · Samsung AC · Maharajgunj</div>
           </div>
           <span class="badge badge-assigned">On the Way</span>
         </div>
         <div class="live-job-row">
           <div class="live-job-info">
-            <div class="lj-id">SL-000118</div>
+            <div class="lj-id tnum">SL-000118</div>
             <div class="lj-detail">Suman · Whirlpool Fridge · Kirtipur</div>
           </div>
           <span class="badge badge-progress">In Progress</span>
@@ -304,7 +304,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
       <div class="recently-done">
         <div class="rd-label">Completed today</div>
         <div class="rd-row">
-          <div class="lj-id" style="font-size:0.75rem">SL-000117</div>
+          <div class="lj-id tnum" style="font-size:0.75rem">SL-000117</div>
           <span class="rd-detail">Anita Gurung · TV · Bagbazar</span>
           <span class="badge badge-done">Done</span>
         </div>
@@ -411,11 +411,13 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
     font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
   }
 
+  /* Business: Customer words must read effortlessly; italics slow fixation. */
+  /* Technical: Normal style; tinted background already marks the quote (font.md §3.3). */
   .qc-problem {
     font-size: 0.8125rem; color: var(--graphite-mid);
     background: var(--bg); border-radius: 6px;
     padding: 0.5rem 0.75rem;
-    font-style: italic;
+    font-style: normal;
   }
 
   /* Technician availability chips */
@@ -488,7 +490,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
   .tech-row:last-child { border-bottom: none; }
   .tech-av {
     width: 30px; height: 30px; border-radius: 50%;
-    color: #fff; font-size: 0.6875rem; font-weight: 700;
+    color: #fff; font-size: 0.75rem; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; position: relative;
   }
@@ -510,7 +512,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
 
   .tech-info { flex: 1; min-width: 0; }
   .tech-name { font-size: 0.8125rem; font-weight: 600; color: var(--navy); }
-  .tech-status { font-size: 0.6875rem; color: var(--graphite-lt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tech-status { font-size: 0.75rem; color: var(--graphite-lt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Summary grid */
   .summary-grid {
@@ -530,10 +532,10 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
   .sum-num.blue   { color: #3B82F6; }
   .sum-num.purple { color: #8B5CF6; }
   .sum-num.green  { color: #16A34A; }
-  .sum-label { font-size: 0.6875rem; font-weight: 600; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.04em; }
+  .sum-label { font-size: 0.75rem; font-weight: 600; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.04em; }
 
   .recently-done {}
-  .rd-label { font-size: 0.6875rem; font-weight: 700; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.625rem; }
+  .rd-label { font-size: 0.75rem; font-weight: 700; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.625rem; }
   .rd-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
   .rd-detail { font-size: 0.75rem; color: var(--graphite-mid); flex: 1; }
 

@@ -1,0 +1,18 @@
+---
+// Business: Replace window.alert() with an inline message the user can read and dismiss.
+// Technical: Rendered server-side hidden; shown by setting data-visible="true".
+interface Props {
+  id: string;
+  kind?: 'success' | 'error' | 'info';
+  message: string;
+}
+const { id, kind = 'info', message } = Astro.props as Props;
+---
+<p id={id} class={`form-notice form-notice-${kind}`} data-visible="false" role="status">{message}</p>
+<style>
+  .form-notice { display: none; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin-top: 0.75rem; }
+  .form-notice[data-visible="true"] { display: block; }
+  .form-notice-success { background: #DCFCE7; color: #166534; }
+  .form-notice-error { background: #FEE2E2; color: #991B1B; }
+  .form-notice-info { background: #E0F2FE; color: #0C4A6E; }
+</style>

@@ -1,0 +1,147 @@
+/* Business: Top navigation bar.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       NAVIGATION
+    ================================================ */
+    #nav {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 1200px;
+      z-index: 900;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      background: transparent;
+      border-radius: 9999px;
+      transition: padding 0.4s cubic-bezier(0.32, 0.72, 0, 1), background 0.4s cubic-bezier(0.32, 0.72, 0, 1), backdrop-filter 0.4s, box-shadow 0.4s, top 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    #nav.stuck {
+      top: 16px;
+      padding: 12px 28px;
+      background: rgba(247, 246, 242, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .nav-logo img {
+      /* Large enough for the wordmark to be easily readable */
+      height: 48px;
+      width: auto;
+      max-width: 200px;
+      display: block;
+      opacity: 0.95;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    /* Hide old text-based logo elements if they still render */
+    .nav-logo-name,
+    .nav-logo-sub {
+      display: none;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      font-family: var(--font-h);
+      font-size: 13.5px;
+      font-weight: 600;
+      color: rgba(247, 246, 242, 0.85); /* white */
+      transition: color 0.18s;
+      letter-spacing: 0.01em;
+    }
+
+    .nav-links a:hover {
+      color: var(--white);
+    }
+
+    #nav.stuck .nav-links a {
+      color: var(--navy);
+    }
+
+    #nav.stuck .nav-links a:hover {
+      color: var(--teal);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* The "Double-Bezel" Outer Shell */
+    .double-bezel {
+      display: flex;
+      align-items: center;
+      padding: 4px;
+      background: rgba(255, 255, 255, 0.08); /* transparent state shell */
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+      cursor: pointer;
+    }
+
+    .double-bezel:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .double-bezel:active {
+      transform: scale(0.96); /* Magnetic press physics */
+    }
+
+    /* Scrolled state outer shell */
+    #nav.stuck .double-bezel {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: rgba(0, 0, 0, 0.06);
+    }
+    
+    #nav.stuck .double-bezel:hover {
+      background: rgba(0, 0, 0, 0.06);
+      border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* The Inner Core CTA button inside the bezel */
+    .nav-cta-btn {
+      font-size: 13px;
+      padding: 10px 20px;
+      margin: 0; /* Override any global margins */
+      /* Inner Core Highlight */
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.25);
+    }
+
+    /* The Inner Core Call button inside the bezel */
+    .nav-call {
+      font-family: var(--font-h);
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 9999px;
+      background: transparent;
+      transition: color 0.18s;
+    }
+
+    #nav.stuck .nav-call {
+      color: var(--navy);
+    }
+

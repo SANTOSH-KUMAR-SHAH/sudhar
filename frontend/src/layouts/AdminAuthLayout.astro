@@ -8,10 +8,11 @@ const { title = "Admin Portal - Sudhar Lab" } = Astro.props;
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
   <style is:global>
     :root {
@@ -26,8 +27,9 @@ const { title = "Admin Portal - Sudhar Lab" } = Astro.props;
       --graphite-lt: #7C8186;
       --border: #E5E7EB;
 
-      --font-h: 'Outfit', sans-serif;
-      --font-b: 'Inter', sans-serif;
+      --font-h: 'Archivo', 'Source Sans 3', sans-serif;
+      --font-b: 'Source Sans 3', 'Archivo', sans-serif;
+      --font-fig: 'IBM Plex Mono', ui-monospace, monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,18 +87,18 @@ const { title = "Admin Portal - Sudhar Lab" } = Astro.props;
           rgba(6, 14, 22, 0.75) 18%,
           rgba(6, 14, 22, 0.20) 40%,
           transparent 60%),
-        /* Right feather — softens hard edge between panels */
+        /* Right feather â€” softens hard edge between panels */
         linear-gradient(to left,
           rgba(6, 14, 22, 0.40) 0%,
           transparent 25%),
-        /* Subtle top darkening — keeps header area anchored */
+        /* Subtle top darkening â€” keeps header area anchored */
         linear-gradient(to bottom,
           rgba(6, 14, 22, 0.35) 0%,
           transparent 18%);
       z-index: 2;
     }
 
-    /* Teal brand ambient glow — bottom left, ties to Sudhar Lab identity */
+    /* Teal brand ambient glow â€” bottom left, ties to Sudhar Lab identity */
     .auth-sidebar .sidebar-content + * {
       display: none; /* cleanup */
     }

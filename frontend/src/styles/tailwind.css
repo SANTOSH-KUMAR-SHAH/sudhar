@@ -17,6 +17,6 @@
   --color-graphite-lt: #7c8186;
   --color-line: #e0ddd7;
 
-  --font-heading: "Outfit", sans-serif;
-  --font-body: "Inter", sans-serif;
+  --font-heading: "Nunito", "Nunito Sans", sans-serif;
+  --font-body: "Nunito Sans", "Nunito", sans-serif;
 }
