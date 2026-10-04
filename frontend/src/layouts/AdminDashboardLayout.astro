@@ -1,0 +1,688 @@
+---
+import '../styles/tailwind.css';
+const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <style is:global>
+    /* Business: Brand colours are company law — one palette across every portal. */
+    /* Technical: Brand values mirror @theme in styles/tailwind.css (canonical source).
+       Portal neutrals (--bg, --border) and status colours below are admin-only and
+       intentionally local; change brand hues in @theme first, then here. */
+    :root {
+      --navy:         #10263D;
+      --teal:         #0C7C82;
+      --teal-light:   #E9F6F7;
+      --teal-hover:   #0E9198;
+      --bg:           #F5F6FA;
+      --bg-off:       #F8F7F3;
+      --pure-white:   #FFFFFF;
+      --graphite:     #2B2E31;
+      --graphite-mid: #4A4E52;
+      --graphite-lt:  #7C8186;
+      --border:       #E4E6EA;
+
+      /* Business: Titles command a triage queue — friendly authority staff lean on. */
+      /* Technical: Space Grotesk 400–700 (quirky, crafted ops voice); falls back to Plex Sans, never mono. */
+      --font-h: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+      /* Business: Long-shift reading with zero fatigue — familiar, not clinical. */
+      /* Technical: IBM Plex Sans covers the full 400–700 label range. */
+      --font-b: 'IBM Plex Sans', 'Space Grotesk', sans-serif;
+      /* Business: One misread digit sends a tech to the wrong house. */
+      /* Technical: Mono eliminates 0/O + 1/l confusion; use for IDs/invoices. */
+      --font-fig: 'IBM Plex Mono', ui-monospace, monospace;
+
+      --sidebar-w: 240px;
+      --topbar-h:  60px;
+
+      /* Status colours */
+      --s-new:       #F59E0B;
+      --s-new-bg:    #FEF3C7;
+      --s-confirm:   #3B82F6;
+      --s-confirm-bg:#EFF6FF;
+      --s-assigned:  #0C7C82;
+      --s-assigned-bg:#E9F6F7;
+      --s-progress:  #8B5CF6;
+      --s-progress-bg:#F5F3FF;
+      --s-done:      #16A34A;
+      --s-done-bg:   #DCFCE7;
+      --s-cancel:    #DC2626;
+      --s-cancel-bg: #FEE2E2;
+      --s-warn:      #D97706;
+      --s-warn-bg:   #FEF3C7;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-b);
+      background: var(--bg);
+      color: var(--navy);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      /* No display:flex here â€” sidebar and topbar are position:fixed */
+    }
+
+    /* â”€â”€â”€ SIDEBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--navy);
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 200;
+    }
+
+    .sidebar-logo {
+      height: var(--topbar-h);
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .logo-icon {
+      width: 30px; height: 30px;
+      background: var(--teal);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      color: white;
+      flex-shrink: 0;
+    }
+    .logo-icon svg { width: 16px; height: 16px; }
+    .logo-text {
+      font-family: var(--font-h);
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .logo-badge {
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-left: auto;
+      background: rgba(255,255,255,0.06);
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+    }
+
+    /* Nav */
+    .sidebar-nav {
+      flex: 1;
+      padding: 1rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .nav-section-label {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.3);
+      padding: 0.75rem 0.75rem 0.375rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      padding: 0.6875rem 0.875rem;
+      border-radius: 8px;
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .nav-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav-link:hover {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.9);
+    }
+    .nav-link.active {
+      background: rgba(255,255,255,0.10);
+      color: #fff;
+      font-weight: 600;
+    }
+    .nav-link.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 20%; bottom: 20%;
+      width: 3px;
+      background: var(--teal);
+      border-radius: 0 3px 3px 0;
+    }
+    /* Technical: button reset for disabled nav items; hover suppressed via higher-specificity rule. */
+    .nav-link--disabled {
+      background: none;
+      border: 0;
+      font-family: inherit;
+      text-align: left;
+      cursor: default;
+      opacity: 0.55;
+    }
+    .nav-link--disabled:hover {
+      background: none;
+      color: rgba(255,255,255,0.6);
+    }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--teal);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.0625rem 0.4375rem;
+      border-radius: 20px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.625rem 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .user-card:hover { background: rgba(255,255,255,0.06); }
+    .user-avatar {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-h);
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .user-details { flex: 1; min-width: 0; }
+    .user-name {
+      font-size: 0.8125rem; font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+        .user-role {
+      font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+    .logout-icon { color: rgba(255,255,255,0.3); cursor: pointer; flex-shrink: 0; }
+    .logout-icon:hover { color: rgba(255,255,255,0.7); }
+    .logout-icon svg { width: 16px; height: 16px; }
+
+    /* â”€â”€â”€ TOP BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .topbar {
+      position: fixed;
+      top: 0; left: var(--sidebar-w); right: 0;
+      height: var(--topbar-h);
+      background: var(--pure-white);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      z-index: 100;
+    }
+
+    .topbar-left {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .topbar-page-name {
+      font-family: var(--font-h);
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .topbar-right {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    /* Global search */
+    .topbar-search {
+      position: relative;
+    }
+    .topbar-search svg {
+      position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+      width: 15px; height: 15px; color: var(--graphite-lt);
+    }
+    .topbar-search input {
+      width: 240px;
+      padding: 0.4375rem 1rem 0.4375rem 2.125rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: var(--font-b); font-size: 0.875rem;
+      background: var(--bg); color: var(--navy);
+      outline: none; transition: border-color 0.15s;
+    }
+    .topbar-search input:focus { border-color: var(--teal); background: #fff; }
+    .topbar-search input::placeholder { color: var(--graphite-lt); }
+
+    /* Quick action button */
+    .topbar-btn-primary {
+      display: flex; align-items: center; gap: 0.375rem;
+      background: var(--teal); color: #fff; border: none;
+      padding: 0.4375rem 0.875rem;
+      border-radius: 8px;
+      font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; white-space: nowrap;
+    }
+    .topbar-btn-primary:hover { background: var(--teal-hover); }
+    .topbar-btn-primary svg { width: 14px; height: 14px; }
+
+    /* Notification bell */
+    .topbar-icon-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer; color: var(--graphite-mid);
+      position: relative; transition: all 0.15s;
+    }
+    .topbar-icon-btn:hover { background: var(--bg); color: var(--navy); }
+    .topbar-icon-btn svg { width: 16px; height: 16px; }
+    .notif-dot {
+      position: absolute; top: 6px; right: 6px;
+      width: 7px; height: 7px;
+      background: #EF4444; border-radius: 50%;
+      border: 1.5px solid var(--pure-white);
+    }
+
+    /* Avatar */
+    .topbar-avatar {
+      width: 34px; height: 34px;
+      background: var(--navy); color: #fff;
+      border-radius: 50%;
+      font-family: var(--font-h); font-size: 0.875rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .topbar-avatar:hover { border-color: var(--teal); }
+
+    /* Date chip */
+    .topbar-date {
+      font-size: 0.75rem; font-weight: 500;
+      color: var(--graphite-lt);
+      background: var(--bg);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    /* â”€â”€â”€ MAIN CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .page-wrapper {
+      /* Push content right of the fixed sidebar */
+      margin-left: var(--sidebar-w);
+      /* Push content below the fixed topbar */
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+      /* Take full remaining width */
+      width: calc(100% - var(--sidebar-w));
+    }
+    .page-content {
+      padding: 1.75rem 2rem;
+      /* Do NOT use margin:auto + max-width here â€” kills width on block */
+      max-width: 1440px;
+    }
+
+    /* â”€â”€â”€ GLOBAL SHARED UTILITIES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    
+    /* Status badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.1875rem 0.625rem;
+      border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700;
+      white-space: nowrap; letter-spacing: 0.01em;
+    }
+    .badge::before {
+      content: '';
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .badge-new       { background: var(--s-new-bg);      color: var(--s-new); }
+    .badge-confirm   { background: var(--s-confirm-bg);   color: var(--s-confirm); }
+    .badge-assigned  { background: var(--s-assigned-bg);  color: var(--s-assigned); }
+    .badge-progress  { background: var(--s-progress-bg);  color: var(--s-progress); }
+    .badge-done      { background: var(--s-done-bg);      color: var(--s-done); }
+    .badge-cancel    { background: var(--s-cancel-bg);    color: var(--s-cancel); }
+    .badge-warn      { background: var(--s-warn-bg);      color: var(--s-warn); }
+    .badge-active    { background: #E0F2FE;                color: #0284C7; }
+    .badge-neutral   { background: #F3F4F6;                color: var(--graphite-mid); }
+    .badge-success   { background: var(--s-done-bg);      color: var(--s-done); }
+    .badge-warning   { background: var(--s-warn-bg);      color: var(--s-warn); }
+    .badge-danger    { background: var(--s-cancel-bg);    color: var(--s-cancel); }
+    /* Business: Inline notices replace window.alert so admin keeps context. */
+    /* Technical: Shared .form-notice lives here so every admin page reuses it. */
+    .form-notice { display: none; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin: 0.75rem 0; }
+    .form-notice[data-visible="true"] { display: block; }
+    .form-notice-info { background: #E0F2FE; color: #0C4A6E; }
+    .form-notice-success { background: #DCFCE7; color: #166534; }
+    .form-notice-error { background: #FEE2E2; color: #991B1B; }
+    /* Business: IDs and invoices must read stably at operational scanning speed. */
+    /* Technical: Tabular numerals stop digit-width wobble in queues and records. */
+    .tnum { font-variant-numeric: tabular-nums; }
+    /* Business: Record identifiers are the highest-risk characters in the company. */
+    /* Technical: One rule voices every request/tech/invoice ID in mono. */
+    .req-id, .qc-id, .lj-id, .tc-cj-id, .billing-inv-val, .breadcrumb-current.tnum {
+      font-family: var(--font-fig);
+    }
+
+    /* Action buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.5625rem 1.125rem;
+      border-radius: 8px; border: none;
+      font-family: var(--font-b); font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .btn-primary { background: var(--teal); color: #fff; }
+    .btn-primary:hover { background: var(--teal-hover); }
+    .btn-secondary { background: var(--pure-white); color: var(--navy); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-ghost { background: none; color: var(--graphite-mid); border: none; }
+    .btn-ghost:hover { color: var(--navy); background: var(--bg); }
+    .btn-danger { background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; }
+    .btn-danger:hover { background: #FEE2E2; }
+    .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+    /* Business: Unavailable demo actions must look honestly inactive. */
+    /* Technical: Shared disabled treatment for every admin button. */
+    .btn:disabled { opacity: 0.65; cursor: not-allowed; }
+    .btn-lg { padding: 0.75rem 1.5rem; font-size: 1rem; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* Cards */
+    /* Business: Every framed surface in admin is the same card — lists, records, panels. */
+    /* Technical: One frame definition; pages add padding via their own section class only. */
+    .card {
+      background: var(--pure-white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .card-pad { padding: 1.25rem; }
+
+    /* Breadcrumb trail */
+    /* Business: Detail records always show the way back through the same three steps. */
+    /* Technical: Defined once here — request/technician/customer pages must not re-declare. */
+    .breadcrumb-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem; color: var(--graphite-mid);
+    }
+    .breadcrumb-row svg { color: var(--graphite-lt); }
+    .breadcrumb-link {
+      color: var(--graphite-mid);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .breadcrumb-link:hover { color: var(--teal); }
+    .breadcrumb-current { color: var(--navy); font-weight: 600; }
+
+    /* Divider */
+    .divider { width: 100%; height: 1px; background: var(--border); }
+
+    /* Text utils */
+    .text-sm    { font-size: 0.8125rem; }
+    .text-xs    { font-size: 0.75rem; }
+    .text-muted { color: var(--graphite-lt); }
+    .text-mid   { color: var(--graphite-mid); }
+    .font-semibold { font-weight: 600; }
+    .font-bold { font-weight: 700; }
+
+    /* â”€â”€â”€ BOTTOM NAV (mobile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .bottom-nav {
+      display: none; /* shown via media query */
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 64px;
+      background: var(--pure-white);
+      border-top: 1px solid var(--border);
+      z-index: 200;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 0.5rem;
+      padding-bottom: env(safe-area-inset-bottom, 0px); /* iPhone notch */
+    }
+    .bn-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-decoration: none;
+      color: var(--graphite-lt);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      min-width: 52px;
+      padding: 0.5rem 0.25rem;
+      border-radius: 10px;
+      transition: color 0.15s;
+      position: relative;
+    }
+    .bn-item svg { width: 22px; height: 22px; }
+    .bn-item.active { color: var(--teal); }
+    .bn-item.active svg { stroke: var(--teal); }
+    .bn-dot {
+      position: absolute;
+      top: 4px; right: 8px;
+      width: 8px; height: 8px;
+      background: #EF4444;
+      border-radius: 50%;
+      border: 2px solid var(--pure-white);
+    }
+
+    /* Mobile FAB (floating action button) */
+    .mobile-fab {
+      display: none; /* shown via media query */
+      position: fixed;
+      bottom: 78px;
+      right: 1.25rem;
+      width: 52px; height: 52px;
+      background: var(--teal);
+      border-radius: 50%;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      z-index: 150;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(12,124,130,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .mobile-fab:active { transform: scale(0.94); box-shadow: 0 2px 10px rgba(12,124,130,0.3); }
+    .mobile-fab svg { width: 22px; height: 22px; }
+
+    /* â”€â”€â”€ MOBILE RESPONSIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    @media (max-width: 767px) {
+      /* Hide desktop sidebar */
+      .sidebar { display: none !important; }
+
+      /* Show bottom nav */
+      .bottom-nav { display: flex; }
+      .mobile-fab { display: flex; }
+
+      /* Slim the topbar for mobile */
+      .topbar {
+        left: 0;
+        height: 52px;
+        padding: 0 1rem;
+      }
+      .topbar-search { display: none; }       /* Search hidden on mobile */
+      .topbar-btn-primary { display: none; }  /* FAB replaces this */
+      .topbar-date { display: none; }
+
+      /* Compact topbar page name on mobile */
+      .topbar-page-name { font-size: 0.9375rem; }
+
+      /* Page wrapper â€” no left margin on mobile, add bottom padding for nav */
+      .page-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding-top: 52px;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* space for bottom nav + FAB */
+      }
+      .page-content { padding: 1rem; min-width: 0; }
+
+      /* Smaller buttons on mobile */
+      .btn { padding: 0.5rem 1rem; font-size: 0.875rem; }
+      .btn-sm { padding: 0.4375rem 0.875rem; font-size: 0.8125rem; }
+    }
+
+    @media (max-width: 380px) {
+      .topbar { padding: 0 0.75rem; }
+      .topbar-page-name { font-size: 0.875rem; }
+      .topbar-avatar { width: 28px; height: 28px; font-size: 0.6875rem; }
+      .page-content { padding: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/logo.png" alt="Sudhar Lab" style="height: 24px; width: auto; filter: brightness(0) invert(1);" />
+      <span class="logo-badge">Admin</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Work</span>
+
+      <a href="/admin/dashboard" class={`nav-link ${activeNav === 'dashboard' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        Home
+        {activeNav === 'dashboard' && <span class="nav-badge">3</span>}
+      </a>
+
+      <a href="/admin/requests" class={`nav-link ${activeNav === 'requests' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        Requests
+      </a>
+
+      <span class="nav-section-label">People</span>
+
+      <a href="/admin/technicians" class={`nav-link ${activeNav === 'technicians' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Technicians
+      </a>
+
+      <a href="/admin/customers" class={`nav-link ${activeNav === 'customers' ? 'active' : ''}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Customers
+      </a>
+
+      <span class="nav-section-label">System</span>
+
+      <!-- Business: Settings has no page yet; keep the roadmap visible without a dead destination. -->
+      <!-- Technical: button[disabled] cannot navigate; disabled styling declared, not inherited. -->
+      <button type="button" class="nav-link nav-link--disabled" disabled title="Settings arrive with the backend API">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar">SL</div>
+        <div class="user-details">
+          <div class="user-name">Sudhar Lab Admin</div>
+          <div class="user-role">Operations</div>
+        </div>
+        <div class="logout-icon" onclick="window.location.href='/admin/login'" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-page-name" id="topbar-page-name">
+        {activeNav === 'dashboard' && 'Good morning 👋'}
+        {activeNav === 'requests' && 'Service Requests'}
+        {activeNav === 'technicians' && 'Technicians'}
+        {activeNav === 'customers' && 'Customers'}
+        {activeNav === 'settings' && 'Settings'}
+      </span>
+    </div>
+
+    <div class="topbar-right">
+      <div class="topbar-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" placeholder="Search requests, customers…" />
+      </div>
+
+      <button class="topbar-btn-primary" onclick="window.location.href='/admin/requests'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Request
+      </button>
+
+      <button class="topbar-icon-btn" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span class="notif-dot"></span>
+      </button>
+
+      <div class="topbar-avatar" title="Account">SL</div>
+    </div>
+  </div>
+
+  <!-- PAGE CONTENT -->
+  <div class="page-wrapper">
+    <main class="page-content">
+      <slot />
+    </main>
+  </div>
+
+  <!-- BOTTOM NAV (mobile only) -->
+  <nav class="bottom-nav">
+    <a href="/admin/dashboard" class={`bn-item ${activeNav === 'dashboard' ? 'active' : ''}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      Home
+      {activeNav === 'dashboard' && <span class="bn-dot"></span>}
+    </a>
+    <a href="/admin/requests" class={`bn-item ${activeNav === 'requests' ? 'active' : ''}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+      Requests
+    </a>
+    <a href="/admin/technicians" class={`bn-item ${activeNav === 'technicians' ? 'active' : ''}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Tech
+    </a>
+    <a href="/admin/customers" class={`bn-item ${activeNav === 'customers' ? 'active' : ''}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      Customers
+    </a>
+  </nav>
+
+  <!-- FLOATING + BUTTON (mobile only) -->
+  <button class="mobile-fab" onclick="window.location.href='/admin/requests'" title="New Request">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+
+</body>
+</html>

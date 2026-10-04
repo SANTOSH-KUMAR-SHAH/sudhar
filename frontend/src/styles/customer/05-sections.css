@@ -1,0 +1,68 @@
+/* Business: Generic section shells.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       SECTION SHELLS
+    ================================================ */
+    .sec {
+      /* Technical: section block padding = φ spacing --sp-6 (89px). */
+      padding: var(--sp-6) 0;
+    }
+
+    .sec--white {
+      background: var(--white);
+    }
+
+    .sec--off {
+      background: var(--bg-off);
+    }
+
+    .sec--navy {
+      background: var(--navy);
+    }
+
+    .sec--deep {
+      background: var(--navy-deep);
+    }
+
+    .sec-head {
+      margin-bottom: var(--sp-4);
+    }
+
+    .sec-head .eyebrow {
+      margin-bottom: var(--sp-2);
+    }
+
+    .sec-head h2 {
+      font-family: var(--font-display);
+      /* Technical: max = φ² rung (--fs-h2). */
+      font-size: clamp(28px, 3.2vw, var(--fs-h2));
+      font-weight: 600;
+      color: var(--navy);
+      letter-spacing: -0.012em;
+      line-height: 1.15;
+      margin-bottom: var(--sp-2);
+    }
+
+    .sec-head h2.light {
+      color: var(--white);
+    }
+
+    .sec-head p {
+      font-size: 16px;
+      color: var(--graphite-mid);
+      line-height: 1.68;
+      max-width: 540px;
+    }
+
+    .sec-head p.light {
+      color: rgba(247, 246, 242, 0.60);
+    }
+
+    .sec-head--center {
+      text-align: center;
+    }
+
+    .sec-head--center p {
+      margin: 0 auto;
+    }
+

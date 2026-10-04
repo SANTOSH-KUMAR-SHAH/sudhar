@@ -1,0 +1,348 @@
+---
+import AdminAuthLayout from '../../layouts/AdminAuthLayout.astro';
+---
+
+<AdminAuthLayout title="Admin Login - Sudhar Lab">
+  
+  <!-- Left Side: Information & Branding -->
+  <aside class="auth-sidebar">
+    <div class="sidebar-content">
+
+      <div class="sidebar-text">
+        <div class="subtitle">ADMIN PORTAL</div>
+        <h1>Keep every request,<br/>technician, and customer<br/>record in order.</h1>
+        <p>Manage Sudhar Lab operations from one organized workspace.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Side: Login Form -->
+  <main class="auth-main">
+    <div class="login-wrapper">
+      <!-- Logo -->
+      <div class="logo right-logo" style="margin-bottom: 2rem; display: flex; justify-content: center;">
+        <img src="/logo.png" alt="Sudhar Lab" style="height: 64px; width: auto;" />
+      </div>
+
+      <div class="login-header">
+        <h2>Welcome back</h2>
+        <p>Sign in to manage Sudhar Lab operations.</p>
+      </div>
+
+      <form class="login-form" id="adminLoginForm">
+        
+        <div class="form-group">
+          <label for="admin-identity">Email or phone number</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <input type="text" id="admin-identity" name="identity" autocomplete="username" placeholder="you@company.com or 98XXXXXXXX" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input type="password" id="admin-password" name="password" autocomplete="current-password" placeholder="Enter your password" required />
+            <button type="button" class="eye-btn" id="adminTogglePassword" title="Toggle visibility" aria-label="Show password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-actions-row">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember" />
+            <span>Remember this device</span>
+          </label>
+          <!-- Business: Password reset needs the email backend; surface intent, never a dead link. -->
+          <!-- Technical: Disabled button communicates unavailability; styling matches the unset state. -->
+          <button type="button" class="forgot-link" disabled title="Password reset arrives with the backend API">Forgot password?</button>
+        </div>
+
+        <p id="adminLoginError" class="form-notice form-notice-error" role="alert" style="display:none"></p>
+
+        <button type="submit" class="btn-submit" id="adminSubmitBtn">
+          Sign in &rarr;
+        </button>
+
+        <div class="help-text">
+          Need access help? Contact your system administrator.
+        </div>
+      </form>
+
+      <div class="footer-note">
+        Authorized Sudhar Lab staff only.<br/>Sudhar Lab Operations
+      </div>
+    </div>
+  </main>
+
+  <script>
+    import "../../features/authentication/login-form.ts";
+  </script>
+
+</AdminAuthLayout>
+
+<style is:global>
+  /* Business: Inline auth errors must be readable without a popup. */
+  /* Technical: Local .form-notice mirrors common/FormNotice for auth pages. */
+  .form-notice { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin: 0.75rem 0; }
+  .form-notice-error { background: #FEE2E2; color: #991B1B; }
+  .btn-submit:disabled { opacity: 0.7; cursor: wait; }
+  /* Logos */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 4rem;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--teal);
+  }
+  .logo-text {
+    font-family: var(--font-h);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .auth-sidebar .logo-text { color: var(--pure-white); }
+  .right-logo {
+    justify-content: center;
+    margin-bottom: 2rem;
+  }
+  .right-logo .logo-text { color: var(--navy); }
+
+  /* Sidebar Typography */
+  .sidebar-content {
+    max-width: 500px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Force text to the very bottom */
+    height: 100%;
+    position: relative;
+    z-index: 10;
+  }
+  .subtitle {
+    color: var(--teal);
+    font-weight: 800;
+    font-size: 0.8125rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .sidebar-text h1 {
+    font-family: var(--font-h);
+    font-size: 2.125rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+  }
+  .sidebar-text p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.5;
+    margin-bottom: 0;
+  }
+
+  /* Right Side Form */
+  .login-wrapper {
+    width: 100%;
+    max-width: 440px;
+  }
+  .login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .login-header h2 {
+    font-family: var(--font-h);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+  .login-header p {
+    color: var(--graphite-mid);
+    font-size: 0.9375rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+
+  .input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-icon {
+    position: absolute;
+    left: 1rem;
+    width: 18px;
+    height: 18px;
+    color: var(--graphite-lt);
+    pointer-events: none;
+  }
+  .input-with-icon input {
+    width: 100%;
+    padding: 0.875rem 1rem 0.875rem 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.9375rem;
+    color: var(--navy);
+    background-color: var(--pure-white);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-with-icon input:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-light);
+  }
+  .eye-btn {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: var(--graphite-lt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .eye-btn svg { width: 18px; height: 18px; }
+
+  .form-actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--navy);
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .checkbox-label input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--teal);
+    cursor: pointer;
+  }
+  .forgot-link {
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    padding: 0;
+    font-family: inherit;
+    cursor: default;
+    color: var(--graphite-mid, #6b7280);
+  }
+
+  .btn-submit {
+    width: 100%;
+    background-color: var(--teal);
+    color: var(--pure-white);
+    border: none;
+    padding: 1rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 1.5rem;
+  }
+  .btn-submit:hover {
+    background-color: var(--teal-hover);
+  }
+
+  .help-text {
+    text-align: center;
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+    margin-bottom: 3rem;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    line-height: 1.6;
+    border-top: 1px solid var(--border);
+    padding-top: 2rem;
+  }
+
+  /* ================================================
+     RESPONSIVE DESIGN
+  ================================================ */
+  @media (max-width: 900px) {
+    .sidebar-text,
+    .illustration-placeholder {
+      display: none; /* Hide large content to focus on auth */
+    }
+    .right-logo {
+      display: none; /* Left logo is already visible */
+    }
+    .logo {
+      margin-bottom: 0;
+    }
+    .login-wrapper {
+      max-width: 100%;
+    }
+    .login-header {
+      margin-bottom: 1.5rem;
+    }
+    .login-header h2 {
+      font-size: 1.75rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-actions-row {
+      margin-bottom: 1.5rem;
+    }
+    .btn-submit {
+      margin-bottom: 1.5rem;
+    }
+    .help-text {
+      margin-bottom: 1.5rem;
+    }
+    .footer-note {
+      padding-top: 1.5rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .login-header h2 {
+      font-size: 1.5rem;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+  }
+</style>

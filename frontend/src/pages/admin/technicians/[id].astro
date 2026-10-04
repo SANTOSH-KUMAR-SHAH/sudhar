@@ -1,0 +1,873 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import StatusBadge from '../../../components/common/StatusBadge.astro';
+import type { ServiceStatusKey } from '../../../lib/service-status';
+import {
+  DEMO_TECHNICIANS,
+  currentJobForTechnician,
+  getDemoCustomer,
+  getDemoTechnician,
+  requestsForTechnician,
+  statusLabel,
+} from '../../../lib/demo-data';
+
+// Business: Every technician in the store gets a real profile page — no silent placeholders.
+// Technical: Paths derive from DEMO_TECHNICIANS; unknown ids 404 like the request pages.
+export function getStaticPaths() {
+  return DEMO_TECHNICIANS.map((t) => ({ params: { id: t.id } }));
+}
+
+const { id } = Astro.params;
+const tech = getDemoTechnician(id ?? '');
+if (!tech) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+// Business: One technician's day — current job, schedule and assigned work are joined
+// Business: from the request store, never kept as a second copy on this page.
+// Technical: All joins happen at render time; when the API replaces demo-data these
+// lines become queries, but no badge, link or count needs to change.
+const job = currentJobForTechnician(tech.id);
+const requests = requestsForTechnician(tech.id);
+const completedCount = requests.filter((r) => r.status === 'COMPLETED').length;
+const schedule = requests.length
+  ? requests.map((r) => {
+      const cust = getDemoCustomer(r.customerId);
+      return {
+        time: r.visitTime ?? 'Time not set',
+        task: `${r.brand} ${r.applianceType} — ${r.problem}`,
+        loc: cust?.area ?? '',
+        reqId: r.id,
+        status: r.status as ServiceStatusKey,
+        state: r.id === job?.id ? 'current' : r.status === 'COMPLETED' ? 'done' : 'upcoming',
+      };
+    })
+  : [{ time: 'All day', task: 'Open for assignment', loc: 'No visits today', reqId: '', status: null as ServiceStatusKey | null, state: 'empty' }];
+const assigned = requests.map((r) => {
+  const cust = getDemoCustomer(r.customerId);
+  return {
+    id: r.id,
+    time: r.receivedAgo,
+    title: `${r.brand} ${r.applianceType} — ${r.problem}`,
+    customer: `${cust?.name ?? 'Unknown'} · ${cust?.area ?? ''}`,
+    status: r.status,
+  };
+});
+const nextAvailable = tech.availability === 'online' && !job ? 'Now' : job ? 'After current visit' : 'Next shift';
+// Business: The banner tells the same truth the roster cards and dashboard chips tell.
+const banner = job
+  ? { type: 'busy', title: 'Currently on a visit', desc: `Working on Request ${job.id} in ${getDemoCustomer(job.customerId)?.area ?? ''}.`, time: `Last active: ${tech.lastActive}` }
+  : tech.availability === 'online'
+    ? { type: 'available', title: 'Available now', desc: 'No active job. Ready to receive a new assignment.', time: `Last active: ${tech.lastActive}` }
+    : { type: 'offline', title: 'Off duty', desc: 'Not accepting visits right now.', time: `Last active: ${tech.lastActive}` };
+---
+
+<AdminDashboardLayout title={`${tech.name} - Technicians - Sudhar Lab`} activeNav="technicians">
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb-row">
+    <a href="/admin/technicians" class="breadcrumb-link">Technicians</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current">{tech.name}</span>
+  </div>
+
+  <div class="profile-layout">
+    
+    <!-- MAIN COLUMN -->
+    <div class="main-col">
+      
+      <!-- HERO -->
+      <div class="hero-card card">
+        <div class="hero-content">
+          <div class="hero-left">
+            <div class="hero-avatar" style={`background-color: ${tech.avatarHue}`}>{id}</div>
+            <div class="hero-info">
+              <h1 class="hero-name">{tech.name}</h1>
+              <div class="hero-sub">{tech.subtitle}</div>
+              <div class="hero-meta-row">
+                <div class="hero-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                  {tech.phone}
+                </div>
+                <div class="hero-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  {tech.techCode}
+                </div>
+                <div class="hero-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                  Joined: {tech.joined}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-right">
+            <div class="hero-status">
+              {job
+                ? <span class="status-dot blue"></span>
+                : tech.availability === 'online'
+                  ? <span class="status-dot green"></span>
+                  : <span class="status-dot grey"></span>}
+              <span class="status-text">{tech.statusLine}</span>
+            </div>
+            <div class="hero-active-time">{tech.lastActive}</div>
+            
+            <div class="hero-actions">
+              <a class="btn-primary" href="/admin/requests">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Assign a request
+              </a>
+              <a class="btn-secondary" href={`tel:${tech.phone.replace(/\s/g, '')}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Contact technician
+              </a>
+              <button class="btn-more" type="button" disabled title="More technician actions arrive with the backend API">
+                More actions
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANNER -->
+      <div class={`banner-card ${banner.type}`}>
+        <div class="banner-left">
+          <div class="banner-icon">
+            {banner.type === 'available'
+              ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              : <span class="banner-bang">!</span>}
+          </div>
+          <div>
+            <div class="banner-title">{banner.title}</div>
+            <div class="banner-desc">{banner.desc}</div>
+          </div>
+        </div>
+        <div class="banner-right">{banner.time}</div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <div class="kpi-val">{requests.length}</div>
+          </div>
+          <div class="kpi-label">Assigned requests</div>
+          <div class="kpi-sub">{completedCount} completed</div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <div class="kpi-val">{job?.id ?? 'None'}</div>
+          </div>
+          <div class="kpi-label">Current job</div>
+          <div class="kpi-sub teal">{job ? statusLabel(job.status) : tech.availability === 'online' ? 'Available for assignment' : 'Offline'}</div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <div class="kpi-val">{tech.completedThisWeek}</div>
+          </div>
+          <div class="kpi-label">Completed this week</div>
+          <div class="kpi-sub">Last 7 days</div>
+        </div>
+        <div class="kpi-card card">
+          <div class="kpi-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <div class="kpi-val">{nextAvailable}</div>
+          </div>
+          <div class="kpi-label">Next available</div>
+          <div class="kpi-sub">{job ? 'Once current visit ends' : 'Ready for assignment'}</div>
+        </div>
+      </div>
+
+      <!-- TODAY'S SCHEDULE -->
+      <div class="section-card card">
+        <div class="section-header">
+          <h2 class="section-title">Today's schedule</h2>
+          <div class="section-sub">Visits and open time for today</div>
+        </div>
+
+        <div class="schedule-list">
+          {schedule.map((item, idx) => (
+            <div class="sched-row">
+              <div class="sched-left">
+                <div class="sched-node-wrap">
+                  <div class={`sched-node ${item.state}`}>
+                    {item.state === 'done' && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                    {item.state === 'current' && <div class="node-inner"></div>}
+                  </div>
+                  {idx < schedule.length - 1 && <div class={`sched-line ${item.state === 'done' ? 'done' : ''}`}></div>}
+                </div>
+                <div class="sched-time">{item.time}</div>
+              </div>
+              <div class="sched-body">
+                <div>
+                  <div class={`sched-task-title ${item.state === 'empty' ? 'empty' : ''}`}>{item.task}</div>
+                  <div class="sched-meta-list">
+                    {item.loc && (
+                      <span class="sched-meta-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        {item.loc}
+                      </span>
+                    )}
+                    {item.reqId && (
+                      <a class="sched-meta-item req-link" href={`/admin/requests/${item.reqId}`}>#{item.reqId}</a>
+                    )}
+                  </div>
+                </div>
+                <div class="sched-actions">
+                  {item.status && <StatusBadge status={item.status} />}
+                  {item.reqId && (
+                    <a class="btn-link" href={`/admin/requests/${item.reqId}`}>Open request</a>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- ASSIGNED REQUESTS -->
+      <div class="section-card card">
+        <div class="section-header">
+          <h2 class="section-title">Assigned requests</h2>
+          <div class="section-sub">Recent work assigned to this technician</div>
+        </div>
+
+        <div class="assigned-list">
+          {assigned.length === 0 ? (
+            <div class="assigned-empty">No requests assigned to this technician yet.</div>
+          ) : (
+            assigned.map(req => (
+              <div class="assigned-row">
+                <div class="assigned-left">
+                  <div class="assigned-id tnum">#{req.id}</div>
+                  <div class="assigned-time">{req.time}</div>
+                </div>
+                <div class="assigned-main">
+                  <div class="assigned-title">{req.title}</div>
+                  <div class="assigned-customer">{req.customer}</div>
+                </div>
+                <div class="assigned-right">
+                  <StatusBadge status={req.status} />
+                  <a class="btn-link" href={`/admin/requests/${req.id}`}>Open request</a>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+    </div><!-- /main-col -->
+
+    <!-- SIDEBAR COLUMN -->
+    <div class="side-col">
+      
+      <!-- TECH INFO CARD -->
+      <div class="side-card card">
+        <h3 class="side-card-title">Technician information</h3>
+        
+        <div class="info-group">
+          <div class="info-label">Appliance skills</div>
+          <div class="chip-list">
+            {tech.skills.map(skill => <span class="chip">{skill}</span>)}
+          </div>
+        </div>
+
+        <div class="info-group">
+          <div class="info-label">Service area</div>
+          <div class="chip-list">
+            {tech.serviceAreas.map(area => (
+              <span class="chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                {area}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div class="info-group">
+          <div class="info-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Availability preference
+          </div>
+          <div class="info-text">{tech.preference}</div>
+        </div>
+      </div>
+
+      <!-- WORKLOAD CARD -->
+      <div class="side-card card">
+        <h3 class="side-card-title with-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Workload
+        </h3>
+        <div class="workload-label">{tech.workload.label}</div>
+        <div class="workload-desc">{tech.workload.desc}</div>
+        <div class="workload-bar">
+          {Array.from({ length: 5 }).map((_: unknown, i: number) => (
+            <div class={`workload-segment ${i < tech.workload.level ? 'filled' : ''}`}></div>
+          ))}
+        </div>
+      </div>
+
+      <!-- RECENT ACTIVITY CARD -->
+      <div class="side-card card">
+        <h3 class="side-card-title with-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          Recent activity
+        </h3>
+        <div class="activity-timeline">
+          {tech.activity.map((act, i) => (
+            <div class="act-row">
+              <div class="act-node-wrap">
+                <div class={`act-node ${i === 0 ? 'solid' : ''}`}></div>
+                {i < tech.activity.length - 1 && <div class="act-line"></div>}
+              </div>
+              <div class="act-body">
+                <div class="act-title">{act.action}</div>
+                <div class="act-desc">{act.desc}</div>
+                <div class="act-time">{act.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- INTERNAL NOTES -->
+      <div class="side-card card internal-notes-card">
+        <h3 class="side-card-title with-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Internal notes
+        </h3>
+        <div class="notes-sub">Visible only to Sudhar Lab admins</div>
+        <p class="notes-text">{tech.notes}</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</AdminDashboardLayout>
+
+<style is:global>
+  /* LAYOUT */
+  .profile-layout {
+    display: grid;
+    /* Technical: minmax(0,1fr) — content can never widen the main track past the viewport. */
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  .main-col { display: flex; flex-direction: column; gap: 1.5rem; }
+  .side-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  /* HERO */
+  .hero-card { padding: 1.5rem 2rem; }
+  .hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 2rem;
+  }
+  .hero-left {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  .hero-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-h);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--pure-white);
+    flex-shrink: 0;
+  }
+  .hero-name {
+    font-family: var(--font-h);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .hero-sub {
+    font-size: 0.9375rem;
+    color: var(--graphite-mid);
+    margin-bottom: 0.75rem;
+  }
+  .hero-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+    font-weight: 500;
+  }
+
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .hero-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .status-dot.green { background: #22C55E; }
+  .status-dot.blue { background: #0284C7; }
+  .status-dot.grey { background: #9CA3AF; }
+  .status-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .hero-active-time {
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    margin-bottom: 1rem;
+  }
+  
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--teal);
+    color: var(--pure-white);
+    border: none;
+    padding: 0.5625rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+  .btn-primary:hover { background: var(--teal-hover); }
+  .btn-secondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--pure-white);
+    color: var(--teal);
+    border: 1px solid var(--teal);
+    padding: 0.5625rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+  .btn-secondary:hover { background: var(--teal-light); }
+  .btn-more {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5625rem 0.5rem;
+  }
+  .btn-more:disabled { opacity: 0.65; cursor: not-allowed; }
+
+  /* BANNER */
+  .banner-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 2rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+  .banner-card.available {
+    background: var(--teal-light);
+    border-color: rgba(12, 124, 130, 0.2);
+  }
+  .banner-card.busy {
+    background: #FEF3C7;
+    border-color: rgba(217, 119, 6, 0.2);
+  }
+  .banner-card.offline {
+    background: var(--bg);
+    border-color: var(--border);
+  }
+  .banner-left { display: flex; align-items: center; gap: 1rem; }
+  .banner-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--pure-white);
+  }
+  .banner-card.available .banner-icon { background: var(--teal); }
+  .banner-card.busy .banner-icon { background: #D97706; }
+  .banner-card.offline .banner-icon { background: #9CA3AF; }
+  /* Business: busy/offline show a "!" glyph; the template picks the icon, CSS only styles it. */
+  .banner-bang { font-weight: 700; font-size: 0.875rem; color: var(--pure-white); }
+  
+  .banner-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.125rem;
+  }
+  .banner-desc {
+    font-size: 0.875rem;
+    color: var(--navy);
+    opacity: 0.8;
+  }
+  .banner-right {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--teal); /* Available color */
+  }
+  .banner-card.busy .banner-right { color: #D97706; }
+  .banner-card.offline .banner-right { color: var(--graphite-lt); }
+
+  /* KPI GRID */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .kpi-card {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .kpi-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .kpi-icon { color: var(--teal); }
+  .kpi-val {
+    font-family: var(--font-h);
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .kpi-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--graphite-mid);
+  }
+  .kpi-sub.teal { color: var(--teal); font-weight: 500; }
+
+  /* SECTION CARDS */
+  .section-card { padding: 1.5rem 2rem; }
+  .section-header { margin-bottom: 1.5rem; }
+  .section-title {
+    font-family: var(--font-h);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .section-sub {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+  }
+
+  /* SCHEDULE LIST */
+  .schedule-list { display: flex; flex-direction: column; }
+  .sched-row {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sched-row:last-child { border-bottom: none; }
+  
+  .sched-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    width: 100px;
+  }
+  .sched-node-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 20px;
+    height: 100%;
+    position: relative;
+    padding-top: 2px;
+  }
+  .sched-node {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--border);
+    background: var(--pure-white);
+    z-index: 2;
+  }
+  .sched-node.done { background: var(--teal); border-color: var(--teal); color: var(--pure-white); }
+  .sched-node.current { border-color: var(--teal); }
+  .node-inner { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  
+  .sched-line {
+    position: absolute;
+    top: 22px;
+    bottom: -1rem;
+    width: 2px;
+    background: var(--border);
+    z-index: 1;
+  }
+  .sched-line.done { background: var(--teal); }
+  
+  .sched-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+    padding-top: 2px;
+  }
+
+  .sched-body {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .sched-task-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.375rem;
+  }
+  .sched-task-title.empty { color: var(--graphite-mid); }
+  
+  .sched-meta-list {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+  }
+  .sched-meta-item { display: flex; align-items: center; gap: 0.375rem; }
+  .req-link { color: var(--graphite-lt); text-decoration: none; }
+  .req-link:hover { color: var(--teal); }
+
+  .sched-actions {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .btn-link {
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-family: var(--font-b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-link:hover { text-decoration: underline; }
+
+  /* ASSIGNED LIST */
+  .assigned-list { display: flex; flex-direction: column; }
+  .assigned-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .assigned-row:last-child { border-bottom: none; }
+  .assigned-empty {
+    font-size: 0.875rem;
+    color: var(--graphite-lt);
+    padding: 0.75rem 0;
+  }
+  .assigned-left { width: 100px; }
+  .assigned-id { font-size: 0.8125rem; font-weight: 600; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .assigned-time { font-size: 0.75rem; color: var(--graphite-lt); }
+  
+  .assigned-main { flex: 1; }
+  .assigned-title { font-size: 0.875rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
+  .assigned-customer { font-size: 0.8125rem; color: var(--graphite-mid); }
+  
+  .assigned-right { display: flex; align-items: center; gap: 2rem; }
+
+  /* SIDEBAR CARDS */
+  .side-card { padding: 1.5rem; }
+  .side-card-title {
+    font-family: var(--font-h);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 1.25rem;
+  }
+  .side-card-title.with-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* INFO GROUPS */
+  .info-group { margin-bottom: 1.25rem; }
+  .info-group:last-child { margin-bottom: 0; }
+  .info-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--graphite-mid);
+    margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 0.375rem;
+  }
+  .info-text { font-size: 0.875rem; color: var(--navy); line-height: 1.4; }
+  
+  .chip-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip {
+    padding: 0.375rem 0.75rem;
+    background: var(--bg-off);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--navy);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .chip svg { color: var(--graphite-lt); }
+
+  /* WORKLOAD BAR */
+  .workload-label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .workload-desc {
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+    margin-bottom: 1rem;
+  }
+  .workload-bar {
+    display: flex;
+    gap: 0.25rem;
+    height: 8px;
+  }
+  .workload-segment {
+    flex: 1;
+    background: var(--bg-off);
+    border-radius: 4px;
+  }
+  .workload-segment.filled { background: var(--teal); }
+
+  /* RECENT ACTIVITY */
+  .activity-timeline { display: flex; flex-direction: column; }
+  .act-row {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+    padding-bottom: 1rem;
+  }
+  .act-row:last-child { padding-bottom: 0; }
+  .act-node-wrap {
+    width: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    padding-top: 4px;
+  }
+  .act-node {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--teal);
+    z-index: 2;
+  }
+  .act-node.solid { background: var(--teal); }
+  .act-line {
+    position: absolute;
+    top: 14px; bottom: -4px;
+    width: 2px;
+    background: var(--border);
+    z-index: 1;
+  }
+  .act-body { flex: 1; }
+  .act-title { font-size: 0.875rem; font-weight: 600; color: var(--navy); margin-bottom: 0.125rem; }
+  .act-desc { font-size: 0.8125rem; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .act-time { font-size: 0.75rem; color: var(--graphite-lt); }
+
+  /* INTERNAL NOTES */
+  .internal-notes-card {
+    border-color: rgba(0,0,0,0.05);
+  }
+  .notes-sub {
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    margin-top: -0.875rem;
+    margin-bottom: 1rem;
+  }
+  .notes-text {
+    font-size: 0.875rem;
+    color: var(--navy);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 1024px) {
+    .profile-layout { grid-template-columns: minmax(0, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 767px) {
+    .profile-hero, .profile-header { gap: 1rem; }
+    .hero-actions, .profile-actions { width: 100%; }
+    .hero-actions .btn, .profile-actions .btn { flex: 1 1 140px; justify-content: center; }
+    .section-card, .side-card { padding: 1rem; }
+    .section-header { margin-bottom: 1rem; }
+    .sched-row { gap: 0.75rem; }
+    .sched-left { width: 72px; gap: 0.5rem; }
+    .sched-body { flex-direction: column; gap: 0.75rem; }
+    .sched-actions { width: 100%; justify-content: space-between; gap: 0.75rem; }
+    .sched-meta-list { flex-wrap: wrap; gap: 0.5rem 0.875rem; }
+    .assigned-row { align-items: flex-start; gap: 0.75rem; }
+    .assigned-left { width: 70px; flex-shrink: 0; }
+    .assigned-right { flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+  }
+
+  @media (max-width: 420px) {
+    .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+    .hero-actions .btn, .profile-actions .btn { flex-basis: 100%; }
+    .assigned-row { flex-wrap: wrap; }
+    .assigned-main { min-width: calc(100% - 82px); }
+    .assigned-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 78px; }
+  }
+</style>

@@ -1,0 +1,21 @@
+---
+// Business: Empty lists (no jobs, no requests) must explain what to do next.
+// Technical: Dumb presentational component; no data fetching inside.
+interface Props {
+  title: string;
+  body?: string;
+  actionLabel?: string;
+  actionHref?: string;
+}
+const { title, body = '', actionLabel, actionHref } = Astro.props as Props;
+---
+<div class="empty-state" role="status">
+  <p class="empty-title">{title}</p>
+  {body && <p class="empty-body">{body}</p>}
+  {actionLabel && actionHref && <a class="btn btn-secondary btn-sm" href={actionHref}>{actionLabel}</a>}
+</div>
+<style>
+  .empty-state { text-align: center; padding: 2rem 1rem; color: var(--graphite-mid, #4A4E52); }
+  .empty-title { font-weight: 700; color: var(--navy, #10263D); margin-bottom: 0.375rem; }
+  .empty-body { font-size: 0.875rem; margin-bottom: 0.75rem; }
+</style>

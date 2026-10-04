@@ -1,0 +1,886 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import StatusBadge from '../../../components/common/StatusBadge.astro';
+import {
+  DEMO_REQUESTS,
+  REQUEST_STEPS,
+  getDemoRequestRecord,
+  getDemoTechnician,
+  getRequestById,
+} from '../../../lib/demo-data';
+
+// Business: One service case, shown end to end — this page never keeps a second copy of it.
+// Technical: getStaticPaths derives from the demo store, so every built path has a real
+// record and unknown URLs hit the 404 page instead of a placeholder case.
+export function getStaticPaths() {
+  return DEMO_REQUESTS.map((r) => ({ params: { id: r.id } }));
+}
+
+const { id } = Astro.params;
+const req = getRequestById(id ?? '');
+const record = getDemoRequestRecord(id ?? '');
+if (!req || !record) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+// Business: The technician shown on the case is joined from the assignment, not retyped.
+const assignedTechnician = record.technicianId ? getDemoTechnician(record.technicianId) : undefined;
+// Business: Next-step buttons do real things when the target exists (call, assign, view tech).
+// Technical: tel:/in-app hrefs are resolved server-side; anything else renders a disabled button.
+const nextActionHref =
+  req.nextAction === 'Call and confirm' || req.nextAction === 'Follow up with customer'
+    ? `tel:${req.phone.replace(/\s/g, '')}`
+    : req.nextAction === 'Assign technician'
+      ? '/admin/technicians'
+      : req.nextAction === 'View technician' && assignedTechnician
+        ? `/admin/technicians/${assignedTechnician.id}`
+        : null;
+
+---
+
+<AdminDashboardLayout title={`${req.title} - Sudhar Lab Admin`} activeNav="requests">
+
+  <!-- BREADCRUMB HEADER -->
+  <div class="breadcrumb-row">
+    <a href="/admin/requests" class="breadcrumb-link">Requests</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current tnum">#{id}</span>
+  </div>
+
+  <div class="request-layout">
+
+    <!-- MAIN COLUMN -->
+    <div class="main-col">
+
+      <!-- HERO -->
+      <div class="req-hero">
+        <div class="hero-left">
+          <div class="hero-top">
+            <h1 class="req-title">{req.title}</h1>
+            <StatusBadge status={req.status} />
+          </div>
+          <div class="hero-meta">
+            <span class="meta-chip">{req.customerName}</span>
+            <span class="dot-sep">·</span>
+            <span class="meta-chip">{req.address.split(',')[0]}</span>
+            <span class="dot-sep">·</span>
+            <span class="meta-chip">Received {req.receivedAgo}</span>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <a class="btn-call" href={`tel:${req.phone.replace(/\s/g, '')}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            Call customer
+          </a>
+          <div class="more-actions-wrap">
+            <button class="btn-more" onclick="this.nextElementSibling.classList.toggle('open')">
+              More actions
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="more-dropdown">
+              <button class="dropdown-item" type="button" disabled title="Available after backend API">Mark as cancelled</button>
+              <button class="dropdown-item" type="button" disabled title="Available after backend API">Reassign technician</button>
+              <button class="dropdown-item danger" type="button" disabled title="Available after backend API">Delete request</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATUS PROGRESS TRACKER -->
+      <div class="progress-tracker card">
+        {REQUEST_STEPS.map((step, i) => (
+          <div class={`progress-step ${i + 1 < req.currentStep ? 'done' : ''} ${i + 1 === req.currentStep ? 'active' : ''}`}>
+            <div class="step-circle">
+              {i + 1 < req.currentStep ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              ) : (
+                <span>{i + 1}</span>
+              )}
+            </div>
+            {i < REQUEST_STEPS.length - 1 && <div class={`step-line ${i + 1 < req.currentStep ? 'done' : ''}`}></div>}
+            <div class="step-label">{step}</div>
+          </div>
+        ))}
+      </div>
+
+      <!-- REQUEST DETAILS -->
+      <div class="card section-card">
+        <h2 class="section-title">Request details</h2>
+        <div class="details-grid">
+          <div class="details-left">
+            <div class="detail-row">
+              <div class="detail-label">Appliance type</div>
+              <div class="detail-value">{req.applianceType}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Brand</div>
+              <div class="detail-value">{req.brand}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Model</div>
+              <div class="detail-value">{req.model}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Problem</div>
+              <div class="detail-value">{req.problem}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Preferred visit</div>
+              <div class="detail-value">{req.preferredVisit}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Submitted</div>
+              <div class="detail-value">{req.submitted}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Address</div>
+              <div class="detail-value">{req.address}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Extra notes</div>
+              <div class="detail-value">{req.extraNotes}</div>
+            </div>
+          </div>
+          <div class="details-right">
+            <div class="detail-label">Problem description</div>
+            <p class="problem-desc">{req.problemDesc}</p>
+
+            {req.photoCount > 0 && (
+              <div class="attachments-section">
+                <div class="detail-label">Attachments</div>
+                <div class="photo-grid">
+                  {Array.from({length: req.photoCount}).map(() => (
+                    <div class="photo-thumb-lg"></div>
+                  ))}
+                </div>
+                <span class="view-attach-link is-disabled" aria-disabled="true" title="Photo viewer arrives with private Storage + signed URLs">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                  View attachments
+                </span>
+                <div class="photo-count-label">{req.photoCount} photos</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY TIMELINE -->
+      <div class="card section-card">
+        <h2 class="section-title">Activity timeline</h2>
+        <div class="activity-timeline">
+          {req.timeline.map((entry) => (
+            <div class={`timeline-event ${entry.done ? 'done' : ''} ${entry.current ? 'current' : ''}`}>
+              <div class="tl-icon">
+                {entry.done && !entry.current && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                )}
+                {entry.current && (
+                  <div class="tl-dot-inner"></div>
+                )}
+              </div>
+              <div class="tl-body">
+                <div class="tl-title-row">
+                  <span class="tl-title">{entry.title}</span>
+                  {entry.current && <span class="next-action-badge">Next action</span>}
+                </div>
+                <div class="tl-desc">{entry.desc}</div>
+                {entry.time && <div class="tl-time">{entry.time}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- DIAGNOSIS SECTION -->
+      <div class="card section-card">
+        <h2 class="section-title">Diagnosis and repair</h2>
+        {record.diagnosis ? (
+          <div class="details-grid">
+            <div class="details-left">
+              <div class="detail-row">
+                <div class="detail-label">Fault identified</div>
+                <div class="detail-value">{record.diagnosis.fault}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Proposed repair</div>
+                <div class="detail-value">{record.diagnosis.proposal}</div>
+              </div>
+            </div>
+            <div class="details-right">
+              <div class="detail-row">
+                <div class="detail-label">Submitted by</div>
+                <div class="detail-value">{assignedTechnician?.name ?? 'Technician'} · {record.diagnosis.submittedAt}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Approval</div>
+                <div class="detail-value">{req.status === 'PRICE_APPROVAL' ? 'Waiting for customer approval' : 'Customer approved — repair proceeding'}</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div class="diagnosis-empty">
+            <div class="diagnosis-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            </div>
+            <div>
+              <div class="diagnosis-title">Diagnosis not submitted yet</div>
+              <div class="diagnosis-desc">The technician's findings and repair price will appear here after the visit.</div>
+              <div class="diagnosis-locked">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Available after technician visit
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div><!-- /main-col -->
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar-col">
+
+      <!-- CUSTOMER CARD -->
+      <div class="side-card">
+        <h3 class="side-card-title">Customer</h3>
+        <div class="side-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span class="side-value">{req.customerName}</span>
+        </div>
+        <div class="side-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          <span class="side-value">{req.phone}</span>
+        </div>
+        <div class="side-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <span class="side-value">{req.address}</span>
+        </div>
+        <div class="side-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span class="side-label-inline">Preferred visit:</span>
+          <span class="side-value">{req.preferredVisit}</span>
+        </div>
+        <a class="btn-side-call" href={`tel:${req.phone.replace(/\s/g, '')}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          Call customer
+        </a>
+        <a class="side-link" href={`/admin/customers/${record.customerId}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          Open customer record
+        </a>
+      </div>
+
+      <!-- APPLIANCE CARD -->
+      <div class="side-card">
+        <h3 class="side-card-title">Appliance</h3>
+        <div class="side-appliance">
+          <div class="side-appliance-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M5 5h2"/></svg>
+          </div>
+          <div>
+            <div class="side-value">{req.applianceType}</div>
+            <div class="side-meta">{req.brand}</div>
+            <div class="side-meta">{req.model === 'Not provided' ? 'Model not provided' : `Model ${req.model}`}</div>
+            <div class="side-meta">Problem: {req.problem}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEXT STEP CARD -->
+      <div class="side-card next-step-card">
+        <div class="next-step-header">
+          <div class="next-step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+          <h3 class="side-card-title" style="margin-bottom:0">Next step</h3>
+        </div>
+        <p class="next-step-desc">{req.nextStep}</p>
+        {nextActionHref ? (
+          <a class="btn-next-action" href={nextActionHref}>
+            {nextActionHref.startsWith('tel:') ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            )}
+            {req.nextAction}
+          </a>
+        ) : (
+          <button class="btn-next-action" type="button" disabled title="Available after backend API">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            {req.nextAction}
+          </button>
+        )}
+        <span class="side-cancel-link is-disabled" aria-disabled="true" title="Cancellation follows Order-Confirmed rules — wire to the API when the backend exists">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          Mark as cancelled
+        </span>
+      </div>
+
+      <!-- INTERNAL NOTE -->
+      {req.internalNote && (
+        <div class="side-card internal-note-card">
+          <div class="internal-note-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span class="internal-note-label">Internal note</span>
+          </div>
+          <div class="internal-note-sub">Only visible to Sudhar Lab admins</div>
+          <p class="internal-note-text">{req.internalNote}</p>
+          <span class="side-link is-disabled" aria-disabled="true" title="Note editing arrives with the backend API">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            Edit note
+          </span>
+        </div>
+      )}
+
+      <!-- METADATA -->
+      <div class="side-card metadata-card">
+        <div class="meta-row"><span class="meta-key">Request ID</span><span class="meta-val">#{id}</span></div>
+        <div class="meta-row"><span class="meta-key">Created</span><span class="meta-val">{req.createdAt}</span></div>
+        <div class="meta-row"><span class="meta-key">Last updated</span><span class="meta-val">{req.lastUpdated}</span></div>
+        <div class="meta-row"><span class="meta-key">Source</span><span class="meta-val">{req.source}</span></div>
+      </div>
+
+    </aside><!-- /sidebar-col -->
+
+  </div>
+
+</AdminDashboardLayout>
+
+<style is:global>
+  /* LAYOUT */
+  .request-layout {
+    display: grid;
+    /* Technical: minmax(0,1fr) — content can never widen the main track past the viewport. */
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  .main-col { display: flex; flex-direction: column; gap: 1.25rem; }
+  .sidebar-col { display: flex; flex-direction: column; gap: 1rem; }
+
+  /* HERO */
+  .req-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .hero-top {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+  .req-title {
+    font-family: var(--font-h);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    color: var(--graphite-mid);
+    flex-wrap: wrap;
+  }
+  .dot-sep { color: var(--graphite-lt); }
+  .hero-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .btn-call {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--teal);
+    color: var(--pure-white);
+    text-decoration: none;
+    border: none;
+    padding: 0.625rem 1.125rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+  }
+  .btn-call:hover { background-color: var(--teal-hover); }
+
+  .more-actions-wrap { position: relative; }
+  .btn-more {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: var(--pure-white);
+    border: 1px solid var(--border);
+    padding: 0.625rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .more-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    background: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    min-width: 180px;
+    z-index: 50;
+    overflow: hidden;
+  }
+  .more-dropdown.open { display: block; }
+  .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    text-align: left;
+    font-family: var(--font-b);
+    font-size: 0.875rem;
+    color: var(--navy);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .dropdown-item:hover { background-color: var(--bg-off); }
+  .dropdown-item.danger { color: #EF4444; }
+
+  /* PROGRESS TRACKER */
+  .progress-tracker {
+    display: flex;
+    align-items: flex-start;
+    padding: 1.25rem 1.5rem 1.75rem;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 80px;
+    position: relative;
+  }
+  .step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--pure-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--graphite-lt);
+    z-index: 2;
+    flex-shrink: 0;
+  }
+  .progress-step.done .step-circle {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: var(--pure-white);
+  }
+  .progress-step.active .step-circle {
+    border-color: var(--teal);
+    color: var(--teal);
+    box-shadow: 0 0 0 3px var(--teal-light);
+  }
+  .step-line {
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    z-index: 1;
+  }
+  .step-line.done { background: var(--teal); }
+  .step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--graphite-lt);
+    text-align: center;
+    margin-top: 0.5rem;
+    line-height: 1.3;
+  }
+  .progress-step.done .step-label { color: var(--teal); font-weight: 600; }
+  .progress-step.active .step-label { color: var(--navy); font-weight: 700; }
+
+  /* SECTION CARD */
+  /* Technical: Frame comes from the layout's .card; this page owns only the padding. */
+  .section-card { padding: 1.5rem; }
+  .section-title {
+    font-family: var(--font-h);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 1.25rem;
+  }
+
+  /* DETAILS GRID */
+  .details-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+  }
+  .detail-row { margin-bottom: 1rem; }
+  .detail-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--graphite-lt);
+    margin-bottom: 0.25rem;
+  }
+  .detail-value {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--navy);
+  }
+  .problem-desc {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--graphite-mid);
+    margin-bottom: 1.25rem;
+  }
+  .attachments-section { margin-top: 1rem; }
+  .photo-grid {
+    display: flex;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+  }
+  .photo-thumb-lg {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #E0E7EF 0%, #C8D6E8 100%);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .photo-thumb-lg:hover { opacity: 0.8; }
+  .view-attach-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--teal);
+    text-decoration: none;
+    margin-right: 0.75rem;
+  }
+  .photo-count-label {
+    display: inline;
+    font-size: 0.8125rem;
+    color: var(--graphite-lt);
+  }
+
+  /* ACTIVITY TIMELINE */
+  .activity-timeline { display: flex; flex-direction: column; gap: 0; }
+  .timeline-event {
+    display: flex;
+    gap: 1rem;
+    padding: 0.875rem 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .timeline-event:last-child { border-bottom: none; }
+  .tl-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-off);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .timeline-event.done .tl-icon {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: var(--pure-white);
+  }
+  .timeline-event.current .tl-icon {
+    background: var(--gold-light, #FFF8EB);
+    border-color: #E8A324;
+  }
+  .tl-dot-inner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #E8A324;
+  }
+  .tl-body { flex: 1; }
+  .tl-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-bottom: 0.25rem;
+  }
+  .tl-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .timeline-event.current .tl-title { color: #D97706; }
+  .next-action-badge {
+    padding: 0.125rem 0.5rem;
+    background: #FFF3CD;
+    font-size: 0.75rem;
+    color: #D97706;
+    border-radius: 20px;
+    font-weight: 700;
+  }
+  .tl-desc {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+    margin-bottom: 0.25rem;
+  }
+  .tl-time {
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+  }
+
+  /* DIAGNOSIS */
+  .diagnosis-empty {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    background: var(--bg-off);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+  .diagnosis-icon {
+    color: var(--graphite-lt);
+    flex-shrink: 0;
+  }
+  .diagnosis-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .diagnosis-desc {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+    margin-bottom: 0.5rem;
+  }
+  .diagnosis-locked {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    font-weight: 500;
+  }
+
+  /* SIDEBAR CARDS */
+  .side-card {
+    background: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .side-card-title {
+    font-family: var(--font-h);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.875rem;
+  }
+  .side-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+  }
+  .side-field svg { margin-top: 2px; flex-shrink: 0; color: var(--graphite-lt); }
+  .side-value { font-weight: 500; color: var(--navy); }
+  .side-label-inline { color: var(--graphite-lt); font-size: 0.875rem; }
+  .side-meta { font-size: 0.8125rem; color: var(--graphite-mid); margin-top: 0.125rem; }
+
+  .btn-side-call {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: var(--pure-white);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 0.625rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+    cursor: pointer;
+    margin-top: 0.875rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s;
+  }
+  .btn-side-call:hover { border-color: var(--teal); color: var(--teal); }
+  .side-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--teal);
+    text-decoration: none;
+  }
+  .side-link:hover { text-decoration: underline; }
+
+  /* APPLIANCE */
+  .side-appliance {
+    display: flex;
+    gap: 0.875rem;
+    align-items: flex-start;
+  }
+  .side-appliance-icon {
+    width: 48px;
+    height: 48px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-off);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--graphite-mid);
+  }
+
+  /* NEXT STEP */
+  .next-step-card { }
+  .next-step-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .next-step-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #FFF8EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #E8A324;
+    flex-shrink: 0;
+  }
+  .next-step-desc {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  .btn-next-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: var(--teal);
+    color: var(--pure-white);
+    text-decoration: none;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-family: var(--font-b);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+    transition: background-color 0.2s;
+  }
+  .btn-next-action:hover { background-color: var(--teal-hover); }
+  /* Business: Unavailable demo actions must look honestly inactive, not broken. */
+  /* Technical: Shared disabled treatment for buttons and aria-disabled spans. */
+  .btn-next-action:disabled, .btn-side-call:disabled { opacity: 0.65; cursor: not-allowed; }
+  .is-disabled { opacity: 0.65; cursor: not-allowed; }
+  .side-cancel-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--graphite-mid);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .side-cancel-link:hover { color: #EF4444; }
+
+  /* INTERNAL NOTE */
+  .internal-note-card { background: #FFFBF0; border-color: #FDE68A; }
+  .internal-note-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .internal-note-label { font-size: 0.875rem; font-weight: 700; color: var(--navy); }
+  .internal-note-sub { font-size: 0.75rem; color: var(--graphite-lt); margin-bottom: 0.625rem; }
+  .internal-note-text { font-size: 0.875rem; color: var(--graphite-mid); line-height: 1.5; margin-bottom: 0.75rem; }
+
+  /* METADATA */
+  .metadata-card { padding: 1rem 1.25rem; }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .meta-row:last-child { border-bottom: none; }
+  .meta-key { font-size: 0.75rem; color: var(--graphite-lt); }
+  .meta-val { font-size: 0.75rem; font-weight: 600; color: var(--navy); }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) {
+    .request-layout { grid-template-columns: minmax(0, 1fr); }
+    .sidebar-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    .details-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  @media (max-width: 767px) {
+    .main-col, .sidebar-col { min-width: 0; }
+    .request-header { gap: 1rem; }
+    .request-header-actions, .header-actions { width: 100%; flex-wrap: wrap; }
+    .request-header-actions .btn, .header-actions .btn { flex: 1 1 140px; justify-content: center; }
+    .progress-steps { overflow-x: auto; padding-bottom: 0.5rem; }
+    .progress-step { min-width: 92px; }
+    .sidebar-col { grid-template-columns: minmax(0, 1fr); }
+    .side-card { padding: 1rem; }
+    .details-grid { gap: 0; }
+    .photo-grid { overflow-x: auto; padding-bottom: 0.25rem; }
+    .diagnosis-empty { gap: 0.875rem; padding: 1rem; }
+    .tl-title-row { align-items: flex-start; flex-wrap: wrap; gap: 0.375rem; }
+  }
+
+  @media (max-width: 420px) {
+    .section-card { padding: 1rem; }
+    .request-header-actions .btn, .header-actions .btn { flex-basis: 100%; }
+  }
+</style>

@@ -1,0 +1,134 @@
+/* Business: Scroll motion system.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       SCROLL MOTION SYSTEM â€” Era Principle Translation
+       Sudhar Lab: Repair Service (not luxury property)
+       Every effect must serve the SERVICE narrative:
+       Help arriving â†’ Toolkit organised â†’ Listening â†’ Service lifecycle â†’ Promises settling â†’ Case closed
+    ================================================ */
+
+    /* Shared timing additions */
+    :root {
+      --ease-arrive: cubic-bezier(0.0, 0, 0.2, 1);
+      --ease-depart: cubic-bezier(0.4, 0, 1.0, 1);
+      --ease-settle: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* â”€â”€ HERO â€” Professional multi-layer parallax â”€â”€ */
+    /* Background starts scaled 35% larger so it has room to travel
+       downward during scroll without ever revealing edges.
+       The JS entry animation breathes from scale(1.35) â†’ scale(1.2) on load. */
+    .hero-bg img {
+      will-change: transform;
+      transform-origin: center center;
+      transform: scale(1.35) translateZ(0); /* matches JS entry start scale */
+    }
+
+    /* Text layer: mid-ground. will-change covers both transform + opacity. */
+    .hero-inner {
+      will-change: transform, opacity;
+    }
+
+    /* Accessibility: users with motion sensitivity get a clean static layout */
+    @media (prefers-reduced-motion: reduce) {
+      .hero-bg img {
+        will-change: auto;
+        transform: scale(1) translateZ(0) !important;
+        transition: none !important;
+      }
+      .hero-inner {
+        will-change: auto;
+        transform: none !important;
+        opacity: 1 !important;
+      }
+    }
+
+    /* â”€â”€ SERVICES STAGGER â€” bidirectional (toolkit laid out methodically) â”€â”€ */
+    .svc-card {
+      transition:
+        border-color 0.30s var(--ease),
+        box-shadow 0.30s var(--ease);
+    }
+
+
+
+    /* â”€â”€ FOOTER CASE-CLOSE â€” page contracts like closing a service file â”€â”€ */
+    .final-cta {
+      will-change: clip-path, border-radius;
+    }
+
+    /* â”€â”€ AMBIENT WRENCH â€” tiny, always watching â”€â”€ */
+    .nav-wrench {
+      width: 22px;
+      height: 22px;
+      margin-left: 8px;
+      color: var(--teal);
+      opacity: 0.75;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      will-change: transform;
+      transition: opacity 0.3s;
+      transform-origin: 40% 60%;
+    }
+
+    #nav.stuck .nav-wrench {
+      opacity: 0.9;
+    }
+
+    /* â”€â”€ FAQ section â€” intentionally quiet, no parallax â”€â”€ */
+
+    /* â”€â”€ REDUCED MOTION OVERRIDES (Handled mostly via GSAP matchMedia) â”€â”€ */
+    @media (prefers-reduced-motion: reduce) {
+      .trust-title {
+        word-spacing: 0em !important;
+        transition: none !important;
+      }
+    }
+
+    /* â”€â”€ MOBILE â”€â”€ */
+    @media (max-width: 768px) {
+      .nav-wrench {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-h1 {
+        font-size: 34px;
+      }
+
+      .app-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .app-opt-img {
+        height: 48px;
+      }
+
+      .app-opt-label {
+        font-size: 12px;
+      }
+
+      .hiw-media-frame {
+        height: 230px;
+      }
+
+    .hiw-step-pill {
+      font-size: 10.5px;
+        padding: 6px 12px;
+      }
+
+      .hiw-caption-title {
+        font-size: 14px;
+      }
+
+      /* Prevent iOS from zooming a service form on focus and retain comfortable tap targets. */
+      input,
+      select,
+      textarea {
+        font-size: 16px;
+      }
+    }

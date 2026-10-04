@@ -1,0 +1,363 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import StatusBadge from '../../../components/common/StatusBadge.astro';
+import {
+  DEMO_REQUESTS,
+  completedRequests,
+  getRequestSummary,
+  liveJobRequests,
+  needsActionRequests,
+} from '../../../lib/demo-data';
+
+// Business: This table is the full queue — the same records the dashboard and detail
+// Business: pages show, read from one store so an ID or status can never disagree.
+// Technical: Rows and every filter/tab option derive from demo-data selectors; adding
+// a request in the data layer appears here, in the pills and in the dropdowns at once.
+const rows = DEMO_REQUESTS.map(getRequestSummary);
+const actionIds = new Set(needsActionRequests().map((r) => r.id));
+const activeIds = new Set(liveJobRequests().map((r) => r.id));
+const doneIds = new Set(completedRequests().map((r) => r.id));
+// Business: A row can need action and be "live" at once (e.g. price approval).
+// Technical: Membership is stamped per row; the client filter never re-lists statuses.
+const tabsFor = (id: string) =>
+  [actionIds.has(id) && 'action', activeIds.has(id) && 'active', doneIds.has(id) && 'done']
+    .filter(Boolean)
+    .join(' ');
+const applianceTypes = [...new Set(DEMO_REQUESTS.map((r) => r.applianceType))];
+const technicianNames = [...new Set(rows.map((r) => r.technicianName).filter((n): n is string => !!n))];
+const areaNames = [...new Set(rows.map((r) => r.area).filter(Boolean))];
+---
+
+<AdminDashboardLayout title="Requests - Sudhar Lab Admin" activeNav="requests">
+
+  <!-- HEADER -->
+  <div class="rq-header">
+    <div>
+      <h1 class="rq-title">Service Requests</h1>
+      <p class="rq-sub">Every request, from submission to billing</p>
+    </div>
+    <button class="btn btn-primary" type="button" disabled title="Manual phone-order entry arrives with the backend API">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      New Request
+    </button>
+  </div>
+
+  <!-- SMART TABS -->
+  <div class="rq-tabs">
+    <button class="rq-tab" id="tab-action" onclick="switchTab('action')">
+      Needs Action
+      <span class="tab-pill urgent">{actionIds.size}</span>
+    </button>
+    <button class="rq-tab active" id="tab-all" onclick="switchTab('all')">
+      All
+      <span class="tab-pill">{rows.length}</span>
+    </button>
+    <button class="rq-tab" id="tab-active" onclick="switchTab('active')">In Progress</button>
+    <button class="rq-tab" id="tab-done" onclick="switchTab('done')">Completed</button>
+  </div>
+
+  <!-- SEARCH + SIMPLE FILTERS -->
+  <div class="rq-filter-bar">
+    <div class="rq-search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="rqSearch" placeholder="Search by ID, customer, area, or appliance…" class="rq-search" />
+    </div>
+    <div class="rq-filter-chips">
+      <select class="filter-select" id="rqFilterAppliance">
+        <option value="">All Appliances</option>
+        {applianceTypes.map((type) => <option>{type}</option>)}
+      </select>
+      <select class="filter-select" id="rqFilterTech">
+        <option value="">All Technicians</option>
+        {technicianNames.map((name) => <option>{name}</option>)}
+      </select>
+      <select class="filter-select" id="rqFilterArea">
+        <option value="">All Areas</option>
+        {areaNames.map((name) => <option>{name}</option>)}
+      </select>
+    </div>
+  </div>
+
+  <!-- REQUESTS TABLE -->
+  <div class="rq-table-card card">
+    <table class="rq-table">
+      <thead>
+        <tr>
+          <th>Request</th>
+          <th>Customer &amp; Area</th>
+          <th>Status</th>
+          <th>Technician</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(req => (
+          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} data-tabs={tabsFor(req.id)} data-appliance={req.appliance} data-technician={req.technicianName ?? ''} data-area={req.area} data-search={`${req.id} ${req.customerName} ${req.area} ${req.appliance}`.toLowerCase()} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
+            <td>
+              <div class="req-id-cell">
+                {req.urgent && <div class="urgent-dot"></div>}
+                <div>
+                  <div class="req-id tnum">{req.id}</div>
+                  <div class="req-appliance">{req.appliance}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="req-customer">{req.customerName}</div>
+              <div class="req-area">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>
+                {req.area}
+              </div>
+            </td>
+            <td>
+              <StatusBadge status={req.status} />
+              <div class="req-time">{req.updatedAgo}</div>
+            </td>
+            <td>
+              {req.technicianName
+                ? <div class="req-tech">
+                    <div class="req-tech-av">{req.technicianName.charAt(0)}</div>
+                    {req.technicianName}
+                  </div>
+                : <span class="no-tech">—</span>
+              }
+            </td>
+            <td data-stop-prop>
+              <div class="req-action-cell">
+                {req.status === 'NEW_REQUEST'     && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Call &amp; Confirm</a>}
+                {req.status === 'ORDER_CONFIRMED' && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Assign</a>}
+                {req.status === 'PRICE_APPROVAL'  && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Follow Up</a>}
+                {!['NEW_REQUEST', 'ORDER_CONFIRMED', 'PRICE_APPROVAL'].includes(req.status) && <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>Open</a>}
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+</AdminDashboardLayout>
+
+<script is:inline>
+// Business: Tabs + search + filters narrow the same table so admin finds work fast.
+// Technical: Single applyFilters() combining active tab, search text and 3 selects.
+// Tab membership lives in each row's data-tabs attribute, computed server-side from
+// demo-data — this script never re-lists statuses, so it cannot drift from the data.
+let activeTab = 'all';
+function matchesTab(row) {
+  if (activeTab === 'all') return true;
+  return (row.getAttribute('data-tabs') || '').split(' ').includes(activeTab);
+}
+function applyFilters() {
+  const q = (document.getElementById('rqSearch')?.value || '').toLowerCase().trim();
+  const fa = document.getElementById('rqFilterAppliance')?.value || '';
+  const ft = document.getElementById('rqFilterTech')?.value || '';
+  const ar = document.getElementById('rqFilterArea')?.value || '';
+  document.querySelectorAll('.rq-row').forEach((row) => {
+    const appliance = row.getAttribute('data-appliance') || '';
+    const tech = row.getAttribute('data-technician') || '';
+    const area = row.getAttribute('data-area') || '';
+    const search = row.getAttribute('data-search') || '';
+    const ok =
+      matchesTab(row) &&
+      (!fa || appliance.includes(fa)) &&
+      (!ft || tech === ft) &&
+      (!ar || area === ar) &&
+      (!q || search.includes(q));
+    row.style.display = ok ? '' : 'none';
+  });
+}
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.rq-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById(`tab-${tab}`);
+  if (el) el.classList.add('active');
+  applyFilters();
+}
+
+// Business: Action buttons inside a row must not trigger the row navigation.
+// Technical: Stop click propagation on action cells (replaces deprecated inline event handler).
+document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
+  cell.addEventListener('click', (e) => e.stopPropagation());
+});
+document.getElementById('rqSearch')?.addEventListener('input', applyFilters);
+document.getElementById('rqFilterAppliance')?.addEventListener('change', applyFilters);
+document.getElementById('rqFilterTech')?.addEventListener('change', applyFilters);
+document.getElementById('rqFilterArea')?.addEventListener('change', applyFilters);
+</script>
+
+<style is:global>
+  .rq-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  .rq-title {
+    font-family: var(--font-h); font-size: 1.75rem; font-weight: 800; color: var(--navy);
+  }
+  .rq-sub { color: var(--graphite-lt); font-size: 0.875rem; margin-top: 0.25rem; }
+
+  /* Tabs */
+  .rq-tabs {
+    display: flex; gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .rq-tab {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.125rem;
+    background: none; border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    font-family: var(--font-b); font-size: 0.875rem; font-weight: 500;
+    color: var(--graphite-mid); cursor: pointer; white-space: nowrap;
+  }
+  .rq-tab:hover { color: var(--navy); }
+  .rq-tab.active {
+    color: var(--teal); font-weight: 700;
+    border-bottom-color: var(--teal);
+  }
+  .tab-pill {
+    font-size: 0.75rem; font-weight: 700;
+    padding: 0.125rem 0.5rem; border-radius: 20px;
+    background: var(--border); color: var(--graphite-mid);
+  }
+  .tab-pill.urgent { background: #FEE2E2; color: #DC2626; }
+
+  /* Filter bar */
+  .rq-filter-bar {
+    display: flex; align-items: center; gap: 0.875rem;
+    margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .rq-search-wrap {
+    position: relative; flex: 1; min-width: 260px;
+  }
+  .rq-search-wrap svg {
+    position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+    color: var(--graphite-lt);
+  }
+  .rq-search {
+    width: 100%;
+    padding: 0.5625rem 1rem 0.5625rem 2.25rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--font-b); font-size: 0.875rem;
+    background: var(--pure-white); color: var(--navy); outline: none;
+  }
+  .rq-search:focus { border-color: var(--teal); }
+
+  .rq-filter-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .filter-select {
+    appearance: none;
+    background: var(--pure-white); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    font-family: var(--font-b); font-size: 0.8125rem; color: var(--navy);
+    cursor: pointer; outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8186' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+  }
+
+  /* Table */
+  .rq-table-card { overflow: hidden; }
+  .rq-table { width: 100%; border-collapse: collapse; }
+  .rq-table thead th {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.75rem; font-weight: 700; color: var(--graphite-mid);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    text-align: left; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .rq-row {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.12s;
+  }
+  .rq-row:last-child { border-bottom: none; }
+  .rq-row:hover { background: #FAFBFC; }
+  .rq-row:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; background: #FAFBFC; }
+  .rq-row.row-urgent { border-left: 3px solid #EF4444; }
+  .rq-row.row-urgent td:first-child { padding-left: calc(1.25rem - 3px); }
+  .rq-table td { padding: 1rem 1.25rem; vertical-align: middle; }
+
+  .req-id-cell { display: flex; align-items: center; gap: 0.5rem; }
+  .urgent-dot { width: 8px; height: 8px; border-radius: 50%; background: #EF4444; flex-shrink: 0; }
+  .req-id { font-size: 0.875rem; font-weight: 700; color: var(--teal); }
+  .req-appliance { font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem; }
+
+  .req-customer { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+  .req-area {
+    display: flex; align-items: center; gap: 0.25rem;
+    font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
+  }
+  .req-time { font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.25rem; }
+
+  .req-tech {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.875rem; font-weight: 500; color: var(--navy);
+  }
+  .req-tech-av {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--teal); color: #fff;
+    font-size: 0.6875rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .no-tech { color: var(--graphite-lt); font-size: 0.875rem; }
+
+  .req-action-cell { display: flex; }
+
+  /* ─── MOBILE ──────────────────────────────── */
+  @media (max-width: 767px) {
+    /* Header stacks on mobile */
+    .rq-header { flex-direction: column; gap: 0.75rem; }
+
+    /* Tabs scroll horizontally */
+    .rq-tabs {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .rq-tabs::-webkit-scrollbar { display: none; }
+    .rq-tab { white-space: nowrap; padding: 0.625rem 0.875rem; }
+
+    /* Filter bar stacks */
+    .rq-filter-bar { flex-direction: column; align-items: stretch; gap: 0.625rem; }
+    .rq-search-wrap { min-width: unset; }
+    .rq-filter-chips { flex-wrap: wrap; }
+    .filter-select { flex: 1; min-width: 130px; }
+
+    /* CONVERT TABLE TO CARD STACK */
+    .rq-table-card { background: transparent; border: none; overflow: visible; }
+    .rq-table thead { display: none; }  /* hide column headers */
+
+    .rq-table tbody { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .rq-row {
+      display: grid;
+      /* Technical: minmax(0,1fr) so a long appliance name cannot squeeze the status track. */
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "id   status"
+        "cust cust"
+        "act  act";
+      gap: 0.5rem 0.75rem;
+      background: var(--pure-white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      border-left: none !important;
+      border-bottom: 1px solid var(--border) !important;
+    }
+    .rq-row.row-urgent { border-left: 3px solid #EF4444 !important; padding-left: calc(1rem - 3px); }
+    .rq-row:hover { background: var(--pure-white); }
+
+    /* Map columns to grid areas */
+    .rq-table td { display: block; padding: 0; border: none; vertical-align: unset; }
+    .rq-table td:nth-child(1) { grid-area: id; }    /* Request ID + appliance */
+    .rq-table td:nth-child(2) { grid-area: cust; }  /* Customer */
+    .rq-table td:nth-child(3) { grid-area: status; text-align: right; } /* Status */
+    .rq-table td:nth-child(4) { display: none; }    /* Technician — hide on mobile */
+    .rq-table td:nth-child(5) { grid-area: act; }   /* Action */
+
+    /* Bigger action button on mobile */
+    .req-action-cell .btn { width: 100%; justify-content: center; padding: 0.625rem; }
+  }
+</style>

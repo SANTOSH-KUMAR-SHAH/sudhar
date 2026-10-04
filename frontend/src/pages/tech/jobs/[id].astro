@@ -1,0 +1,366 @@
+---
+import TechDashboardLayout from '../../../layouts/TechDashboardLayout.astro';
+import FormNotice from '../../../components/common/FormNotice.astro';
+import type { ServiceStatusKey } from '../../../lib/service-status';
+import {
+  DEMO_LOGGED_IN_TECH_ID,
+  getDemoCustomer,
+  requestsForTechnician,
+  isRequestDone,
+  statusLabel,
+} from '../../../lib/demo-data';
+
+// Business: The technician opens the same record the dispatcher assigned — one
+// request table joined with the customer row, never a second copy of the job.
+// Technical: Paths come only from requests assigned to the demo session tech, so
+// a job that is not this technician's cannot be built and unknown ids 404.
+export function getStaticPaths() {
+  return requestsForTechnician(DEMO_LOGGED_IN_TECH_ID).map((r) => ({ params: { id: r.id } }));
+}
+
+const { id } = Astro.params;
+const job = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID).find((r) => r.id === id) ?? null;
+if (!job) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+const customer = getDemoCustomer(job.customerId);
+const done = isRequestDone(job.status);
+
+// Business: The headline tells the technician what happens next, in the queue's
+// own words; anything without a scripted line falls back to the status label.
+const GUIDANCE: Partial<Record<ServiceStatusKey, string>> = {
+  DIAGNOSING: 'Inspect the appliance and submit your findings.',
+  IN_PROGRESS: 'Repair underway — update the finding when you finish.',
+  TECHNICIAN_ON_THE_WAY: 'Travel to the visit address.',
+  ASSIGNED: 'Review details before you travel.',
+};
+const statusTitle = done ? 'Completed' : statusLabel(job.status);
+const statusDesc =
+  GUIDANCE[job.status] ??
+  (done ? 'Work recorded. Read-only demo record.' : 'Review details before you travel.');
+---
+
+<TechDashboardLayout title={`Job ${job.id}`} activeNav="jobs">
+  <div class="job-detail-container">
+    
+    <!-- Top Action Bar -->
+    <div class="top-bar">
+      <a href="/tech/jobs" class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      </a>
+      <div class="job-id tnum">{job.id}</div>
+      <div style="width: 24px;"></div> <!-- spacer -->
+    </div>
+
+    <!-- Status Hero -->
+    <div class="status-hero">
+      <div class="status-icon">
+        {done ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        )}
+      </div>
+      <h2>{statusTitle}</h2>
+      <p>{statusDesc}</p>
+      <p class="time-label">Today &middot; {job.visitTime}</p>
+    </div>
+
+    <!-- Job Info Cards -->
+    <div class="info-card">
+      <div class="card-row">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+        <div class="content-wrap">
+          <label>Customer</label>
+          <div class="val">{customer?.name ?? 'Customer'}</div>
+        </div>
+        <a href="tel:+9779800000000" class="action-circle bg-green" aria-label={`Call ${customer?.name ?? 'customer'}`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></a>
+      </div>
+      <div class="divider"></div>
+      <div class="card-row">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+        <div class="content-wrap">
+          <label>Location</label>
+          <div class="val">{customer?.area ?? '—'}</div>
+        </div>
+        <span class="action-circle bg-navy" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg></span>
+      </div>
+    </div>
+
+    <!-- Appliance Card -->
+    <div class="info-card">
+      <div class="card-row">
+        <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg></div>
+        <div class="content-wrap">
+          <label>Appliance</label>
+          <div class="val">{job.brand} {job.applianceType}</div>
+        </div>
+      </div>
+      <div class="problem-alert">
+        <strong>Problem:</strong> "{job.problemDesc}"
+      </div>
+    </div>
+
+    {done ? (
+      <div class="info-card">
+        <div class="card-row">
+          <div class="icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></div>
+          <div class="content-wrap">
+            <label>Diagnosis submitted</label>
+            <div class="val">{job.diagnosis?.fault ?? 'Finding recorded with the repair'}</div>
+            {job.diagnosis?.proposal && (
+              <div class="diag-meta tnum">Proposed price {job.diagnosis.proposal} &middot; submitted {job.diagnosis.submittedAt}</div>
+            )}
+          </div>
+        </div>
+        {job.internalNote && (
+          <div class="problem-alert">
+            <strong>Work note:</strong> "{job.internalNote}"
+          </div>
+        )}
+      </div>
+    ) : (
+      <div class="form-section">
+        <h3>Technician Diagnosis</h3>
+        <form id="diagnosisForm">
+          <div class="input-wrap">
+            <label for="diag-findings">What did you find?</label>
+            <textarea id="diag-findings" rows="3" placeholder="e.g. Drain pump is blocked by debris..." required></textarea>
+          </div>
+          <div class="input-wrap">
+            <label for="diag-parts">Required Parts</label>
+            <input id="diag-parts" type="text" placeholder="e.g. New pump (Optional)" />
+          </div>
+          <button type="submit" class="massive-submit-btn">
+            Submit to Admin
+          </button>
+          <FormNotice id="diagnosisNotice" kind="success" message="Diagnosis noted locally. It will sync to Sudhar Lab when the API is connected." />
+        </form>
+      </div>
+    )}
+
+  </div>
+</TechDashboardLayout>
+
+<script>
+  import "../../../features/diagnosis/diagnosis-form.ts";
+</script>
+
+<style is:global>
+  .job-detail-container {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+  }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-off);
+    z-index: 10;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--pure-white);
+    color: var(--navy);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .job-id {
+    font-family: var(--font-h);
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--navy);
+  }
+
+  /* Status Hero */
+  .status-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+
+  .status-icon {
+    width: 72px;
+    height: 72px;
+    background-color: var(--teal);
+    color: var(--pure-white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 8px 16px rgba(12, 124, 130, 0.3);
+  }
+
+  .status-hero h2 {
+    font-family: var(--font-h);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+  
+  .time-label { font-size: 0.8125rem; font-weight: 700; color: var(--teal); margin-top: 0.25rem; }
+  .input-wrap textarea.err, .input-wrap input.err { border-color: #DC2626; }
+  .status-hero p {
+    color: var(--graphite-mid);
+    font-size: 0.9375rem;
+  }
+
+  .diag-meta {
+    font-size: 0.8125rem;
+    color: var(--graphite-mid);
+    margin-top: 0.25rem;
+  }
+
+  /* Info Cards */
+  .info-card {
+    background-color: var(--pure-white);
+    margin: 0 1rem 1rem 1rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .card-row {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 0 1.25rem;
+  }
+
+  .icon-wrap {
+    color: var(--graphite-lt);
+    display: flex;
+  }
+
+  .content-wrap {
+    flex: 1;
+  }
+
+  .content-wrap label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--graphite-lt);
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+    display: block;
+  }
+
+  .content-wrap .val {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .action-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pure-white);
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+  
+  .action-circle:active {
+    transform: scale(0.95);
+  }
+
+  .bg-green { background-color: var(--green); box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3); }
+  .bg-navy { background-color: var(--navy); box-shadow: 0 4px 10px rgba(16, 38, 61, 0.3); }
+
+  .problem-alert {
+    background-color: var(--gold-light);
+    color: #9A6A00;
+    padding: 1rem 1.25rem;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Form Section */
+  .form-section {
+    padding: 1.5rem 1rem;
+  }
+
+  .form-section h3 {
+    font-family: var(--font-h);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 1.25rem;
+  }
+
+  .input-wrap {
+    margin-bottom: 1rem;
+  }
+
+  .input-wrap label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+
+  .input-wrap input, .input-wrap textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: var(--font-b);
+    font-size: 1rem;
+    background-color: var(--pure-white);
+    outline: none;
+  }
+
+  .input-wrap input:focus, .input-wrap textarea:focus {
+    border-color: var(--teal);
+  }
+
+  .massive-submit-btn {
+    width: 100%;
+    margin-top: 1rem;
+    background-color: var(--teal);
+    color: var(--pure-white);
+    border: none;
+    padding: 1.25rem;
+    border-radius: 12px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-family: var(--font-h);
+    box-shadow: 0 8px 24px rgba(12, 124, 130, 0.25);
+    cursor: pointer;
+  }
+  
+  .massive-submit-btn:active {
+    transform: scale(0.98);
+  }
+
+</style>

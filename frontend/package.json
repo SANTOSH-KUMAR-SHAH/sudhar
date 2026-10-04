@@ -1,0 +1,19 @@
+{
+  "name": "@sudhar-lab/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/check": "latest",
+    "@tailwindcss/vite": "4.3.3",
+    "astro": "latest",
+    "gsap": "^3.15.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "latest"
+  }
+}

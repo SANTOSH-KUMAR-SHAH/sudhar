@@ -1,0 +1,91 @@
+---
+import { SITE_PHONE_HREF } from '../../lib/site';
+---
+<div class="ctx-pill" id="ctxPill" aria-live="polite">
+  <a href="#request" class="ctx-main" id="ctxMain">
+    <span class="ctx-dot"></span>
+    <span id="ctxLabel">Appliance broken? Get Checked →</span>
+  </a>
+  <a href={SITE_PHONE_HREF} class="ctx-call" aria-label="Call Sudhar Lab">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+  </a>
+</div>
+
+<style>
+  /* Business: One-thumb contextual CTA that follows the customer like social apps. */
+  /* Technical: Mobile-only fixed pill below drawer z-index, morphs label per section. */
+  .ctx-pill {
+    display: none;
+  }
+  @media (max-width: 768px) {
+    .ctx-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      position: fixed;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      z-index: 840;
+      background: rgba(10, 30, 48, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      padding: 6px 6px 6px 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s;
+      opacity: 0;
+      max-width: calc(100% - 32px);
+      white-space: nowrap;
+    }
+    .ctx-pill.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .ctx-pill.hide-down {
+      transform: translateX(-50%) translateY(120px);
+      opacity: 0;
+    }
+    .ctx-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--white, #f7f6f2);
+      font-family: var(--font-h, sans-serif);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      min-height: 44px;
+      overflow: hidden;
+    }
+    .ctx-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+      flex-shrink: 0;
+    }
+    .ctx-call {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--teal, #0c7c82);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .ctx-call:active {
+      transform: scale(0.94);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ctx-pill {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,497 @@
+---
+import TechLayout from '../../layouts/TechLayout.astro';
+---
+
+<TechLayout title="Technician Portal - Sudhar Lab">
+  <main class="split-layout">
+    
+    <!-- LEFT PANEL: BRANDING -->
+    <section class="panel-left">
+      <div class="brand-messaging">
+        <div class="accent-line"></div>
+        <h1>Home service,<br>handled professionally.</h1>
+        <p>Your assigned work, clearly organized.</p>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: AUTHENTICATION -->
+    <section class="panel-right">
+      <div class="auth-container">
+        
+        <div class="auth-header">
+          <!-- Technician Login Logo -->
+          <div class="logo right-logo" style="margin-bottom: 1.5rem; display: flex; justify-content: center;">
+            <img src="/logo.png" alt="Sudhar Lab" style="height: 64px; width: auto;" />
+          </div>
+          <h2>Technician Portal</h2>
+          <p>Sign in to manage your assigned service visits.</p>
+        </div>
+
+        <form class="auth-form" id="techLoginForm" method="post" action="/tech/dashboard">
+          
+          <div class="form-group">
+            <label class="form-label" for="identity">Phone number or email</label>
+            <div class="input-wrapper">
+              <input type="text" id="identity" name="identity" autocomplete="username" class="form-input" placeholder="Enter your phone number or email" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-wrapper">
+              <input type="password" id="password" name="password" autocomplete="current-password" class="form-input" placeholder="Enter your password" required>
+              <button type="button" class="password-toggle" id="togglePassword" aria-label="Toggle password visibility">
+                <!-- Eye Icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="eyeIcon">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Business: Password reset needs the email backend; surface intent, never a dead link. -->
+          <!-- Technical: Disabled button communicates unavailability; styling matches the unset state. -->
+          <button type="button" class="forgot-password" disabled title="Password reset arrives with the backend API">Forgot password?</button>
+
+          <p id="techLoginError" class="form-notice form-notice-error" role="alert" style="display:none"></p>
+
+          <button type="submit" class="btn-submit" id="techSubmitBtn">Sign in</button>
+
+          <div class="security-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Secure access for Sudhar Lab technicians
+          </div>
+
+        </form>
+
+        <div class="divider"></div>
+
+        <div class="help-section">
+          <p>Need help signing in?</p>
+          <a href="tel:+9779800000000" class="btn-outline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            Call Sudhar Lab
+          </a>
+        </div>
+
+        <div class="footer-note">
+          Sudhar Lab • Home Appliance Repair & Maintenance • Kathmandu
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</TechLayout>
+
+<style is:global>
+  /* Business: Inline auth errors must be readable without a popup. */
+  /* Technical: Local .form-notice mirrors common/FormNotice for auth pages. */
+  .form-notice { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.875rem; margin: 0.25rem 0; }
+  .form-notice-error { background: #FEE2E2; color: #991B1B; }
+  .btn-submit:disabled { opacity: 0.7; cursor: wait; }
+  /* ================================================
+     LAYOUT: SPLIT SCREEN
+  ================================================ */
+  .split-layout {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* LEFT SIDE: BRANDING */
+  .panel-left {
+    flex: 1;
+    position: relative;
+    background-color: var(--navy-deep);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 4rem; /* Increased padding to lift text off the bottom */
+  }
+
+  .panel-left::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/technician-login.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 1; /* Fully bright image */
+    z-index: 1;
+  }
+
+  .panel-left::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* Cinematic directional fade — photo stays fully visible in upper 60%.
+       Only the bottom darkens to make the text readable. This respects
+       the photography and avoids the 'student dark scrim' look. */
+    background:
+      linear-gradient(to top,
+        rgba(6, 14, 22, 0.96) 0%,
+        rgba(6, 14, 22, 0.80) 15%,
+        rgba(6, 14, 22, 0.30) 35%,
+        transparent 55%),
+      /* Subtle warm left-edge vignette for depth */
+      linear-gradient(to right,
+        rgba(6, 14, 22, 0.25) 0%,
+        transparent 30%);
+    z-index: 2;
+  }
+
+  .brand-logo {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .brand-logo svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-logo span {
+    font-family: var(--font-h);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--pure-white);
+    letter-spacing: -0.02em;
+  }
+
+  .brand-messaging {
+    position: relative;
+    z-index: 10;
+    max-width: 480px;
+  }
+
+  .accent-line {
+    width: 40px;
+    height: 3px;
+    background-color: var(--gold);
+    margin-bottom: 1.5rem;
+  }
+
+  .brand-messaging h1 {
+    font-family: var(--font-h);
+    font-size: 3.5rem;
+    font-weight: 600;
+    color: var(--pure-white);
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-messaging p {
+    font-size: 1.125rem;
+    color: rgba(247, 246, 242, 0.8);
+    line-height: 1.5;
+  }
+
+  /* RIGHT SIDE: AUTHENTICATION */
+  .panel-right {
+    flex: 1;
+    background-color: var(--white);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    overflow-y: auto;
+  }
+
+  /* Safe vertical centering trick for main panel */
+  .panel-right::before,
+  .panel-right::after {
+    content: '';
+    flex: 1;
+  }
+
+  .auth-container {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .auth-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .shield-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1.5rem;
+    color: var(--teal);
+  }
+
+  .auth-header h2 {
+    font-family: var(--font-h);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+
+  .auth-header p {
+    font-size: 0.9375rem;
+    color: var(--graphite-mid);
+  }
+
+  .auth-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-family: var(--font-b);
+    font-size: 0.9375rem;
+    color: var(--navy);
+    background-color: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+
+  .form-input::placeholder {
+    color: var(--graphite-lt);
+  }
+
+  .form-input:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(12, 124, 130, 0.1);
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--graphite-lt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.2s;
+  }
+
+  .password-toggle:hover {
+    color: var(--navy);
+  }
+
+  .password-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .forgot-password {
+    align-self: flex-end;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    background: none;
+    border: 0;
+    padding: 0;
+    font-family: inherit;
+    cursor: default;
+    color: var(--graphite-mid, #6b7280);
+    margin-top: -0.5rem;
+  }
+
+  .btn-submit {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--teal);
+    color: var(--pure-white);
+    font-family: var(--font-b);
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--ease);
+    margin-top: 0.5rem;
+  }
+
+  .btn-submit:hover {
+    background-color: var(--teal-hover);
+  }
+
+  .security-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    color: var(--graphite-lt);
+    font-size: 0.8125rem;
+  }
+
+  .security-note svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+    background-color: var(--border);
+    margin: 2.5rem 0;
+  }
+
+  .help-section {
+    text-align: center;
+    width: 100%;
+  }
+
+  .help-section p {
+    font-size: 0.875rem;
+    color: var(--graphite-mid);
+    margin-bottom: 1rem;
+  }
+
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: transparent;
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    font-family: var(--font-b);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s var(--ease);
+  }
+
+  .btn-outline:hover {
+    background-color: rgba(12, 124, 130, 0.05);
+  }
+
+  .btn-outline svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .footer-note {
+    margin-top: 3rem;
+    font-size: 0.75rem;
+    color: var(--graphite-lt);
+    text-align: center;
+  }
+
+  /* ================================================
+     RESPONSIVE DESIGN
+  ================================================ */
+  @media (max-width: 900px) {
+    .split-layout {
+      flex-direction: column;
+      height: 100dvh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    .panel-left {
+      flex: 0 0 32%; /* Top 32% for image */
+      padding: 1.5rem;
+      justify-content: flex-start;
+    }
+    
+    .brand-messaging {
+      display: none; /* Hide large text on mobile to focus on auth */
+    }
+
+    .panel-right {
+      flex: 1;
+      padding: 2rem 1.5rem 1rem;
+      border-radius: 24px 24px 0 0; /* Smooth overlap */
+      margin-top: -24px;
+      z-index: 10;
+      position: relative;
+      overflow-y: auto;
+      justify-content: flex-start;
+    }
+
+    .auth-container {
+      max-width: 100%;
+    }
+    
+    .auth-header {
+      margin-bottom: 1.5rem;
+    }
+    
+    .shield-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .auth-header h2 {
+      font-size: 1.75rem;
+    }
+    
+    .auth-form {
+      gap: 1rem;
+    }
+    
+    .divider {
+      margin: 1.5rem 0;
+    }
+    
+    .footer-note {
+      margin-top: 1.5rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .panel-right { padding: 1.5rem 1.25rem 1rem; }
+    .shield-icon { width: 42px; height: 42px; }
+    .auth-header h2 { font-size: 1.5rem; }
+    .auth-form { gap: 0.875rem; }
+    .footer-note { margin-top: 1rem; }
+  }
+</style>
+
+<script>
+  import "../../features/authentication/login-form.ts";
+</script>
+

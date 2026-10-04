@@ -1,0 +1,293 @@
+---
+import { SITE_PHONE_HREF } from '../../lib/site';
+---
+  <section class="sec-faq" id="faq" aria-label="Frequently asked questions">
+    <div class="container" style="max-width: 1200px;">
+      <div class="sec-head reveal" style="margin-bottom: 48px;">
+        <div class="hero-eyebrow-row" style="margin-bottom: 16px;">
+          <div class="hero-eyebrow-bar" style="background:var(--gold);"></div>
+          <span class="eyebrow" style="color:var(--graphite-mid);">NEED TO KNOW?</span>
+        </div>
+        <h2 style="color: var(--navy-deep); margin-bottom: 16px;">
+          Questions before you request?</h2>
+        <p style="font-size: 15.5px; color: var(--graphite-mid); line-height: 1.6;">Here are the things customers
+          usually want to know before arranging a home visit.</p>
+      </div>
+
+      <!-- ─ MOBILE ONLY: Category tabs for filtering ─ -->
+      <div class="faq-tabs faq-mobile-tabs reveal">
+        <button class="faq-tab faq-cat is-active" onclick="switchFaqCat('before', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Before requesting
+        </button>
+        <button class="faq-tab faq-cat" onclick="switchFaqCat('during', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          During the visit
+        </button>
+        <button class="faq-tab faq-cat" onclick="switchFaqCat('after', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
+          After repair
+        </button>
+      </div>
+
+      <!-- ─ DESKTOP: 3-column grid, all FAQs always visible ─ -->
+      <!-- ─ MOBILE: Single flat list, filtered by active tab ─ -->
+      <div class="faq-grid reveal">
+
+        <!-- Column 1: Before requesting service -->
+        <div class="faq-col faq-desktop-col">
+          <div class="faq-col-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Before requesting service
+          </div>
+
+          <div class="faq-item is-open" data-cat="before">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="true">
+              <span class="faq-q-text">Which appliances do you repair?</span>
+              <span class="faq-toggle" aria-hidden="true">−</span>
+            </button>
+            <div class="faq-a" style="max-height: 200px;">
+              <p class="faq-a-inner">We currently provide home-service repair and maintenance for TVs, washing machines,
+                ACs, and refrigerators in Kathmandu.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="before">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Do I need to know the exact fault?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">No. Just describe what you see, hear, or notice. The technician will inspect the
+                appliance and diagnose the fault properly.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="before">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Do I need to know the appliance model?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">No. The model helps if you know it, but it is optional. You can leave it blank when
+                submitting the request.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="before">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Can I send a photo or video?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Yes. You may add a photo or video during the request, but it is optional. If you
+                have one that helps explain the problem, include it.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="before">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">How do I request service?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Simply click "Get My Appliance Checked", answer a few questions about your
+                appliance, and we will call you to confirm.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: During the visit -->
+        <div class="faq-col faq-desktop-col">
+          <div class="faq-col-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            During the visit
+          </div>
+
+          <div class="faq-item" data-cat="during">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Is there an inspection or service fee?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Yes. A home inspection / service fee applies because the technician travels to your
+                home and checks the appliance. The exact fee will be shown once Sudhar Lab finalizes it.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="during">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">What happens after I submit a request?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Our team reviews the request and calls you to confirm the details and preferred
+                visit time. A technician is assigned after the confirmation call.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="during">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Can I choose the technician?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Sudhar Lab assigns a suitable available technician based on the appliance and your
+                service situation. You don't need to choose — we handle that for you.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="during">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">How will I know when the technician is coming?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Sudhar Lab confirms the visit details and provides updates through the available
+                communication channels, including phone and WhatsApp.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="during">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">What if I am not available at the confirmed time?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Please contact us as early as possible so we can reschedule the technician's visit
+                for a time that works for you.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 3: After diagnosis and repair -->
+        <div class="faq-col faq-desktop-col">
+          <div class="faq-col-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+              </path>
+            </svg>
+            After diagnosis and repair
+          </div>
+
+          <div class="faq-item" data-cat="after">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">When will I know the repair price?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">The repair price is discussed after the technician diagnoses the appliance. Repair
+                work begins only after you approve the price.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="after">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">What happens if I do not approve the repair?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">The repair will not proceed. The home inspection / service fee still applies
+                because the technician visited and performed the diagnosis.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="after">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Can the technician repair the appliance immediately?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Yes, in most cases if standard parts are available. If specific parts are needed,
+                it may take an additional visit.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="after">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">What if a spare part is needed?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Sudhar Lab explains the required part and related cost. The service may need to be
+                rescheduled when the part is available. We keep you informed throughout.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="after">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">Do you provide a warranty?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">Warranties on parts and service depend on the type of repair. This will be clearly
+                explained before the repair begins.</p>
+            </div>
+          </div>
+
+          <div class="faq-item" data-cat="after">
+            <button class="faq-q" onclick="toggleFaq(this)" aria-expanded="false">
+              <span class="faq-q-text">How can I contact Sudhar Lab after the visit?</span>
+              <span class="faq-toggle" aria-hidden="true">+</span>
+            </button>
+            <div class="faq-a">
+              <p class="faq-a-inner">You can contact Sudhar Lab through the official phone number, WhatsApp, or email
+                shown on the website and your service record.</p>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /faq-grid -->
+
+      <div class="faq-banner reveal">
+        <div class="faq-banner-content">
+          <div class="faq-banner-text">
+            <h3>Still unsure?</h3>
+            <p>Tell us what happened and our team will guide you.</p>
+          </div>
+          <div class="faq-banner-btns">
+            <a href="#request" class="btn btn-teal" style="font-size:14px;padding:14px 28px;">Get My Appliance Checked
+              &rarr;</a>
+            <a href={SITE_PHONE_HREF} class="btn-outline-pill"
+              style="border-color:var(--teal); color:var(--teal); background:var(--white);">
+              <svg class="teal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                stroke-linejoin="round" style="color:var(--teal);">
+                <path
+                  d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                </path>
+              </svg>
+              Call Us
+            </a>
+          </div>
+        </div>
+        <div class="faq-banner-img">
+          <img src="/unsure.png" alt="Sudhar Lab Support" loading="lazy" />
+        </div>
+      </div>
+
+    </div>
+  </section>

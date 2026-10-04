@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Business: Single source of truth for Sudhar Lab brand tokens across all portals. */
+/* Technical: Tailwind v4 @theme maps CSS variables to utilities like bg-navy text-teal. */
+@theme {
+  --color-navy: #10263d;
+  --color-navy-deep: #0a1e30;
+  --color-teal: #0c7c82;
+  --color-teal-hover: #0e9198;
+  --color-teal-light: #e9f6f7;
+  --color-gold: #e8a324;
+  --color-gold-light: #fff8eb;
+  --color-cream: #f7f6f2;
+  --color-off: #efede8;
+  --color-graphite: #2b2e31;
+  --color-graphite-mid: #4a4e52;
+  --color-graphite-lt: #7c8186;
+  --color-line: #e0ddd7;
+
+  /* Customer voice: Fraunces (soft serif display) + Manrope (modern body). */
+  /* Technical: --font-display is section headlines; --font-heading stays the UI-label sans. */
+  --font-display: "Fraunces", "Manrope", Georgia, serif;
+  --font-heading: "Manrope", "Fraunces", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+}

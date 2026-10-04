@@ -1,0 +1,579 @@
+---
+import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
+import {
+  DEMO_REQUESTS,
+  completedTodayRequests,
+  currentJobForTechnician,
+  getDemoCustomer,
+  getDemoTechnician,
+  getTechnicianSummaries,
+  liveJobRequests,
+  newRequestCount,
+  onlineTechnicians,
+  statusBadgeClass,
+  statusLabel,
+  todaySummary,
+} from '../../lib/demo-data';
+
+// Business: The dashboard is a live read of the queue, never a second copy of it.
+// Technical: Every group, chip and count below renders from demo-data selectors;
+// changing a request in one place updates dashboard, lists and detail together.
+const callConfirm = DEMO_REQUESTS.filter((r) => r.status === 'NEW_REQUEST');
+const toAssign = DEMO_REQUESTS.filter((r) => r.status === 'ORDER_CONFIRMED' && !r.technicianId);
+const waitingCustomer = DEMO_REQUESTS.filter((r) => r.status === 'PRICE_APPROVAL');
+const liveJobs = liveJobRequests().map((r) => {
+  const tech = r.technicianId ? getDemoTechnician(r.technicianId) : undefined;
+  const cust = getDemoCustomer(r.customerId);
+  return { r, detail: `${tech?.name.split(' ')[0] ?? '—'} · ${r.brand} ${r.applianceType} · ${cust?.area ?? ''}` };
+});
+const techRows = getTechnicianSummaries();
+const completedToday = completedTodayRequests().map((r) => ({ r, cust: getDemoCustomer(r.customerId) }));
+const summary = todaySummary();
+
+// Business: Queue cards say "Samsung AC", not "Air conditioner" — staff shorthand.
+// Technical: Display-only abbreviation; the stored appliance type stays canonical.
+const APPLIANCE_SHORT: Record<string, string> = {
+  'Washing machine': 'Washer',
+  Refrigerator: 'Fridge',
+  'Air conditioner': 'AC',
+  Television: 'TV',
+};
+const applianceShort = (type: string) => APPLIANCE_SHORT[type] ?? type;
+---
+
+<AdminDashboardLayout title="Home - Sudhar Lab Admin" activeNav="dashboard">
+
+  <!-- TODAY'S DATE -->
+  <div class="today-row">
+    <div class="today-date" id="today-date"></div>
+    <div class="today-stats">
+      <div class="stat-chip chip-green">
+        <span class="chip-dot"></span>
+        {onlineTechnicians().length} technicians online
+      </div>
+      <div class="stat-chip chip-amber">
+        <span class="chip-dot"></span>
+        {newRequestCount()} unassigned
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!--  ACTION QUEUE — the 3 groups that need action  -->
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <!-- GROUP 1: Call & Confirm -->
+  <div class="queue-group">
+    <div class="group-header">
+      <div class="group-title">
+        <div class="group-dot red"></div>
+        <span>Call &amp; Confirm</span>
+        <span class="group-count">{callConfirm.length}</span>
+      </div>
+      <div class="group-sub">New requests waiting — call the customer and confirm the visit</div>
+    </div>
+
+    <div class="queue-cards">
+      {callConfirm.map((req) => {
+        const cust = getDemoCustomer(req.customerId);
+        return (
+          <div class:list={['queue-card', { urgent: req.urgent }]}>
+            <div class="qc-top">
+              <div class="qc-id tnum">{req.id}</div>
+              <span class={`badge ${statusBadgeClass(req.status)}`}>{statusLabel(req.status)}</span>
+              <div class="qc-time">{req.receivedAgo}</div>
+            </div>
+            <div class="qc-customer">
+              <div class="qc-avatar" style={`background:${cust?.avatarColor ?? 'var(--navy)'}`}>{cust?.initials}</div>
+              <div>
+                <div class="qc-name">{cust?.name}</div>
+                <div class="qc-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  {cust?.area} · {req.brand} {req.applianceType}
+                </div>
+              </div>
+            </div>
+            <div class="qc-problem">&ldquo;{req.problem}&rdquo;</div>
+            <div class="qc-actions">
+              <a class="btn btn-primary btn-sm qc-main-btn" href={`/admin/requests/${req.id}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Call &amp; Confirm
+              </a>
+              <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>View</a>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+
+  <!-- GROUP 2: Assign Technician -->
+  <div class="queue-group">
+    <div class="group-header">
+      <div class="group-title">
+        <div class="group-dot amber"></div>
+        <span>Assign Technician</span>
+        <span class="group-count">{toAssign.length}</span>
+      </div>
+      <div class="group-sub">Order confirmed — pick a technician and send them out</div>
+    </div>
+
+    <div class="queue-cards">
+      {toAssign.map((req) => {
+        const cust = getDemoCustomer(req.customerId);
+        return (
+          <div class:list={['queue-card', { urgent: req.urgent }]}>
+            <div class="qc-top">
+              <div class="qc-id tnum">{req.id}</div>
+              <span class={`badge ${statusBadgeClass(req.status)}`}>{statusLabel(req.status)}</span>
+              <div class="qc-time">{req.receivedAgo}</div>
+            </div>
+            <div class="qc-customer">
+              <div class="qc-avatar" style={`background:${cust?.avatarColor ?? 'var(--navy)'}`}>{cust?.initials}</div>
+              <div>
+                <div class="qc-name">{cust?.name}</div>
+                <div class="qc-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  {cust?.area} · {req.brand} {req.applianceType}
+                </div>
+              </div>
+            </div>
+            <div class="qc-avail-row">
+              {(req.suggestedTechnicianIds ?? []).map((techId) => {
+                const tech = getDemoTechnician(techId);
+                const job = currentJobForTechnician(techId);
+                const chip = !tech ? { label: '—', cls: 'grey' }
+                  : tech.availability === 'offline' ? { label: `${tech.name.split(' ')[0]} — Offline`, cls: 'grey' }
+                  : job ? { label: `${tech.name.split(' ')[0]} — ${statusLabel(job.status)}`, cls: 'amber' }
+                  : { label: `${tech.name.split(' ')[0]} — Available`, cls: 'green' };
+                return (
+                  <div class={`avail-chip ${chip.cls}`}><span class="avail-dot"></span>{chip.label}</div>
+                );
+              })}
+            </div>
+            <div class="qc-actions">
+              <a class="btn btn-primary btn-sm qc-main-btn" href={`/admin/requests/${req.id}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Assign Technician
+              </a>
+              <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>View</a>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+
+  <!-- GROUP 3: Price Decision Pending -->
+  <div class="queue-group">
+    <div class="group-header">
+      <div class="group-title">
+        <div class="group-dot purple"></div>
+        <span>Waiting for Customer</span>
+        <span class="group-count">{waitingCustomer.length}</span>
+      </div>
+      <div class="group-sub">Diagnosis done — follow up with customer on repair price</div>
+    </div>
+
+    <div class="queue-cards">
+      {waitingCustomer.map((req) => {
+        const cust = getDemoCustomer(req.customerId);
+        return (
+          <div class:list={['queue-card', { urgent: req.urgent }]}>
+            <div class="qc-top">
+              <div class="qc-id tnum">{req.id}</div>
+              <span class={`badge ${statusBadgeClass(req.status)}`}>{statusLabel(req.status)}</span>
+              <div class="qc-time">{req.receivedAgo}</div>
+            </div>
+            <div class="qc-customer">
+              <div class="qc-avatar" style={`background:${cust?.avatarColor ?? 'var(--navy)'}`}>{cust?.initials}</div>
+              <div>
+                <div class="qc-name">{cust?.name}</div>
+                <div class="qc-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  {cust?.area} · {req.brand} {req.applianceType}
+                </div>
+              </div>
+            </div>
+            {req.diagnosis && (
+              <div class="qc-diagnosis">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {req.diagnosis.fault} — proposed repair: <strong>{req.diagnosis.proposal}</strong>
+              </div>
+            )}
+            <div class="qc-actions">
+              <a class="btn btn-primary btn-sm qc-main-btn" href={`/admin/requests/${req.id}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Follow Up with Customer
+              </a>
+              <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>View</a>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LIVE JOBS + TECHNICIAN STATUS     -->
+  <!-- ═══════════════════════════════════ -->
+
+  <div class="bottom-grid">
+
+    <!-- Active Jobs -->
+    <div class="card card-pad">
+      <div class="section-head">
+        <div class="section-title">
+          <div class="live-dot"></div>
+          Live Jobs
+        </div>
+        <a href="/admin/requests" class="see-all">See all →</a>
+      </div>
+      <div class="live-jobs-list">
+        {liveJobs.map(({ r, detail }) => (
+          <a class="live-job-row" href={`/admin/requests/${r.id}`}>
+            <div class="live-job-info">
+              <div class="lj-id tnum">{r.id}</div>
+              <div class="lj-detail">{detail}</div>
+            </div>
+            <span class={`badge ${statusBadgeClass(r.status)}`}>{statusLabel(r.status)}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Technician Status -->
+    <div class="card card-pad">
+      <div class="section-head">
+        <div class="section-title">Technicians</div>
+        <a href="/admin/technicians" class="see-all">Manage →</a>
+      </div>
+      <div class="tech-list">
+        {techRows.map((t) => {
+          // Business: one honest line per technician — live job first, then availability.
+          // Technical: label and badge both derive from the joined request, never typed here.
+          const statusText = t.currentJobId && t.currentJobStatus
+            ? `${statusLabel(t.currentJobStatus)} — ${t.currentJobId}`
+            : t.availability === 'offline' ? 'Offline' : 'Available';
+          const badge = t.currentJobStatus
+            ? { label: statusLabel(t.currentJobStatus), cls: statusBadgeClass(t.currentJobStatus) }
+            : t.availability === 'offline'
+              ? { label: 'Offline', cls: 'badge-neutral' }
+              : { label: 'Available', cls: 'badge-done' };
+          return (
+            <a class="tech-row" href={`/admin/technicians/${t.id}`}>
+              <div class:list={['tech-av-dot', t.availability]}></div>
+              <div class="tech-av" style={`background:${t.avatarHue}`}>{t.id}</div>
+              <div class="tech-info">
+                <div class="tech-name">{t.name}</div>
+                <div class="tech-status">{statusText}</div>
+              </div>
+              <span class={`badge ${badge.cls}`}>{badge.label}</span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+
+    <!-- Today's Summary -->
+    <div class="card card-pad">
+      <div class="section-head">
+        <div class="section-title">Today</div>
+      </div>
+      <div class="summary-grid">
+        <div class="sum-item">
+          <div class="sum-num amber">{summary.newRequests}</div>
+          <div class="sum-label">New Requests</div>
+        </div>
+        <div class="sum-item">
+          <div class="sum-num blue">{toAssign.length}</div>
+          <div class="sum-label">To Assign</div>
+        </div>
+        <div class="sum-item">
+          <div class="sum-num purple">{summary.activeVisits}</div>
+          <div class="sum-label">Active Jobs</div>
+        </div>
+        <div class="sum-item">
+          <div class="sum-num green">{summary.completed}</div>
+          <div class="sum-label">Completed</div>
+        </div>
+      </div>
+      <div class="divider" style="margin: 1rem 0;"></div>
+      <div class="recently-done">
+        <div class="rd-label">Completed today</div>
+        {completedToday.length === 0 ? (
+          <div class="rd-detail">No completed visits yet today.</div>
+        ) : (
+          completedToday.map(({ r, cust }) => (
+            <div class="rd-row">
+              <a class="lj-id tnum" style="font-size:0.75rem" href={`/admin/requests/${r.id}`}>{r.id}</a>
+              <span class="rd-detail">{cust?.name} · {applianceShort(r.applianceType)} · {cust?.area}</span>
+              <span class="badge badge-done">Done</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+
+  </div>
+
+</AdminDashboardLayout>
+
+<script is:inline>
+  // Show today's date in the header
+  const el = document.getElementById('today-date');
+  if (el) {
+    const now = new Date();
+    el.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+</script>
+
+<style is:global>
+  /* Today row */
+  .today-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .today-date {
+    font-family: var(--font-h);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--graphite-mid);
+  }
+  .today-stats { display: flex; gap: 0.625rem; }
+  .stat-chip {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.75rem; font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+  }
+  .chip-green { background: #DCFCE7; color: #16A34A; }
+  .chip-amber { background: #FEF3C7; color: #D97706; }
+  .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Queue Groups */
+  .queue-group { margin-bottom: 2rem; }
+  .group-header { margin-bottom: 0.875rem; }
+  .group-title {
+    display: flex; align-items: center; gap: 0.625rem;
+    font-family: var(--font-h);
+    font-size: 1rem; font-weight: 700; color: var(--navy);
+    margin-bottom: 0.25rem;
+  }
+  .group-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .group-dot.red    { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+  .group-dot.amber  { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+  .group-dot.purple { background: #8B5CF6; box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
+  .group-count {
+    font-size: 0.75rem; font-weight: 700;
+    background: var(--border); color: var(--graphite-mid);
+    padding: 0.125rem 0.5rem; border-radius: 20px;
+  }
+  .group-sub {
+    font-size: 0.8125rem; color: var(--graphite-lt);
+    margin-left: 1.375rem;
+  }
+
+  /* Queue Cards */
+  .queue-cards {
+    display: grid;
+    /* Technical: minmax(320px, minmax(0,1fr)) — tracks shrink below 320px on narrow screens
+       instead of blowing the page out horizontally (grid auto-min trap). */
+    grid-template-columns: repeat(auto-fill, minmax(320px, minmax(0, 1fr)));
+    gap: 1rem;
+  }
+  .queue-card {
+    background: var(--pure-white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 0.875rem;
+    transition: box-shadow 0.15s;
+  }
+  .queue-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .queue-card.urgent { border-left: 3px solid #EF4444; }
+  
+  .qc-top {
+    display: flex; align-items: center; gap: 0.625rem;
+  }
+  .qc-id { font-size: 0.8125rem; font-weight: 700; color: var(--teal); }
+  .qc-time { margin-left: auto; font-size: 0.75rem; color: var(--graphite-lt); }
+
+  .qc-customer { display: flex; align-items: center; gap: 0.75rem; }
+  .qc-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    color: #fff; font-family: var(--font-h); font-size: 0.8125rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .qc-name { font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
+  .qc-meta {
+    display: flex; align-items: center; gap: 0.25rem;
+    font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
+  }
+
+  /* Business: Customer words must read effortlessly; italics slow fixation. */
+  /* Technical: Normal style; tinted background already marks the quote (font.md §3.3). */
+  .qc-problem {
+    font-size: 0.8125rem; color: var(--graphite-mid);
+    background: var(--bg); border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-style: normal;
+  }
+
+  /* Technician availability chips */
+  .qc-avail-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .avail-chip {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.75rem; font-weight: 600;
+    padding: 0.25rem 0.625rem; border-radius: 20px;
+  }
+  .avail-chip.green { background: #DCFCE7; color: #16A34A; }
+  .avail-chip.amber { background: #FEF3C7; color: #D97706; }
+  .avail-chip.grey  { background: #F3F4F6; color: var(--graphite-mid); }
+  .avail-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  /* Diagnosis line */
+  .qc-diagnosis {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.8125rem; color: var(--graphite-mid);
+    background: var(--bg); border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .qc-actions { display: flex; gap: 0.5rem; }
+  .qc-main-btn { flex: 1; justify-content: center; }
+
+  /* Bottom Grid */
+  .bottom-grid {
+    display: grid;
+    /* Technical: minmax(0,xfr) so long activity text cannot widen a track past the viewport. */
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+    gap: 1.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-family: var(--font-h);
+    font-size: 0.9375rem; font-weight: 700; color: var(--navy);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #EF4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.2);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .see-all { font-size: 0.8125rem; font-weight: 600; color: var(--teal); text-decoration: none; }
+  .see-all:hover { text-decoration: underline; }
+
+  /* Live jobs */
+  .live-jobs-list { display: flex; flex-direction: column; gap: 0; }
+  .live-job-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .live-job-row:last-child { border-bottom: none; }
+  .lj-id { font-size: 0.8125rem; font-weight: 700; color: var(--teal); margin-bottom: 0.125rem; }
+  .lj-detail { font-size: 0.75rem; color: var(--graphite-lt); }
+  /* Rows link to the request/technician; underline on the ID/name keeps it quiet. */
+  a.live-job-row, a.tech-row { color: inherit; text-decoration: none; }
+  a.live-job-row:hover .lj-id, a.tech-row:hover .tech-name { text-decoration: underline; }
+  a.lj-id:hover { text-decoration: underline; }
+
+  /* Tech list */
+  .tech-list { display: flex; flex-direction: column; gap: 0; }
+  .tech-row {
+    display: flex; align-items: center; gap: 0.625rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .tech-row:last-child { border-bottom: none; }
+  .tech-av {
+    width: 30px; height: 30px; border-radius: 50%;
+    color: #fff; font-size: 0.75rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; position: relative;
+  }
+  .tech-av-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 2px solid var(--pure-white);
+    position: absolute; bottom: 0; right: 0; z-index: 1;
+    /* applied to the row's first child, we'll use margin tricks */
+    flex-shrink: 0; align-self: flex-end; margin-bottom: 2px; margin-right: -2px;
+  }
+
+  /* Re-do tech-av-dot as overlay on tech-av */
+  .tech-row { flex-wrap: nowrap; }
+  .tech-av-wrapper { position: relative; flex-shrink: 0; }
+
+  .tech-av-dot { position: static; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .tech-av-dot.online  { background: #16A34A; }
+  .tech-av-dot.offline { background: #9CA3AF; }
+
+  .tech-info { flex: 1; min-width: 0; }
+  .tech-name { font-size: 0.8125rem; font-weight: 600; color: var(--navy); }
+  .tech-status { font-size: 0.75rem; color: var(--graphite-lt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Summary grid */
+  .summary-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.875rem;
+  }
+  .sum-item {
+    background: var(--bg); border-radius: 8px;
+    padding: 0.875rem; text-align: center;
+  }
+  .sum-num {
+    font-family: var(--font-h);
+    font-size: 1.75rem; font-weight: 800; line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+  .sum-num.amber  { color: #D97706; }
+  .sum-num.blue   { color: #3B82F6; }
+  .sum-num.purple { color: #8B5CF6; }
+  .sum-num.green  { color: #16A34A; }
+  .sum-label { font-size: 0.75rem; font-weight: 600; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .recently-done {}
+  .rd-label { font-size: 0.75rem; font-weight: 700; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.625rem; }
+  .rd-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .rd-detail { font-size: 0.75rem; color: var(--graphite-mid); flex: 1; }
+
+  @media (max-width: 1100px) {
+    .bottom-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+  @media (max-width: 767px) {
+    /* Dashboard mobile overrides */
+    .today-row { margin-bottom: 1.25rem; }
+    .today-stats { flex-wrap: wrap; }
+
+    /* Cards go full-width single column */
+    .queue-cards { grid-template-columns: 1fr; }
+
+    /* Bottom grid stacks */
+    .bottom-grid { grid-template-columns: 1fr; }
+
+    /* Queue group header compact */
+    .queue-group { margin-bottom: 1.5rem; }
+    .group-title { font-size: 0.9375rem; }
+
+    /* Card actions — buttons full width on mobile */
+    .qc-actions { flex-direction: column; }
+    .qc-main-btn { flex: unset; width: 100%; }
+
+    /* Bigger tap targets */
+    .btn-sm { padding: 0.625rem 1rem; font-size: 0.875rem; }
+  }
+</style>

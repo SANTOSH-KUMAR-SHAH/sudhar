@@ -1,0 +1,308 @@
+/* Business: Hero full-bleed editorial + ribbon and landscape.
+   Technical: Extracted verbatim from CustomerLayout.astro; import order = cascade order, do not reorder. */
+    /* ================================================
+       HERO  â€”  Full-bleed editorial
+    ================================================ */
+    .hero {
+      position: relative;
+      height: 100vh;
+      min-height: 600px;
+      max-height: 1000px;
+      display: flex;
+      align-items: flex-end;
+      /* text sits at the bottom */
+      overflow: hidden;
+      background: var(--navy-deep);
+      box-shadow: inset 0px -12px 24px rgba(0, 0, 0, 0.4); /* Micro-depth transition to light section below */
+    }
+
+    /* Full-bleed background image */
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .hero-bg img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+    }
+
+    /* â”€â”€ HERO OVERLAY SYSTEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+       OLD: One flat rgba(8,18,28, 0.92) scrim that killed the photo entirely.
+       NEW: 3-layer cinematic system used by premium brands (Linear, Stripe etc.)
+         Layer A: Directional vignette â€” darkens edges, leaves center breathable.
+         Layer B: Teal ambient glow â€” brand-colored depth source on the right.
+         Layer C: Film grain â€” gives photo a physical, high-end, tactile quality.
+    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+    /* Layer A: Directional vignette â€” REPLACES the old flat scrim.
+       Left side darkens for text legibility.
+       Bottom darkens to anchor the composition.
+       Center-right stays bright so the photo reads as REAL, not blocked. */
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background:
+        /* Left text zone â€” strong but not wall-like */
+        linear-gradient(100deg,
+          rgba(6, 14, 22, 0.88) 0%,
+          rgba(6, 14, 22, 0.65) 28%,
+          rgba(6, 14, 22, 0.18) 52%,
+          transparent 68%),
+        /* Bottom anchor â€” pulls composition down, very natural */
+        linear-gradient(to top,
+          rgba(6, 14, 22, 0.72) 0%,
+          rgba(6, 14, 22, 0.25) 22%,
+          transparent 48%),
+        /* Top feather â€” very subtle, keeps sky from blowing out */
+        linear-gradient(to bottom,
+          rgba(6, 14, 22, 0.30) 0%,
+          transparent 20%);
+    }
+
+    /* Layer B: Brand-colored ambient glow on the right (depth source)
+       Subtle teal radial that makes the photo feel 3-dimensional and on-brand. */
+    .hero-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse 55% 70% at 80% 45%,
+          rgba(12, 124, 130, 0.12) 0%,
+          transparent 100%);
+    }
+
+    /* fallback when no image */
+    .hero-bg-fallback {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 100%);
+    }
+
+    /* Text content */
+    .hero-inner {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 140px 56px 72px;
+    }
+
+    /* Business: A soft-serif promise — warmth + credibility before the ask. */
+    /* Technical: Fraunces display at optical size; 600 reads confident without going heavy. */
+    .hero-h1 {
+      font-family: var(--font-display);
+      /* Technical: max = φ^3.5 rung (--fs-h1); fluid min unchanged. */
+      font-size: clamp(48px, 7vw, var(--fs-h1));
+      font-weight: 600;
+      color: var(--white);
+      line-height: 1.06;
+      letter-spacing: -0.015em;
+      margin-bottom: var(--sp-4);
+      max-width: 600px;
+    }
+
+    .hero-h1 em {
+      font-style: normal;
+      color: var(--teal);
+    }
+
+    .hero-mobile-break {
+      display: none;
+    }
+
+    .hero-btns {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .hero-btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      font-family: var(--font-h);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: var(--teal);
+      color: var(--white);
+      padding: 16px 32px;
+      border-radius: 4px;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+
+    .hero-btn-primary:hover {
+      background: var(--teal-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(12, 124, 130, 0.40);
+    }
+
+    .hero-btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      font-family: var(--font-h);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--white);
+      padding: 15px 32px;
+      border-radius: 4px;
+      border: 1.5px solid rgba(247, 246, 242, 0.45);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .hero-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(247, 246, 242, 0.80);
+    }
+
+    /* ================================================
+       HERO RIBBON & LANDSCAPE
+    ================================================ */
+    .hero-ribbon {
+      background: #081521;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      position: relative;
+      z-index: 10;
+    }
+
+    .ribbon-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 100px;
+    }
+
+    .ribbon-left {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+      flex: 1;
+    }
+
+    .ribbon-feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ribbon-feature-icon {
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+    }
+
+    .ribbon-feature-text {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: rgba(247, 246, 242, 0.85);
+      line-height: 1.3;
+      max-width: 100px;
+    }
+
+    .ribbon-divider {
+      width: 1px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 0 40px;
+    }
+
+    .ribbon-right {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .ribbon-services-label {
+      font-family: var(--font-h);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: rgba(247, 246, 242, 0.5);
+      text-transform: uppercase;
+      align-self: flex-start;
+      margin-top: 6px;
+    }
+
+    .ribbon-service-icons {
+      display: flex;
+      gap: 36px;
+    }
+
+    .ribbon-service-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: rgba(247, 246, 242, 0.6);
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+
+    .ribbon-service-item:hover {
+      color: var(--white);
+    }
+
+    .ribbon-service-item svg {
+      width: 24px;
+      height: 24px;
+      stroke-width: 1.2;
+    }
+
+    .ribbon-service-item span {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .hero-landscape {
+      background: var(--bg-off);
+      padding: 60px 0;
+      min-height: 320px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .landscape-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 48px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .landscape-mountains {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      top: 0;
+      background: url('/hero2.png') no-repeat right bottom;
+      background-size: cover;
+      pointer-events: none;
+      z-index: 1;
+    }
+
