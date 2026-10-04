@@ -1,44 +1,12 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import { getTechnicianSummaries, statusBadgeClass, statusLabel } from '../../../lib/demo-data';
 
-const technicians = [
-  {
-    id: 'BT', name: 'Bikash Thapa',    phone: '98XX XXX XXX', area: 'Baneshwor / Koteshwor',
-    status: 'online',  currentJob: 'SL-000122', currentStatus: 'On the Way',
-    skills: ['Washing Machine', 'Refrigerator'],
-    weekDone: 5, color: '#10263D'
-  },
-  {
-    id: 'RK', name: 'Ramesh KC',       phone: '98XX XXX XXX', area: 'Lalitpur / Patan',
-    status: 'online',  currentJob: 'SL-000123', currentStatus: 'Diagnosing',
-    skills: ['TV', 'AC', 'Washing Machine'],
-    weekDone: 4, color: '#0C7C82'
-  },
-  {
-    id: 'SR', name: 'Suman Rai',       phone: '98XX XXX XXX', area: 'Maharajgunj / Baluwatar',
-    status: 'online',  currentJob: 'SL-000118', currentStatus: 'In Progress',
-    skills: ['AC', 'Refrigerator'],
-    weekDone: 3, color: '#8B5CF6'
-  },
-  {
-    id: 'PS', name: 'Prabin Shrestha', phone: '98XX XXX XXX', area: 'Kirtipur / Kalanki',
-    status: 'offline', currentJob: null, currentStatus: null,
-    skills: ['TV', 'Washing Machine'],
-    weekDone: 6, color: '#4A4E52'
-  },
-  {
-    id: 'NG', name: 'Nabin Gurung',    phone: '98XX XXX XXX', area: 'Bhaktapur / Dhulikhel',
-    status: 'offline', currentJob: null, currentStatus: null,
-    skills: ['AC', 'TV'],
-    weekDone: 2, color: '#4A4E52'
-  },
-  {
-    id: 'DS', name: 'Dev Shrestha',    phone: '98XX XXX XXX', area: 'Budhanilkantha',
-    status: 'offline', currentJob: null, currentStatus: null,
-    skills: ['Refrigerator', 'Washing Machine'],
-    weekDone: 1, color: '#4A4E52'
-  },
-];
+// Business: The roster answers "who can I send right now" — read straight from the store.
+// Technical: Availability and the current job are joined per technician, and the tab
+// filter reads each card's data-availability, so counts and cards can never disagree.
+const technicians = getTechnicianSummaries();
+const onlineCount = technicians.filter((t) => t.availability === 'online').length;
 ---
 
 <AdminDashboardLayout title="Technicians - Sudhar Lab Admin" activeNav="technicians">
@@ -52,7 +20,7 @@ const technicians = [
     <div class="tc-hdr-right">
       <div class="tc-online-count">
         <div class="online-dot-big"></div>
-        <span><strong>3</strong> online</span>
+        <span><strong>{onlineCount}</strong> online</span>
       </div>
       <button class="btn btn-secondary btn-sm" type="button" disabled title="Technician onboarding arrives with the backend API">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -63,24 +31,24 @@ const technicians = [
 
   <!-- STATUS FILTER TABS -->
   <div class="tc-tabs">
-    <button class="tc-tab active">All <span class="tc-tab-count">6</span></button>
-    <button class="tc-tab">Online <span class="tc-tab-count online-count">3</span></button>
-    <button class="tc-tab">Offline <span class="tc-tab-count">3</span></button>
+    <button class="tc-tab active" id="tc-tab-all" onclick="switchTechTab('all')">All <span class="tc-tab-count">{technicians.length}</span></button>
+    <button class="tc-tab" id="tc-tab-online" onclick="switchTechTab('online')">Online <span class="tc-tab-count online-count">{onlineCount}</span></button>
+    <button class="tc-tab" id="tc-tab-offline" onclick="switchTechTab('offline')">Offline <span class="tc-tab-count">{technicians.length - onlineCount}</span></button>
   </div>
 
   <!-- TECHNICIAN CARD GRID -->
   <div class="tc-grid">
     {technicians.map(tech => (
-      <div class="tc-card" onclick={`window.location.href='/admin/technicians/${tech.id}'`}>
+      <div class="tc-card" data-availability={tech.availability}>
         
         <!-- Card top: Avatar + Name + Status -->
         <div class="tc-card-top">
           <div class="tc-avatar-wrap">
-            <div class="tc-avatar" style={`background: ${tech.color}`}>{tech.id}</div>
-            <div class={`tc-status-dot ${tech.status}`}></div>
+            <div class="tc-avatar" style={`background: ${tech.avatarHue}`}>{tech.id}</div>
+            <div class:list={['tc-status-dot', tech.availability]}></div>
           </div>
           <div class="tc-info">
-            <div class="tc-name">{tech.name}</div>
+            <a class="tc-name tc-name-link" href={`/admin/technicians/${tech.id}`}>{tech.name}</a>
             <div class="tc-area">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
               {tech.area}
@@ -88,16 +56,18 @@ const technicians = [
           </div>
         </div>
 
-        <!-- Current Job or Available -->
-        {tech.currentJob
+        <!-- Current Job or Availability -->
+        {tech.currentJobId && tech.currentJobStatus
           ? <div class="tc-current-job">
-              <div class="tc-cj-id">{tech.currentJob}</div>
-              <span class={`badge ${tech.currentStatus === 'Diagnosing' ? 'badge-progress' : tech.currentStatus === 'In Progress' ? 'badge-progress' : 'badge-assigned'}`}>{tech.currentStatus}</span>
+              <a class="tc-cj-id" href={`/admin/requests/${tech.currentJobId}`}>{tech.currentJobId}</a>
+              <span class={`badge ${statusBadgeClass(tech.currentJobStatus)}`}>{statusLabel(tech.currentJobStatus)}</span>
             </div>
-          : <div class="tc-available">
+          : tech.availability === 'online'
+          ? <div class="tc-available">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="20 6 9 17 4 12"></polyline></svg>
               Available for assignment
             </div>
+          : <div class="tc-idle">Offline — not accepting visits</div>
         }
 
         <!-- Skills -->
@@ -110,17 +80,17 @@ const technicians = [
         <!-- Footer: week count + actions -->
         <div class="tc-card-footer">
           <div class="tc-week">
-            <span class="tc-week-num">{tech.weekDone}</span> done this week
+            <span class="tc-week-num">{tech.completedThisWeek}</span> done this week
           </div>
           <div class="tc-card-actions">
-            <button class="btn btn-ghost btn-sm" data-stop-prop>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            <a class="btn btn-ghost btn-sm" href={`tel:${tech.phone.replace(/\s/g, '')}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6.51-7.23 19.79 19.79 0 0 1-3.07-8.63 2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2.11z"></path></svg>
               Call
-            </button>
-            {!tech.currentJob &&
-              <button class="btn btn-primary btn-sm" data-stop-prop onclick={`window.location.href='/admin/requests'`}>
+            </a>
+            {tech.availability === 'online' && !tech.currentJobId &&
+              <a class="btn btn-primary btn-sm" href="/admin/requests">
                 Assign Job
-              </button>
+              </a>
             }
           </div>
         </div>
@@ -131,11 +101,18 @@ const technicians = [
 </AdminDashboardLayout>
 
 <script is:inline>
-// Business: Card action buttons must not trigger the card navigation.
-// Technical: Stop click propagation on action buttons (replaces deprecated inline event handler).
-document.querySelectorAll('[data-stop-prop]').forEach((btn) => {
-  btn.addEventListener('click', (e) => e.stopPropagation());
-});
+// Business: Online/Offline tabs filter the roster without a page reload.
+// Technical: Membership comes from each card's data-availability, set at render from
+// the demo store — this script never re-states who is online.
+function switchTechTab(kind) {
+  document.querySelectorAll('.tc-tab').forEach((t) => t.classList.remove('active'));
+  const tab = document.getElementById(`tc-tab-${kind}`);
+  if (tab) tab.classList.add('active');
+  document.querySelectorAll('.tc-card').forEach((card) => {
+    const av = card.getAttribute('data-availability');
+    card.style.display = (kind === 'all' || av === kind) ? '' : 'none';
+  });
+}
 </script>
 
 <style is:global>
@@ -188,9 +165,16 @@ document.querySelectorAll('[data-stop-prop]').forEach((btn) => {
     background: var(--pure-white); border: 1px solid var(--border);
     border-radius: 12px; padding: 1.25rem;
     display: flex; flex-direction: column; gap: 1rem;
-    cursor: pointer; transition: all 0.15s;
+    position: relative; transition: all 0.15s;
   }
   .tc-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); transform: translateY(-1px); }
+  /* Business: the name is the card's link target — real anchor, keyboard focusable. */
+  /* Technical: ::after stretches the hit area over the card; action buttons stay on top. */
+  .tc-name-link { text-decoration: none; color: var(--navy); }
+  .tc-name-link:hover { text-decoration: underline; }
+  .tc-name-link::after { content: ''; position: absolute; inset: 0; border-radius: 12px; }
+  .tc-card:hover .tc-name-link::after { z-index: 0; }
+  .tc-card-actions { display: flex; gap: 0.5rem; position: relative; z-index: 1; }
 
   /* Card top */
   .tc-card-top { display: flex; align-items: center; gap: 0.875rem; }
@@ -220,12 +204,18 @@ document.querySelectorAll('[data-stop-prop]').forEach((btn) => {
     display: flex; align-items: center; justify-content: space-between;
     background: var(--bg); border-radius: 8px; padding: 0.625rem 0.875rem;
   }
-  .tc-cj-id { font-size: 0.875rem; font-weight: 700; color: var(--teal); }
+  .tc-cj-id { font-size: 0.875rem; font-weight: 700; color: var(--teal); text-decoration: none; }
+  .tc-cj-id:hover { text-decoration: underline; }
 
   .tc-available {
     display: flex; align-items: center; gap: 0.375rem;
     font-size: 0.8125rem; font-weight: 600; color: #16A34A;
     background: #F0FDF4; border-radius: 8px;
+    padding: 0.5rem 0.875rem;
+  }
+  .tc-idle {
+    font-size: 0.8125rem; font-weight: 600; color: var(--graphite-lt);
+    background: var(--bg); border-radius: 8px;
     padding: 0.5rem 0.875rem;
   }
 
@@ -245,7 +235,6 @@ document.querySelectorAll('[data-stop-prop]').forEach((btn) => {
   }
   .tc-week { font-size: 0.75rem; color: var(--graphite-lt); }
   .tc-week-num { font-weight: 700; color: var(--navy); }
-  .tc-card-actions { display: flex; gap: 0.5rem; }
 
   @media (max-width: 767px) {
     .tc-header { flex-direction: column; gap: 0.75rem; align-items: stretch; }

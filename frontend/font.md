@@ -29,14 +29,47 @@ as defined in `prd.md`, `customer-admin-technician.md`, `technician.md`,
 
 | Decision | Value | Why |
 |---|---|---|
-| Display family | Nunito 700–900, tight tracking (−0.01…−0.03em) | Rounded, warm, approachable Black for homeowner-facing headlines; owner-rejected Jakarta as too cold. Hero uses full 900. Nav wordmark set in Nunito 800 to match the reference lockup. |
-| Text family | Nunito Sans 200–1000 variable (optical sizing), never light body text | Same superfamily as the display = one cohesive warm system; full weight range covers the 400–700 label steps; variable file keeps slow-network loads light. Replaced Public Sans (near-twin of Inter — change was invisible, defeating the purpose). |
-| Human touch | Kalam, exactly ONE place (`.qr-handwriting`) | Sturdier handwriting than Caveat at small sizes; signals "real people". A second use would signal unprofessional. |
+| Portal voices | Three deliberately different typefaces per role (see §2–§4) — never one family shared across portals | Each portal serves a different reader with a different job; distinct voices stop the staff tools from feeling like the marketing site and vice-versa. |
+| Customer | Fraunces (soft-serif display) + Manrope (modern body) + Kalam (2 accents) | Warmth + credibility for an anxious homeowner buying trust; a serif headline is the strongest "real, considered company" signal. `--font-display` = headlines only; `--font-h`/`--font-b` = Manrope so tiny UI labels never sit in a serif. |
+| Admin | Space Grotesk (headings) + IBM Plex Sans (body) + IBM Plex Mono (figures) | Familiar, fatigue-free operations console staff aren't afraid of; Plex Mono kills 0/O · 1/l on IDs and invoices. |
+| Tech | Rubik (headings 600–700 + sturdy rounded body) | Sturdy, friendly, low-strain field tool; a warm rounded face (not the old condensed look) keeps hard work feeling like family, not frustration. |
+| Human touch | Kalam, exactly TWO sanctioned places (`.qr-handwriting`, `.ft-desc`) | Sturdier handwriting than Caveat at small sizes; signals "real people". §2.9 promoted the footer trust line to Kalam — a third use anywhere would signal unprofessional. |
 | Content floor | 12px minimum for anything content-bearing | Lighthouse flags <12px; low-literacy + small phones punish tiny text. |
 | Chrome floor | 10px minimum, only tracked-uppercase (`≥0.08em`) 700 labels | Badges/tabs are chrome, not content; tracking + weight compensate size. |
 | Body rhythm | 1.6 leading for prose/descriptions | CHI + web.dev sweet spot for comprehension. |
 | Figures | `.tnum` (tabular-nums) on IDs, invoices, times, phones | Wobbling digits feel untrustworthy in billing/queue contexts. |
 | Italics | Banned for meaning; remove the one existing case | Slows fixation; use color/border for distinction instead. |
+
+---
+
+## 1.5 Golden-ratio scale (customer editorial surfaces ONLY)
+
+Purpose: replace the ad-hoc heading sizes (was 22/26/32/42/48/56/88 — no
+relationship) with one proportional system so the marketing site reads
+art-directed. This is the ONLY place φ is applied. Admin/tech keep tighter
+ratios by design — φ's jumps are too coarse for dense tools (§0.4, §3, §4) —
+and are deliberately NOT wired to these tokens.
+
+Math: base = 16px body, ratio φ = 1.618. The ladder steps by √φ ≈ 1.272 so
+neighbours are usable, and every SECOND step is an exact φ leap — golden at
+both the local and structural level. Tokens live in
+`styles/customer/01-tokens.css` (single source of truth):
+
+| Token | px | Position | Used by |
+|---|---|---|---|
+| (body) | 16 | base | prose, lead paragraphs |
+| `--fs-title-sm` | 26 | φ¹ | `.svc-title`, `.trust-title` |
+| `--fs-title` | 33 | φ^1.5 | `.fs h3` |
+| `--fs-h2` | 42 | φ² | `.sec-head h2`, `.qr-left h2` |
+| `--fs-h2-lg` | 53 | φ^2.5 | `.final-cta h2` |
+| `--fs-h1` | 86 | φ^3.5 | `.hero-h1` |
+
+Spacing: base 8 × φ → `--sp-1..6` = 8/13/21/34/55/89, applied to MACRO
+vertical rhythm only (section padding, heading margins, trust-grid gaps) —
+never to every component's internal padding, which would be cargo-culting.
+
+Rule: a new display heading must reuse an existing `--fs-*` rung. Adding a
+size off the ladder means updating this table and the math first.
 
 ---
 
@@ -54,7 +87,7 @@ Change: none (already serves the job).
 ### 2.2 Hero (`Hero.astro`, `04-hero.css`)
 Purpose: answer "what/where/trust" in seconds (`:94-100`). Type job:
 one confident promise + two unmissable actions.
-Prescription: H1 Outfit 900 `clamp(48,7vw,88)` / 1.03 / −0.03em — keep.
+Prescription: H1 Fraunces (`--font-display`) 600 `clamp(48,7vw,86)` = `--fs-h1` / 1.06 / −0.015em — soft serif, warm and confident.
 Eyebrow is unstyled `span.eyebrow` → set 12px/700/0.2em uppercase
 (current `10.5px` in `02-base.css:96` violates the content floor).
 Ribbon micro-labels `10px` (`04-hero.css:237,272`) → `11px` (chrome floor).
@@ -131,18 +164,19 @@ Purpose: one-thumb escape hatches. Keep all current sizes except chrome
 floors already covered; `ContextPill` 14px/700 keep.
 
 ### 2.11 Receipt + 404
-`success-ref-num` gets `tnum` (phone dictation). 404 uses Nunito headings +
-Nunito Sans body (matches the system).
+`success-ref-num` set in Manrope (phone dictation, not the serif). 404 uses
+Fraunces headings + Manrope body (matches the customer system).
 
 ---
 
-## 3. ADMIN (`/admin`) — Archivo + Source Sans 3 + Plex Mono (never customer/tech voices)
+## 3. ADMIN (`/admin`) — Space Grotesk + IBM Plex Sans + IBM Plex Mono (never customer/tech voices)
 
 Job of the whole portal: triage queues fast, never misread an ID, status, or
-amount (`customer-admin-technician.md:404-426`). Dense is correct here
-(density 4–5); the floor still holds for content. Three voices because the
-admin has three reading risks: titles = **Archivo 700/800** (formal command);
-descriptions = **Source Sans 3 400–700** (fatigue-free shifts); figures =
+amount (`customer-admin-technician.md:404-426`), and feel like a familiar tool
+staff are not afraid of. Dense is correct here (density 4–5); the floor still
+holds for content. Three voices because the admin has three reading risks:
+titles = **Space Grotesk 400–700** (crafted, unpretentious command);
+descriptions = **IBM Plex Sans 400–700** (fatigue-free shifts); figures =
 **IBM Plex Mono 500/600** via one shared layout rule covering
 `.req-id/.qc-id/.lj-id/.tc-cj-id/.billing-inv-val` + ID breadcrumbs
 (mono kills 0/O + 1/l confusion where a wrong digit misroutes a visit).
@@ -191,17 +225,17 @@ Purpose: directory + 360° history/billing (`:381` trust foundation).
 
 ---
 
-## 4. TECH (`/tech`) — Barlow system (deliberately NOT customer fonts)
+## 4. TECH (`/tech`) — Rubik (deliberately NOT customer/admin fonts)
 
 Job of the whole portal: "What job? Where? Next action? What to record?"
-in sunlight, one-thumbed (`technician.md:9-28`). Biggest type on the site
-belongs to the next-action button, not headlines. The reader is staff doing
-physical work — not an anxious homeowner — so warmth yields to sturdiness:
-titles = **Barlow Condensed 600–800** (narrow signage voice fits small
-screens, shouts state at a glance), descriptions = **Barlow 400–700**
-(full label range, open grotesque legibility), profile identity = Condensed
-(name/stats as confident headlines). Isolated to the two tech layouts'
-`--font-h/--font-b`; customer/admin untouched.
+in sunlight, one-thumbed (`technician.md:9-28`), while making the company feel
+trusted and the technician feel like family — not frustrated. Biggest type on
+the site belongs to the next-action button, not headlines. The reader is staff
+doing physical work — not an anxious homeowner — so clarity leads, warmth
+follows: titles = **Rubik 600–700** (sturdy, rounded, high-presence),
+descriptions = **Rubik 400–500** (same family, low-strain). One warm rounded
+face replaces the old condensed look so the portal reads clearly new. Isolated
+to the two tech layouts' `--font-h/--font-b`; customer/admin untouched.
 
 ### 4.1 Shells + login
 `TechDashboardLayout` bottom tabs 11px → 12px (mobile 10px → 11px).
@@ -241,3 +275,23 @@ list 4 bumps; detail 2 bumps; tech-list 2 bumps; customers 5 bumps.
 Tech: tabs 11→12px (+10→11px mobile); jobs badge→12px; logins note→12px.
 Everything else: KEEP. Total ≈ 35 micro-edits, zero family changes, zero
 layout changes.
+
+### 5.1 Applied status (verified against source)
+
+Every ledger line above is implemented. Two follow-ups closed in the same pass:
+- `14-motion.css` `.app-opt-label` still dropped to 11px at the small breakpoint
+  after the base was raised → now 12px (content floor outranks responsive shrink).
+- `.success-ref-num` carries `font-variant-numeric: tabular-nums` inline in
+  `07-request-form.css` (the `.tnum` class is a dashboard-layout utility, not
+  available to the customer stylesheet).
+
+Sanctioned chrome exceptions (under 12px, legal per §1 "Chrome floor": ≥10px,
+tracked-uppercase ≥700, or non-text glyph chips — do not "fix" these):
+- Customer: ribbon micro-labels 11px, `hiw-mob-pill` 10.5px @480px,
+  `cta-logo-text p` 10px, `ft-tagline` 10px, `ft-col h4` 11px, `trust-num`
+  chips 10px (decorative 01/02 numerals).
+- Admin: `logo-badge` 10px, `nav-section-label` 11px, `bn-item` 11px,
+  mobile `topbar-avatar` initials 11px, `req-tech-av` initials 11px
+  (avatar initials = chrome, §3.4).
+- Tech: mobile nav-tab labels 11px @380px (§4.1 target).
+Anything else under 12px is a bug: bump to the content floor.

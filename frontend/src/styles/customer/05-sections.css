@@ -4,7 +4,8 @@
        SECTION SHELLS
     ================================================ */
     .sec {
-      padding: 100px 0;
+      /* Technical: section block padding = φ spacing --sp-6 (89px). */
+      padding: var(--sp-6) 0;
     }
 
     .sec--white {
@@ -24,21 +25,22 @@
     }
 
     .sec-head {
-      margin-bottom: 40px;
+      margin-bottom: var(--sp-4);
     }
 
     .sec-head .eyebrow {
-      margin-bottom: 14px;
+      margin-bottom: var(--sp-2);
     }
 
     .sec-head h2 {
-      font-family: var(--font-h);
-      font-size: clamp(28px, 3.2vw, 42px);
-      font-weight: 800;
+      font-family: var(--font-display);
+      /* Technical: max = φ² rung (--fs-h2). */
+      font-size: clamp(28px, 3.2vw, var(--fs-h2));
+      font-weight: 600;
       color: var(--navy);
-      letter-spacing: -0.022em;
+      letter-spacing: -0.012em;
       line-height: 1.15;
-      margin-bottom: 14px;
+      margin-bottom: var(--sp-2);
     }
 
     .sec-head h2.light {

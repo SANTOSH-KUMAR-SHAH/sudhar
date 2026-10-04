@@ -78,9 +78,11 @@ import { SITE_PHONE_DISPLAY, SITE_PHONE_HREF, SITE_WHATSAPP_HREF, SITE_EMAIL, SI
       <div class="ft-col">
         <h4>LEGAL</h4>
         <div class="ft-links">
-          <a href="#" class="ft-link"><span class="ft-link-chevron">></span> Privacy Policy</a>
-          <a href="#" class="ft-link"><span class="ft-link-chevron">></span> Terms</a>
-          <a href="#" class="ft-link"><span class="ft-link-chevron">></span> Accessibility</a>
+          <!-- Business: Legal pages are drafted at launch; until then show intent, never a dead link. -->
+          <!-- Technical: span.ft-link--soon keeps row rhythm; .ft-link:hover only targets <a>. -->
+          <span class="ft-link ft-link--soon"><span class="ft-link-chevron">></span> Privacy Policy</span>
+          <span class="ft-link ft-link--soon"><span class="ft-link-chevron">></span> Terms</span>
+          <span class="ft-link ft-link--soon"><span class="ft-link-chevron">></span> Accessibility</span>
         </div>
       </div>
 

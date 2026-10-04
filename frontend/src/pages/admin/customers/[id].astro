@@ -1,165 +1,122 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import StatusBadge from '../../../components/common/StatusBadge.astro';
+import type { ServiceStatusKey } from '../../../lib/service-status';
+import {
+  DEMO_CUSTOMERS,
+  getDemoCustomer,
+  getDemoTechnician,
+  isRequestActive,
+  requestExists,
+  requestsForCustomer,
+  statusBadgeClass,
+  statusLabel,
+} from '../../../lib/demo-data';
 
+// Business: Customer 360 is assembled, never stored twice — profile from the customer
+// Business: table, open work joined from the request table, closed cases as history.
+// Technical: Paths derive from DEMO_CUSTOMERS and unknown ids 404 like the request and
+// technician pages, so a cross-link to a dead customer cannot ship in a build.
 export function getStaticPaths() {
-  return [
-    { params: { id: 'HT' } },
-    { params: { id: 'MS' } },
-    { params: { id: 'SR' } },
-    { params: { id: 'AG' } },
-    { params: { id: 'BR' } },
-  ];
+  return DEMO_CUSTOMERS.map((c) => ({ params: { id: c.id } }));
 }
 
 const { id } = Astro.params;
-
-// Business: Customer 360 view must be typed so billing/activity cannot drift silently.
-// Technical: Explicit detail shape replaces `any`; unknown IDs show a warning banner.
-interface CustomerAppliance {
-  name: string;
-  icon: string;
-  model: string;
-  lastService: string;
-  requests: number;
-  outcome: string;
-  outcomeClass: string;
+const customer = getDemoCustomer(id ?? '');
+if (!customer) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
 }
-interface HistoryRow {
+
+const openRequests = requestsForCustomer(customer.id);
+const activeRequest = openRequests.find((r) => isRequestActive(r.status)) ?? null;
+const activeTechnician = activeRequest?.technicianId ? getDemoTechnician(activeRequest.technicianId) : undefined;
+
+// Business: The four numbers on this page are counts of real records, not typed figures.
+const kpi = {
+  active: openRequests.filter((r) => isRequestActive(r.status)).length,
+  appliances: customer.appliances.length,
+  totalRequests: openRequests.length + customer.history.length,
+  successfulRepairs:
+    openRequests.filter((r) => r.status === 'COMPLETED').length +
+    customer.history.filter((h) => h.tone === 'success').length,
+};
+
+// Technical: Story words ("Repair Declined") keep their own wording; the tone recorded
+// in the data maps onto canonical .badge-* colours so chips here match the requests queue.
+const TONE_BADGE: Record<string, string> = {
+  success: 'badge-done',
+  warning: 'badge-cancel',
+  danger: 'badge-cancel',
+  neutral: 'badge-neutral',
+  active: 'badge-progress',
+};
+const heroBadge = activeRequest
+  ? { label: 'Active Request', cls: 'badge-progress' }
+  : openRequests.length > 0
+    ? { label: statusLabel(openRequests[0].status), cls: statusBadgeClass(openRequests[0].status) }
+    : customer.history.length > 0
+      ? { label: customer.history[0].outcome, cls: TONE_BADGE[customer.history[0].tone] ?? 'badge-neutral' }
+      : { label: 'New customer', cls: 'badge-neutral' };
+
+// Business: One history table — live requests first, then the closed archive.
+// Technical: A uniform row shape keeps the table branch-free except for the badge,
+// and each row's filter group is stamped as data-sh for the tab script below.
+interface HistoryRowView {
   id: string;
   appliance: string;
   problem: string;
   date: string;
   technician: string;
+  live: boolean;
+  status: ServiceStatusKey | null;
   outcome: string;
-  outcomeClass: string;
+  tone: string;
+  group: string;
 }
-interface ActivityRow {
-  icon: string;
-  text: string;
-  time: string;
-}
-interface CustomerDetailMock {
-  name: string;
-  avatarColor: string;
-  statusBadge: string;
-  statusClass: string;
-  location: string;
-  since: string;
-  phone: string;
-  fullName: string;
-  area: string;
-  preferredContact: string;
-  address: string;
-  customerCreated: string;
-  internalNotesCount: number;
-  kpi: { active: number; appliances: number; totalRequests: number; successfulRepairs: number };
-  activeRequest: {
-    id: string;
-    appliance: string;
-    status: string;
-    statusClass: string;
-    technician: string;
-    visit: string;
-    area: string;
-  } | null;
-  appliances: CustomerAppliance[];
-  serviceHistory: HistoryRow[];
-  recentActivity: ActivityRow[];
-  billing: { recorded: number; paid: number; pending: number; latestInvoice: string; paymentStatus: string };
-  internalNotes: Array<{ text: string; author: string; date: string }>;
-  communication: Array<{ type: string; date: string }>;
-}
-const customerData: Record<string, CustomerDetailMock> = {
-  'HT': {
-    name: 'Hari Thapa',
-    avatarColor: 'var(--navy)',
-    statusBadge: 'Active Request',
-    statusClass: 'active',
-    location: 'Baneshwor, Kathmandu',
-    since: 'September 2026',
-    phone: '98XX XXX XXX',
-    fullName: 'Hari Thapa',
-    area: 'Baneshwor; Kathmandu',
-    preferredContact: 'None',
-    address: 'Near the main road, Baneshwor',
-    customerCreated: 'September 2026',
-    internalNotesCount: 2,
-    kpi: { active: 1, appliances: 2, totalRequests: 3, successfulRepairs: 1 },
-    activeRequest: {
-      id: 'SL-000124', appliance: 'LG Washing Machine',
-      status: 'Diagnosing', statusClass: 'active',
-      technician: 'Ramesh', visit: 'Today, 11:30 AM', area: 'Baneshwor'
-    },
-    appliances: [
-      { name: 'LG Washing Machine', icon: 'washer', model: 'FHM1207', lastService: 'Today', requests: 2, outcome: 'Successful Repair', outcomeClass: 'success' },
-      { name: 'Samsung Refrigerator', icon: 'fridge', model: 'Not provided', lastService: 'August 29', requests: 1, outcome: 'Repair Declined', outcomeClass: 'warning' }
-    ],
-    serviceHistory: [
-      { id: 'SL-000124', appliance: 'LG Washing Machine', problem: 'Not draining', date: 'Today', technician: 'Ramesh', outcome: 'Active — Diagnosing', outcomeClass: 'active' },
-      { id: 'SL-000089', appliance: 'Samsung Refrigerator', problem: 'Not cooling', date: 'August 29', technician: 'Suman', outcome: 'Repair Declined', outcomeClass: 'warning' },
-      { id: 'SL-000056', appliance: 'LG Washing Machine', problem: 'Water leakage', date: 'August 12', technician: 'Ramesh', outcome: 'Customer Cancelled', outcomeClass: 'danger' },
-      { id: 'SL-000031', appliance: 'LG Washing Machine', problem: 'Drain pump blockage', date: 'July 20', technician: 'Ramesh', outcome: 'Successful Repair', outcomeClass: 'success' }
-    ],
-    recentActivity: [
-      { icon: 'tech', text: 'Technician assigned: Ramesh', time: 'Today, 10:42 AM' },
-      { icon: 'admin', text: 'Customer confirmation recorded by admin', time: 'Today, 9:35 AM' },
-      { icon: 'req', text: 'Request submitted', time: 'Today, 9:12 AM' },
-      { icon: 'x', text: 'Repair price declined by customer', time: 'August 29' },
-      { icon: 'check', text: 'Previous service request completed', time: 'August 20' }
-    ],
-    billing: { recorded: 2, paid: 1, pending: 1, latestInvoice: 'INV-00031', paymentStatus: 'Pending' },
-    internalNotes: [
-      { text: 'Customer prefers phone calls.', author: 'Sudhar Lab Admin', date: 'Today' },
-      { text: 'Customer has two appliances at the same address.', author: 'Sudhar Lab Admin', date: 'August 20' }
-    ],
-    communication: [
-      { type: 'Phone call', date: 'Today' },
-      { type: 'Confirmation discussion', date: 'Today' },
-      { type: 'Price discussion', date: 'August 29' }
-    ]
-  },
-  'MS': {
-    name: 'Mina Shrestha',
-    avatarColor: 'var(--teal)',
-    statusBadge: 'Repair Declined',
-    statusClass: 'warning',
-    location: 'Lalitpur',
-    since: 'July 2026',
-    phone: '98XX XXX XXX',
-    fullName: 'Mina Shrestha',
-    area: 'Lalitpur',
-    preferredContact: 'Phone',
-    address: 'Pulchowk, Lalitpur',
-    customerCreated: 'July 2026',
-    internalNotesCount: 0,
-    kpi: { active: 0, appliances: 1, totalRequests: 2, successfulRepairs: 1 },
-    activeRequest: null,
-    appliances: [
-      { name: 'Samsung AC', icon: 'ac', model: 'AR18', lastService: 'Yesterday', requests: 2, outcome: 'Repair Declined', outcomeClass: 'warning' }
-    ],
-    serviceHistory: [
-      { id: 'SL-000115', appliance: 'Samsung AC', problem: 'Not cooling', date: 'Yesterday', technician: 'Ramesh', outcome: 'Repair Declined', outcomeClass: 'warning' },
-      { id: 'SL-000045', appliance: 'Samsung AC', problem: 'Gas refill', date: 'July 15', technician: 'Bikash', outcome: 'Successful Repair', outcomeClass: 'success' }
-    ],
-    recentActivity: [
-      { icon: 'x', text: 'Repair price declined by customer', time: 'Yesterday' },
-      { icon: 'tech', text: 'Technician visited for diagnosis', time: 'Yesterday' },
-      { icon: 'check', text: 'Previous service request completed', time: 'July 15' }
-    ],
-    billing: { recorded: 1, paid: 1, pending: 0, latestInvoice: 'INV-00045', paymentStatus: 'Paid' },
-    internalNotes: [],
-    communication: [
-      { type: 'Price discussion', date: 'Yesterday' }
-    ]
-  }
-};
+const historyRows: HistoryRowView[] = [
+  ...openRequests.map((r): HistoryRowView => ({
+    id: r.id,
+    appliance: `${r.brand} ${r.applianceType}`,
+    problem: r.problem,
+    date: r.receivedAgo,
+    technician: r.technicianId ? getDemoTechnician(r.technicianId)?.name ?? '—' : 'Not assigned yet',
+    live: true,
+    status: r.status,
+    outcome: statusLabel(r.status),
+    tone: '',
+    group: isRequestActive(r.status) ? 'Active' : statusLabel(r.status),
+  })),
+  ...customer.history.map((h): HistoryRowView => ({
+    id: h.id,
+    appliance: h.appliance,
+    problem: h.problem,
+    date: h.date,
+    technician: h.technician,
+    live: false,
+    status: null,
+    outcome: h.outcome,
+    tone: h.tone,
+    group: h.outcome,
+  })),
+];
+const historyTabs = ['All', ...new Set(historyRows.map((row) => row.group))];
 
-const rawCust: CustomerDetailMock | undefined = customerData[id ?? ""];
-const isUnknownCustomer = !rawCust;
-const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetailMock;
+// Business: Activity blends live request movement with logged calls. The real event
+// log arrives with the backend; until then every line here is still derived, not typed.
+const recentActivity = [
+  ...openRequests.map((r) => ({ text: `${r.brand} ${r.applianceType} — ${statusLabel(r.status)}`, time: r.lastUpdated })),
+  ...customer.communication.map((c) => ({ text: c.type, time: c.date })),
+].slice(0, 6);
+
+// Business: Per-appliance request counts join by appliance kind — no stored number to drift.
+const applianceRequests = (name: string) =>
+  openRequests.filter((r) => name.toLowerCase().includes(r.applianceType.toLowerCase())).length +
+  customer.history.filter((h) => h.appliance.toLowerCase() === name.toLowerCase()).length;
+
+const phoneHref = `tel:${customer.phone.replace(/\s/g, '')}`;
 ---
 
-<AdminDashboardLayout title={`${cust.name} - Customers - Sudhar Lab`} activeNav="customers">
+<AdminDashboardLayout title={`${customer.name} - Customers - Sudhar Lab`} activeNav="customers">
 
   <!-- BREADCRUMB -->
   <div class="breadcrumb-row">
@@ -167,47 +124,44 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
     <a href="/admin/customers" class="breadcrumb-link">Customers</a>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
-    <span class="breadcrumb-current">{cust.name}</span>
+    <span class="breadcrumb-current">{customer.name}</span>
   </div>
-  {isUnknownCustomer && (
-    <p class="form-notice form-notice-info" role="status" style="display:block">Unknown demo customer — showing HT as a placeholder. Wire to GET /api/customers/:id when the backend exists.</p>
-  )}
 
   <!-- HERO SECTION -->
   <div class="hero-card">
     <div class="hero-left">
-      <div class="hero-avatar" style={`background-color: ${cust.avatarColor}`}>{id}</div>
+      <div class="hero-avatar" style={`background-color: ${customer.avatarColor}`}>{customer.initials}</div>
       <div class="hero-info">
         <div class="hero-name-row">
-          <h1 class="hero-name">{cust.name}</h1>
-          <span class={`hero-badge badge-${cust.statusClass}`}>{cust.statusBadge}</span>
+          <h1 class="hero-name">{customer.name}</h1>
+          <span class={`badge ${heroBadge.cls}`}>{heroBadge.label}</span>
         </div>
         <div class="hero-meta-list">
           <div class="hero-meta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            {cust.location}
+            {customer.address}
           </div>
           <div class="hero-meta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            Customer since {cust.since}
+            Customer since {customer.since}
           </div>
           <div class="hero-meta">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-            {cust.phone}
+            {customer.phone}
           </div>
         </div>
       </div>
     </div>
     <div class="hero-actions">
-      <button class="btn-primary">
+      <a class="btn-primary" href={phoneHref}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
         Call Customer
-      </button>
-      <button class="btn-outline">
+      </a>
+      <button class="btn-outline" type="button" disabled title="Customer editing arrives with the backend API">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
         Edit Details
       </button>
-      <button class="btn-outline">
+      <button class="btn-outline" type="button" disabled title="Manual request entry arrives with the backend API">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         Add Request
       </button>
@@ -221,7 +175,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
       </div>
       <div>
-        <div class="kpi-num">{cust.kpi.active}</div>
+        <div class="kpi-num">{kpi.active}</div>
         <div class="kpi-label">Active Requests</div>
       </div>
     </div>
@@ -230,7 +184,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       </div>
       <div>
-        <div class="kpi-num">{cust.kpi.appliances}</div>
+        <div class="kpi-num">{kpi.appliances}</div>
         <div class="kpi-label">Appliances</div>
       </div>
     </div>
@@ -239,7 +193,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
       </div>
       <div>
-        <div class="kpi-num">{cust.kpi.totalRequests}</div>
+        <div class="kpi-num">{kpi.totalRequests}</div>
         <div class="kpi-label">Total Requests</div>
       </div>
     </div>
@@ -248,14 +202,14 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
       </div>
       <div>
-        <div class="kpi-num">{cust.kpi.successfulRepairs}</div>
+        <div class="kpi-num">{kpi.successfulRepairs}</div>
         <div class="kpi-label">Successful Repairs</div>
       </div>
     </div>
   </div>
 
   <!-- ACTIVE REQUEST BANNER -->
-  {cust.activeRequest && (
+  {activeRequest && (
     <div class="active-req-banner">
       <div class="banner-icon-wrap">
         <div class="banner-pulse"></div>
@@ -263,24 +217,24 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
       </div>
       <div class="banner-label">Active service request</div>
       <div class="banner-sep"></div>
-      <div class="banner-field"><div class="banner-key">Request No.</div><div class="banner-val">{cust.activeRequest.id}</div></div>
-      <div class="banner-field"><div class="banner-key">Appliance</div><div class="banner-val">{cust.activeRequest.appliance}</div></div>
+      <div class="banner-field"><div class="banner-key">Request No.</div><div class="banner-val tnum">{activeRequest.id}</div></div>
+      <div class="banner-field"><div class="banner-key">Appliance</div><div class="banner-val">{activeRequest.brand} {activeRequest.applianceType}</div></div>
       <div class="banner-field">
         <div class="banner-key">Status</div>
-        <div class="banner-val"><span class={`status-badge badge-${cust.activeRequest.statusClass}`}>{cust.activeRequest.status}</span></div>
+        <div class="banner-val"><StatusBadge status={activeRequest.status} /></div>
       </div>
-      <div class="banner-field"><div class="banner-key">Technician</div><div class="banner-val">{cust.activeRequest.technician}</div></div>
-      <div class="banner-field"><div class="banner-key">Visit</div><div class="banner-val">{cust.activeRequest.visit}</div></div>
-      <div class="banner-field"><div class="banner-key">Area</div><div class="banner-val">{cust.activeRequest.area}</div></div>
-      <button class="btn-open-req" onclick={`window.location.href='/admin/requests/${cust.activeRequest.id}'`}>
+      <div class="banner-field"><div class="banner-key">Technician</div><div class="banner-val">{activeTechnician?.name ?? 'Not assigned yet'}</div></div>
+      <div class="banner-field"><div class="banner-key">Visit</div><div class="banner-val">{activeRequest.visitTime}</div></div>
+      <div class="banner-field"><div class="banner-key">Area</div><div class="banner-val">{customer.area}</div></div>
+      <a class="btn-open-req" href={`/admin/requests/${activeRequest.id}`}>
         Open Request
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </button>
+      </a>
     </div>
   )}
 
   <!-- NO ACTIVE REQUEST STATE (for customers without active requests) -->
-  {!cust.activeRequest && (
+  {!activeRequest && (
     <div class="no-request-banner">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
       <div>
@@ -304,13 +258,13 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
             <h2 class="section-title">Customer Information</h2>
           </div>
           <div class="section-head-right">
-            {cust.internalNotesCount > 0 && (
+            {customer.internalNotes.length > 0 && (
               <div class="notes-badge">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                {cust.internalNotesCount} internal notes
+                {customer.internalNotes.length} internal notes
               </div>
             )}
-            <button class="btn-link">
+            <button class="btn-link" type="button" disabled title="Customer editing arrives with the backend API">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               Edit Details
             </button>
@@ -321,29 +275,29 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
           <div class="info-col">
             <div class="info-field">
               <div class="info-label">Full name</div>
-              <div class="info-val">{cust.fullName}</div>
+              <div class="info-val">{customer.name}</div>
             </div>
             <div class="info-field">
               <div class="info-label">Phone</div>
-              <div class="info-val">{cust.phone}</div>
+              <div class="info-val">{customer.phone}</div>
             </div>
             <div class="info-field">
               <div class="info-label">Address</div>
-              <div class="info-val">{cust.address}</div>
+              <div class="info-val">{customer.address}</div>
             </div>
           </div>
           <div class="info-col">
             <div class="info-field">
               <div class="info-label">Area</div>
-              <div class="info-val">{cust.area}</div>
+              <div class="info-val">{customer.area}</div>
             </div>
             <div class="info-field">
               <div class="info-label">Preferred contact</div>
-              <div class="info-val">{cust.preferredContact}</div>
+              <div class="info-val">{customer.preferredContact}</div>
             </div>
             <div class="info-field">
               <div class="info-label">Customer created</div>
-              <div class="info-val">{cust.customerCreated}</div>
+              <div class="info-val">{customer.since}</div>
             </div>
           </div>
         </div>
@@ -362,7 +316,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
         </div>
 
         <div class="appliance-grid">
-          {cust.appliances.map((app: any) => (
+          {customer.appliances.map((app) => (
             <div class="appliance-card">
               <div class="appliance-header">
                 <div class="appliance-icon">
@@ -381,19 +335,23 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
                 </div>
                 <div class="appl-detail">
                   <span class="appl-key">Service requests</span>
-                  <span class="appl-val">{app.requests}</span>
+                  <span class="appl-val">{applianceRequests(app.name)}</span>
                 </div>
                 <div class="appl-detail">
                   <span class="appl-key">Latest outcome</span>
-                  <span class={`status-badge badge-${app.outcomeClass}`}>{app.outcome}</span>
+                  <span class={`badge ${TONE_BADGE[app.tone] ?? 'badge-neutral'}`}>{app.outcome}</span>
                 </div>
               </div>
-              <button class="btn-view-history">View History</button>
+              <a class="btn-view-history" href="#service-history">View History</a>
             </div>
           ))}
 
+          {customer.appliances.length === 0 && (
+            <div class="appliance-empty">No appliance records yet — appliances appear after the first request.</div>
+          )}
+
           <!-- ADD APPLIANCE CARD -->
-          <div class="appliance-add-card">
+          <div class="appliance-add-card" title="Appliance records arrive with the backend API">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             <div class="add-appliance-text">Add another appliance</div>
           </div>
@@ -401,7 +359,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
       </div>
 
       <!-- SERVICE HISTORY -->
-      <div class="section-card">
+      <div class="section-card" id="service-history">
         <div class="section-head">
           <div class="section-head-left">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
@@ -409,65 +367,60 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
           </div>
         </div>
 
-        <!-- SERVICE HISTORY TABS -->
+        <!-- SERVICE HISTORY TABS: derived from the outcomes this customer actually has -->
         <div class="sh-tabs">
-          <button class="sh-tab active">All</button>
-          <button class="sh-tab">Active</button>
-          <button class="sh-tab">No Technician Visit</button>
-          <button class="sh-tab">Customer Cancelled</button>
-          <button class="sh-tab">Repair Declined</button>
-          <button class="sh-tab">Successful Repair</button>
+          {historyTabs.map((tab, i) => (
+            <button class={`sh-tab ${i === 0 ? 'active' : ''}`} type="button" data-sh={tab}>{tab}</button>
+          ))}
         </div>
 
-        <div class="sh-table-wrap">
-          <table class="sh-table">
-            <thead>
-              <tr>
-                <th>Request</th>
-                <th>Appliance</th>
-                <th>Problem</th>
-                <th>Date</th>
-                <th>Technician</th>
-                <th>Outcome</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cust.serviceHistory.map((req: any) => (
-                <tr class="sh-row">
-                  <td><div class="req-id">{req.id}</div></td>
-                  <td><div class="cell-text">{req.appliance}</div></td>
-                  <td><div class="cell-text">{req.problem}</div></td>
-                  <td><div class="cell-text">{req.date}</div></td>
-                  <td><div class="cell-text">{req.technician}</div></td>
-                  <td><span class={`status-badge badge-${req.outcomeClass}`}>{req.outcome}</span></td>
-                  <td>
-                    <div class="action-cell">
-                      <button class="btn-link-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>
-                        {req.outcomeClass === 'active' ? 'Open Request' : 'View Record'}
-                      </button>
-                      <button class="btn-dots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
-                    </div>
-                  </td>
+        {historyRows.length > 0 ? (
+          <div class="sh-table-wrap">
+            <table class="sh-table">
+              <thead>
+                <tr>
+                  <th>Request</th>
+                  <th>Appliance</th>
+                  <th>Problem</th>
+                  <th>Date</th>
+                  <th>Technician</th>
+                  <th>Outcome</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- EMPTY STATE: No appliance records -->
-        <div class="sh-empty-row">
-          <div class="sh-empty-col">
+              </thead>
+              <tbody>
+                {historyRows.map((row) => (
+                  <tr class="sh-row" data-sh={row.group}>
+                    <td><div class="req-id tnum">{row.id}</div></td>
+                    <td><div class="cell-text">{row.appliance}</div></td>
+                    <td><div class="cell-text">{row.problem}</div></td>
+                    <td><div class="cell-text">{row.date}</div></td>
+                    <td><div class="cell-text">{row.technician}</div></td>
+                    <td>
+                      {row.status
+                        ? <StatusBadge status={row.status} />
+                        : <span class={`badge ${TONE_BADGE[row.tone] ?? 'badge-neutral'}`}>{row.outcome}</span>}
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        {requestExists(row.id)
+                          ? <a class="btn-link-sm" href={`/admin/requests/${row.id}`}>{row.live ? 'Open Request' : 'View Record'}</a>
+                          : <span class="btn-link-sm btn-archived" title="Archived before the current record set">Record archived</span>}
+                        <button class="btn-dots" type="button" disabled title="Row actions arrive with the backend API"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div class="sh-empty-state">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <div class="sh-empty-text">No active service request</div>
-            <div class="sh-empty-desc">New requests from this customer will appear here.</div>
+            <div class="sh-empty-text">No service history yet.</div>
+            <div class="sh-empty-desc">Requests from this customer will appear here.</div>
           </div>
-          <div class="sh-empty-col">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
-            <div class="sh-empty-text">No appliance records yet.</div>
-            <div class="sh-empty-desc">Appliances will appear after the first request.</div>
-          </div>
-        </div>
+        )}
       </div>
 
     </div><!-- /main-col -->
@@ -482,25 +435,25 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
           <h3 class="side-card-title">Quick Actions</h3>
         </div>
         <div class="quick-actions-list">
-          <button class="qa-item">
+          <a class="qa-item" href={phoneHref}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
             Call Customer
-          </button>
-          <button class="qa-item">
+          </a>
+          <button class="qa-item" type="button" disabled title="Manual request entry arrives with the backend API">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Add Request
           </button>
-          <button class="qa-item">
+          <button class="qa-item" type="button" disabled title="Customer editing arrives with the backend API">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
             Edit Details
           </button>
-          {cust.activeRequest && (
-            <button class="qa-item">
+          {activeRequest && (
+            <a class="qa-item" href={`/admin/requests/${activeRequest.id}`}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
               View Active Request
-            </button>
+            </a>
           )}
-          <button class="qa-item">
+          <button class="qa-item" type="button" disabled title="Internal notes arrive with the backend API">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
             Add Internal Note
           </button>
@@ -514,11 +467,14 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
           <h3 class="side-card-title">Recent Activity</h3>
         </div>
         <div class="activity-timeline">
-          {cust.recentActivity.map((act: any, i: number) => (
+          {recentActivity.length === 0 && (
+            <div class="empty-notes">No recent activity yet.</div>
+          )}
+          {recentActivity.map((act, i) => (
             <div class="act-row">
               <div class="act-node-wrap">
                 <div class="act-node"></div>
-                {i < cust.recentActivity.length - 1 && <div class="act-line"></div>}
+                {i < recentActivity.length - 1 && <div class="act-line"></div>}
               </div>
               <div class="act-body">
                 <div class="act-text">{act.text}</div>
@@ -538,28 +494,28 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
         <div class="billing-stats">
           <div class="billing-stat">
             <div class="billing-stat-label">Inspection fees recorded</div>
-            <div class="billing-stat-num">{cust.billing.recorded}</div>
+            <div class="billing-stat-num">{customer.billing.recorded}</div>
           </div>
           <div class="billing-stat">
             <div class="billing-stat-label">Paid</div>
-            <div class="billing-stat-num">{cust.billing.paid}</div>
+            <div class="billing-stat-num">{customer.billing.paid}</div>
           </div>
           <div class="billing-stat">
             <div class="billing-stat-label">Pending</div>
-            <div class="billing-stat-num">{cust.billing.pending}</div>
+            <div class="billing-stat-num">{customer.billing.pending}</div>
           </div>
         </div>
         <div class="billing-invoice-row">
           <div>
             <div class="billing-inv-label">Latest Invoice</div>
-            <div class="billing-inv-val tnum">{cust.billing.latestInvoice}</div>
+            <div class="billing-inv-val tnum">{customer.billing.latestInvoice}</div>
           </div>
           <div>
             <div class="billing-inv-label">Latest payment status</div>
-            <span class={`status-badge badge-${cust.billing.paymentStatus === 'Paid' ? 'success' : 'warning'}`}>{cust.billing.paymentStatus}</span>
+            <span class={`badge ${customer.billing.paymentStatus === 'Paid' ? 'badge-done' : 'badge-warn'}`}>{customer.billing.paymentStatus}</span>
           </div>
         </div>
-        <button class="btn-view-billing">
+        <button class="btn-view-billing" type="button" disabled title="Billing records arrive with the backend API">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           View Billing
         </button>
@@ -571,12 +527,12 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           <div class="side-card-header-right">
             <h3 class="side-card-title">Internal Notes</h3>
-            <button class="btn-link-sm">+ Add Internal Note</button>
+            <button class="btn-link-sm" type="button" disabled title="Internal notes arrive with the backend API">+ Add Internal Note</button>
           </div>
         </div>
-        {cust.internalNotes.length > 0 ? (
+        {customer.internalNotes.length > 0 ? (
           <div class="notes-list">
-            {cust.internalNotes.map((note: any) => (
+            {customer.internalNotes.map((note) => (
               <div class="note-item">
                 <div class="note-text">{note.text}</div>
                 <div class="note-meta">Added by {note.author} · {note.date}</div>
@@ -595,13 +551,16 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
           <h3 class="side-card-title">Communication</h3>
         </div>
         <div class="comm-list">
-          {cust.communication.map((c: any) => (
+          {customer.communication.length === 0 && (
+            <div class="empty-notes">No logged communication yet.</div>
+          )}
+          {customer.communication.map((entry) => (
             <div class="comm-row">
               <div class="comm-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
               </div>
-              <div class="comm-text">{c.type}</div>
-              <div class="comm-date">{c.date}</div>
+              <div class="comm-text">{entry.type}</div>
+              <div class="comm-date">{entry.date}</div>
             </div>
           ))}
         </div>
@@ -613,18 +572,21 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
 
 </AdminDashboardLayout>
 
-<style is:global>
-  /* BREADCRUMB */
-  .breadcrumb-row {
-    display: flex; align-items: center; gap: 0.5rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.875rem; color: var(--graphite-mid);
-  }
-  .breadcrumb-row svg { color: var(--graphite-lt); }
-  .breadcrumb-link { color: var(--graphite-mid); text-decoration: none; font-weight: 500; }
-  .breadcrumb-link:hover { color: var(--teal); }
-  .breadcrumb-current { color: var(--navy); font-weight: 600; }
+<script is:inline>
+// Business: History tabs filter to the outcomes this customer actually earned.
+// Technical: Each row carries its group in data-sh (stamped at render) — the script
+// compares strings and never interprets a status, so it can't drift from the data.
+function setHistoryFilter(group) {
+  document.querySelectorAll('.sh-tab').forEach((t) => t.classList.toggle('active', t.getAttribute('data-sh') === group));
+  document.querySelectorAll('.sh-row').forEach((row) => {
+    const g = row.getAttribute('data-sh');
+    row.style.display = (group === 'All' || g === group) ? '' : 'none';
+  });
+}
+document.querySelectorAll('.sh-tab').forEach((t) => t.addEventListener('click', () => setHistoryFilter(t.getAttribute('data-sh'))));
+</script>
 
+<style is:global>
   /* HERO */
   .hero-card {
     background: var(--pure-white);
@@ -648,15 +610,8 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
   }
   .hero-name-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
   .hero-name { font-family: var(--font-h); font-size: 1.75rem; font-weight: 700; color: var(--navy); }
-  .hero-badge {
-    padding: 0.25rem 0.75rem; border-radius: 20px;
-    font-size: 0.75rem; font-weight: 600;
-  }
-  .badge-active { background: #E0F2FE; color: #0284C7; }
-  .badge-success { background: #DCFCE7; color: #16A34A; }
-  .badge-warning { background: #FEF3C7; color: #D97706; }
-  .badge-danger { background: #FEE2E2; color: #DC2626; }
-  .badge-neutral { background: var(--bg-off); color: var(--graphite-mid); }
+  /* Business: chips here use the shared badge palette from AdminDashboardLayout —
+     no private .badge-* colours on this page, so a recolour happens once. */
   .hero-meta-list { display: flex; gap: 1.5rem; flex-wrap: wrap; }
   .hero-meta {
     display: flex; align-items: center; gap: 0.375rem;
@@ -668,6 +623,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     background: var(--teal); color: var(--pure-white); border: none;
     padding: 0.625rem 1.25rem; border-radius: 6px;
     font-family: var(--font-b); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    text-decoration: none;
   }
   .btn-primary:hover { background: var(--teal-hover); }
   .btn-outline {
@@ -676,12 +632,15 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     border: 1px solid var(--border);
     padding: 0.625rem 1.25rem; border-radius: 6px;
     font-family: var(--font-b); font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    text-decoration: none;
   }
   .btn-outline:hover { background: var(--bg-off); }
+  .btn-primary:disabled, .btn-outline:disabled { opacity: 0.65; cursor: not-allowed; }
 
   /* KPI */
   .kpi-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    /* Technical: minmax(0,1fr) so a KPI value can never widen the track (grid auto-min trap). */
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem;
     margin-bottom: 1.25rem;
   }
   .kpi-card {
@@ -721,14 +680,14 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
   .banner-label { font-weight: 700; color: var(--navy); white-space: nowrap; }
   .banner-sep { width: 1px; height: 32px; background: rgba(12,124,130,0.2); }
   .banner-field { display: flex; flex-direction: column; gap: 0.125rem; }
-  .banner-key { font-size: 0.6875rem; color: var(--graphite-lt); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .banner-key { font-size: 0.75rem; color: var(--graphite-lt); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
   .banner-val { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
   .btn-open-req {
     display: flex; align-items: center; gap: 0.375rem;
     background: var(--teal); color: var(--pure-white); border: none;
     padding: 0.5rem 1rem; border-radius: 6px;
     font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer;
-    margin-left: auto; white-space: nowrap;
+    margin-left: auto; white-space: nowrap; text-decoration: none;
   }
   .btn-open-req:hover { background: var(--teal-hover); }
   .no-request-banner {
@@ -743,7 +702,10 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
   /* MAIN CONTENT GRID */
   .content-grid {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    /* Business: The history table scrolls inside its own card, never the whole page. */
+    /* Technical: bare 1fr = minmax(auto,1fr); the table's 700px min-width blew the track
+       past the viewport. minmax(0,1fr) lets it shrink so .sh-table-wrap's overflow-x wins. */
+    grid-template-columns: minmax(0, 1fr) 320px;
     gap: 1.5rem;
     align-items: flex-start;
   }
@@ -775,10 +737,11 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     background: none; border: none; color: var(--teal);
     font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer;
   }
+  .btn-link:disabled { opacity: 0.65; cursor: not-allowed; }
 
   /* CUSTOMER INFO GRID */
   .info-cols {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2rem;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem 2rem;
     padding: 1.5rem;
   }
   .info-field { margin-bottom: 1.25rem; }
@@ -788,7 +751,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
 
   /* APPLIANCES */
   .appliance-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, minmax(0, 1fr))); gap: 1rem;
     padding: 1.5rem;
   }
   .appliance-card {
@@ -804,14 +767,22 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
   .appliance-name { font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
   .appliance-details { display: flex; flex-direction: column; gap: 0.625rem; }
   .appl-detail { display: flex; flex-direction: column; gap: 0.125rem; }
-  .appl-key { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--graphite-lt); font-weight: 600; }
+  .appl-key { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--graphite-lt); font-weight: 600; }
   .appl-val { font-size: 0.8125rem; color: var(--navy); font-weight: 500; }
   .btn-view-history {
     background: none; border: 1px solid var(--border); border-radius: 6px;
     color: var(--navy); padding: 0.4375rem 0.75rem;
     font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+    text-decoration: none; text-align: center;
   }
   .btn-view-history:hover { border-color: var(--teal); color: var(--teal); }
+
+  .appliance-empty {
+    grid-column: 1 / -1;
+    font-size: 0.875rem;
+    color: var(--graphite-lt);
+    padding: 0.5rem 0;
+  }
   
   .appliance-add-card {
     border: 1px dashed var(--border); border-radius: 8px;
@@ -839,7 +810,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
   .sh-table { width: 100%; border-collapse: collapse; min-width: 700px; }
   .sh-table thead th {
     padding: 0.75rem 1.5rem; text-align: left;
-    font-size: 0.6875rem; font-weight: 700; color: var(--navy);
+    font-size: 0.75rem; font-weight: 700; color: var(--navy);
     border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em;
   }
   .sh-row { border-bottom: 1px solid var(--border); }
@@ -847,25 +818,22 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
   .sh-table td { padding: 1rem 1.5rem; vertical-align: middle; }
   .req-id { font-size: 0.8125rem; font-weight: 700; color: var(--teal); }
   .cell-text { font-size: 0.8125rem; color: var(--graphite-mid); }
-  .status-badge {
-    padding: 0.25rem 0.75rem; border-radius: 20px;
-    font-size: 0.6875rem; font-weight: 700; white-space: nowrap;
-  }
   .action-cell { display: flex; align-items: center; gap: 0.5rem; }
   .btn-link-sm {
     background: none; border: none; color: var(--teal);
     font-family: var(--font-b); font-size: 0.75rem; font-weight: 600; cursor: pointer;
-    white-space: nowrap;
+    white-space: nowrap; text-decoration: none; padding: 0;
   }
+  .btn-link-sm:hover { text-decoration: underline; }
+  .btn-link-sm:disabled { opacity: 0.65; cursor: not-allowed; text-decoration: none; }
+  .btn-archived { color: var(--graphite-lt); cursor: default; }
   .btn-dots { background: none; border: none; color: var(--graphite-mid); cursor: pointer; }
-  
-  .sh-empty-row {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
-    padding: 2rem 1.5rem; border-top: 1px solid var(--border);
-  }
-  .sh-empty-col {
+  .btn-dots:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .sh-empty-state {
     display: flex; flex-direction: column; align-items: center; text-align: center;
-    gap: 0.5rem; padding: 1.5rem; background: var(--bg-off); border-radius: 8px;
+    gap: 0.5rem; margin: 1.5rem; padding: 2rem 1.5rem;
+    background: var(--bg-off); border-radius: 8px;
     color: var(--graphite-lt);
   }
   .sh-empty-text { font-size: 0.9375rem; font-weight: 600; color: var(--navy); }
@@ -892,9 +860,11 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     padding: 0.625rem 0.5rem; border-radius: 6px;
     font-family: var(--font-b); font-size: 0.875rem; font-weight: 500;
     color: var(--navy); cursor: pointer; text-align: left;
+    text-decoration: none; width: 100%;
     transition: background-color 0.15s;
   }
   .qa-item:hover { background: var(--bg-off); }
+  .qa-item:disabled { opacity: 0.65; cursor: not-allowed; }
   .qa-item svg { color: var(--teal); flex-shrink: 0; }
 
   /* ACTIVITY */
@@ -922,6 +892,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer; color: var(--navy);
   }
   .btn-view-billing:hover { border-color: var(--teal); color: var(--teal); }
+  .btn-view-billing:disabled { opacity: 0.65; cursor: not-allowed; }
 
   /* NOTES */
   .notes-list { display: flex; flex-direction: column; gap: 1rem; }
@@ -945,7 +916,7 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
 
   @media (max-width: 1100px) {
     .content-grid { grid-template-columns: minmax(0, 1fr); }
-    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   @media (max-width: 767px) {
@@ -961,12 +932,12 @@ const cust: CustomerDetailMock = rawCust ?? customerData['HT'] as CustomerDetail
     .info-cols { grid-template-columns: 1fr; gap: 0; padding: 1rem; }
     .appliance-grid { grid-template-columns: 1fr; padding: 1rem; }
     .sh-tabs { padding: 0 0.75rem; }
-    .sh-empty-row { grid-template-columns: 1fr; gap: 0.75rem; padding: 1rem; }
+    .sh-empty-state { margin: 1rem; padding: 1.5rem 1rem; }
     .side-card { padding: 1rem; }
   }
 
   @media (max-width: 420px) {
-    .kpi-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: minmax(0, 1fr); }
     .hero-actions .btn-primary, .hero-actions .btn-outline { flex-basis: 100%; }
     .billing-stats, .billing-invoice-row { gap: 1rem; flex-wrap: wrap; }
   }

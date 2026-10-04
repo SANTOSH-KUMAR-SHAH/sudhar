@@ -25,11 +25,11 @@
     }
 
     .qr-left h2 {
-      font-family: var(--font-h);
-      font-size: clamp(32px, 3.8vw, 48px);
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: clamp(32px, 3.8vw, var(--fs-h2));
+      font-weight: 600;
       color: var(--navy-deep);
-      letter-spacing: -0.022em;
+      letter-spacing: -0.012em;
       line-height: 1.15;
       margin-bottom: 20px;
     }
@@ -247,11 +247,12 @@
     }
 
     .fs h3 {
-      font-family: var(--font-h);
-      font-size: 32px;
-      font-weight: 800;
+      font-family: var(--font-display);
+      /* Technical: φ^1.5 rung (--fs-title). */
+      font-size: var(--fs-title);
+      font-weight: 600;
       color: var(--navy-deep);
-      margin-bottom: 28px;
+      margin-bottom: var(--sp-3);
       letter-spacing: -0.01em;
     }
 
@@ -631,11 +632,15 @@
     }
 
     .success-ref-num {
-      font-family: var(--font-h);
+      /* Technical: Manrope (not the serif) — this number is dictated over the phone. */
+      font-family: var(--font-b);
       font-size: 26px;
       font-weight: 800;
       color: var(--teal);
       letter-spacing: 0.06em;
+      /* Business: The reference number is dictated over the phone; stable digits. */
+      /* Technical: tabular-nums per font.md §2.4 (tnum on receipt figures). */
+      font-variant-numeric: tabular-nums;
       margin-bottom: 6px;
     }
 

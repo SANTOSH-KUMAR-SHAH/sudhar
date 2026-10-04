@@ -30,6 +30,7 @@ import {
   initHeroParallax,
   initServiceStagger,
   initTrustBlocks,
+  initTrustIcons,
   initFooterClose,
 } from './motion/scroll';
 
@@ -65,6 +66,7 @@ function init(): void {
   initHeroParallax();
   initServiceStagger();
   initTrustBlocks();
+  initTrustIcons();
   initFooterClose();
   initWrench();
   initHiwScrollSpy();

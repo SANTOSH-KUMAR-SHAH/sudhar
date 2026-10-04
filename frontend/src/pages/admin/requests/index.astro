@@ -1,20 +1,31 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
 import StatusBadge from '../../../components/common/StatusBadge.astro';
-import { normaliseStatus } from '../../../lib/service-status';
+import {
+  DEMO_REQUESTS,
+  completedRequests,
+  getRequestSummary,
+  liveJobRequests,
+  needsActionRequests,
+} from '../../../lib/demo-data';
 
-// Business: Demo rows mirror the dashboard queue until GET /api/requests exists.
-// Technical: Badge tone derives from the canonical status — never a parallel string.
-const requests = [
-  { id: 'SL-000126', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'New Request',    technician: null,       time: 'Just now',   urgent: true },
-  { id: 'SL-000125', customer: 'Sunita Rai',     area: 'Lalitpur',  appliance: 'Samsung Refrigerator',  status: 'New Request',    technician: null,       time: '14 min ago', urgent: true },
-  { id: 'SL-000124', customer: 'Hari Thapa',    area: 'Baneshwor', appliance: 'LG Washing Machine',    status: 'Confirmed',      technician: null,       time: 'Yesterday', urgent: false },
-  { id: 'SL-000123', customer: 'Suresh Rai',    area: 'Koteshwor', appliance: 'Samsung AC',            status: 'Diagnosing',     technician: 'Ramesh',   time: 'Today 11 AM', urgent: false },
-  { id: 'SL-000122', customer: 'Anita Gurung',  area: 'Maharajgunj', appliance: 'Sony TV',             status: 'On the Way',     technician: 'Bikash',   time: 'Today 9 AM', urgent: false },
-  { id: 'SL-000121', customer: 'Mina Shrestha', area: 'Lalitpur',  appliance: 'Samsung AC',            status: 'Price Approval', technician: 'Suman',    time: '2 hrs ago',  urgent: false },
-  { id: 'SL-000118', customer: 'Bikash Rai',    area: 'Kirtipur',  appliance: 'Whirlpool Fridge',      status: 'In Progress',    technician: 'Suman',    time: 'Today 8 AM', urgent: false },
-  { id: 'SL-000117', customer: 'Anita Gurung',  area: 'Bagbazar',  appliance: 'Sony TV',               status: 'Completed',      technician: 'Ramesh',   time: 'Today 3 PM', urgent: false },
-];
+// Business: This table is the full queue — the same records the dashboard and detail
+// Business: pages show, read from one store so an ID or status can never disagree.
+// Technical: Rows and every filter/tab option derive from demo-data selectors; adding
+// a request in the data layer appears here, in the pills and in the dropdowns at once.
+const rows = DEMO_REQUESTS.map(getRequestSummary);
+const actionIds = new Set(needsActionRequests().map((r) => r.id));
+const activeIds = new Set(liveJobRequests().map((r) => r.id));
+const doneIds = new Set(completedRequests().map((r) => r.id));
+// Business: A row can need action and be "live" at once (e.g. price approval).
+// Technical: Membership is stamped per row; the client filter never re-lists statuses.
+const tabsFor = (id: string) =>
+  [actionIds.has(id) && 'action', activeIds.has(id) && 'active', doneIds.has(id) && 'done']
+    .filter(Boolean)
+    .join(' ');
+const applianceTypes = [...new Set(DEMO_REQUESTS.map((r) => r.applianceType))];
+const technicianNames = [...new Set(rows.map((r) => r.technicianName).filter((n): n is string => !!n))];
+const areaNames = [...new Set(rows.map((r) => r.area).filter(Boolean))];
 ---
 
 <AdminDashboardLayout title="Requests - Sudhar Lab Admin" activeNav="requests">
@@ -35,11 +46,11 @@ const requests = [
   <div class="rq-tabs">
     <button class="rq-tab" id="tab-action" onclick="switchTab('action')">
       Needs Action
-      <span class="tab-pill urgent">3</span>
+      <span class="tab-pill urgent">{actionIds.size}</span>
     </button>
     <button class="rq-tab active" id="tab-all" onclick="switchTab('all')">
       All
-      <span class="tab-pill">8</span>
+      <span class="tab-pill">{rows.length}</span>
     </button>
     <button class="rq-tab" id="tab-active" onclick="switchTab('active')">In Progress</button>
     <button class="rq-tab" id="tab-done" onclick="switchTab('done')">Completed</button>
@@ -54,23 +65,15 @@ const requests = [
     <div class="rq-filter-chips">
       <select class="filter-select" id="rqFilterAppliance">
         <option value="">All Appliances</option>
-        <option>Washing Machine</option>
-        <option>AC</option>
-        <option>Refrigerator</option>
-        <option>TV</option>
+        {applianceTypes.map((type) => <option>{type}</option>)}
       </select>
       <select class="filter-select" id="rqFilterTech">
         <option value="">All Technicians</option>
-        <option>Ramesh</option>
-        <option>Bikash</option>
-        <option>Suman</option>
-        <option>Prabin</option>
+        {technicianNames.map((name) => <option>{name}</option>)}
       </select>
       <select class="filter-select" id="rqFilterArea">
         <option value="">All Areas</option>
-        <option>Baneshwor</option>
-        <option>Lalitpur</option>
-        <option>Koteshwor</option>
+        {areaNames.map((name) => <option>{name}</option>)}
       </select>
     </div>
   </div>
@@ -88,8 +91,8 @@ const requests = [
         </tr>
       </thead>
       <tbody>
-        {requests.map(req => (
-          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} data-status={req.status} data-appliance={req.appliance} data-technician={req.technician ?? ''} data-area={req.area} data-search={`${req.id} ${req.customer} ${req.area} ${req.appliance}`.toLowerCase()} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
+        {rows.map(req => (
+          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} data-tabs={tabsFor(req.id)} data-appliance={req.appliance} data-technician={req.technicianName ?? ''} data-area={req.area} data-search={`${req.id} ${req.customerName} ${req.area} ${req.appliance}`.toLowerCase()} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
             <td>
               <div class="req-id-cell">
                 {req.urgent && <div class="urgent-dot"></div>}
@@ -100,31 +103,31 @@ const requests = [
               </div>
             </td>
             <td>
-              <div class="req-customer">{req.customer}</div>
+              <div class="req-customer">{req.customerName}</div>
               <div class="req-area">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>
                 {req.area}
               </div>
             </td>
             <td>
-              <StatusBadge status={normaliseStatus(req.status)} />
-              <div class="req-time">{req.time}</div>
+              <StatusBadge status={req.status} />
+              <div class="req-time">{req.updatedAgo}</div>
             </td>
             <td>
-              {req.technician
+              {req.technicianName
                 ? <div class="req-tech">
-                    <div class="req-tech-av">{req.technician.charAt(0)}</div>
-                    {req.technician}
+                    <div class="req-tech-av">{req.technicianName.charAt(0)}</div>
+                    {req.technicianName}
                   </div>
                 : <span class="no-tech">—</span>
               }
             </td>
             <td data-stop-prop>
               <div class="req-action-cell">
-                {req.status === 'New Request'    && <button class="btn btn-primary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Call &amp; Confirm</button>}
-                {req.status === 'Confirmed'      && <button class="btn btn-primary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Assign</button>}
-                {req.status === 'Price Approval' && <button class="btn btn-primary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Follow Up</button>}
-                {!['New Request','Confirmed','Price Approval'].includes(req.status) && <button class="btn btn-secondary btn-sm" onclick={`window.location.href='/admin/requests/${req.id}'`}>Open</button>}
+                {req.status === 'NEW_REQUEST'     && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Call &amp; Confirm</a>}
+                {req.status === 'ORDER_CONFIRMED' && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Assign</a>}
+                {req.status === 'PRICE_APPROVAL'  && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Follow Up</a>}
+                {!['NEW_REQUEST', 'ORDER_CONFIRMED', 'PRICE_APPROVAL'].includes(req.status) && <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>Open</a>}
               </div>
             </td>
           </tr>
@@ -138,13 +141,12 @@ const requests = [
 <script is:inline>
 // Business: Tabs + search + filters narrow the same table so admin finds work fast.
 // Technical: Single applyFilters() combining active tab, search text and 3 selects.
+// Tab membership lives in each row's data-tabs attribute, computed server-side from
+// demo-data — this script never re-lists statuses, so it cannot drift from the data.
 let activeTab = 'all';
-function matchesTab(status) {
+function matchesTab(row) {
   if (activeTab === 'all') return true;
-  if (activeTab === 'action') return ['New Request', 'Confirmed', 'Price Approval'].includes(status);
-  if (activeTab === 'active') return ['Diagnosing', 'On the Way', 'In Progress', 'Price Approval', 'Confirmed'].includes(status);
-  if (activeTab === 'done') return ['Completed'].includes(status);
-  return true;
+  return (row.getAttribute('data-tabs') || '').split(' ').includes(activeTab);
 }
 function applyFilters() {
   const q = (document.getElementById('rqSearch')?.value || '').toLowerCase().trim();
@@ -152,13 +154,12 @@ function applyFilters() {
   const ft = document.getElementById('rqFilterTech')?.value || '';
   const ar = document.getElementById('rqFilterArea')?.value || '';
   document.querySelectorAll('.rq-row').forEach((row) => {
-    const status = row.getAttribute('data-status') || '';
     const appliance = row.getAttribute('data-appliance') || '';
     const tech = row.getAttribute('data-technician') || '';
     const area = row.getAttribute('data-area') || '';
     const search = row.getAttribute('data-search') || '';
     const ok =
-      matchesTab(status) &&
+      matchesTab(row) &&
       (!fa || appliance.includes(fa)) &&
       (!ft || tech === ft) &&
       (!ar || area === ar) &&
@@ -331,7 +332,8 @@ document.getElementById('rqFilterArea')?.addEventListener('change', applyFilters
 
     .rq-row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      /* Technical: minmax(0,1fr) so a long appliance name cannot squeeze the status track. */
+      grid-template-columns: minmax(0, 1fr) auto;
       grid-template-areas:
         "id   status"
         "cust cust"

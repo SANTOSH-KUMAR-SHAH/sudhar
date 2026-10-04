@@ -1,190 +1,41 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import StatusBadge from '../../../components/common/StatusBadge.astro';
+import {
+  DEMO_REQUESTS,
+  REQUEST_STEPS,
+  getDemoRequestRecord,
+  getDemoTechnician,
+  getRequestById,
+} from '../../../lib/demo-data';
 
+// Business: One service case, shown end to end — this page never keeps a second copy of it.
+// Technical: getStaticPaths derives from the demo store, so every built path has a real
+// record and unknown URLs hit the 404 page instead of a placeholder case.
 export function getStaticPaths() {
-  return [
-    { params: { id: 'SL-1048' } },
-    { params: { id: 'SL-1047' } },
-    { params: { id: 'SL-1046' } },
-    { params: { id: 'SL-1045' } },
-    { params: { id: 'SL-1044' } },
-    // New format IDs (from dashboard & requests list)
-    { params: { id: 'SL-000126' } },
-    { params: { id: 'SL-000125' } },
-    { params: { id: 'SL-000124' } },
-    { params: { id: 'SL-000123' } },
-    { params: { id: 'SL-000122' } },
-    { params: { id: 'SL-000121' } },
-    { params: { id: 'SL-000118' } },
-    { params: { id: 'SL-000117' } },
-  ];
+  return DEMO_REQUESTS.map((r) => ({ params: { id: r.id } }));
 }
 
 const { id } = Astro.params;
-
-// Business: Admin request detail shows one mock service case per ID before the API exists.
-// Technical: Explicit interfaces keep strict TypeScript happy without changing any markup.
-interface TimelineEntry {
-  title: string;
-  desc: string;
-  time: string;
-  done: boolean;
-  current: boolean;
+const req = getRequestById(id ?? '');
+const record = getDemoRequestRecord(id ?? '');
+if (!req || !record) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
 }
 
-interface RequestMock {
-  title: string;
-  status: string;
-  statusLabel: string;
-  customer: string;
-  phone: string;
-  address: string;
-  preferredVisit: string;
-  receivedAgo: string;
-  applianceType: string;
-  brand: string;
-  model: string;
-  problem: string;
-  submitted: string;
-  extraNotes: string;
-  problemDesc: string;
-  photos: number;
-  currentStep: number;
-  internalNote: string;
-  createdAt: string;
-  lastUpdated: string;
-  source: string;
-  nextStep: string;
-  nextAction: string;
-  timeline: TimelineEntry[];
-}
+// Business: The technician shown on the case is joined from the assignment, not retyped.
+const assignedTechnician = record.technicianId ? getDemoTechnician(record.technicianId) : undefined;
+// Business: Next-step buttons do real things when the target exists (call, assign, view tech).
+// Technical: tel:/in-app hrefs are resolved server-side; anything else renders a disabled button.
+const nextActionHref =
+  req.nextAction === 'Call and confirm' || req.nextAction === 'Follow up with customer'
+    ? `tel:${req.phone.replace(/\s/g, '')}`
+    : req.nextAction === 'Assign technician'
+      ? '/admin/technicians'
+      : req.nextAction === 'View technician' && assignedTechnician
+        ? `/admin/technicians/${assignedTechnician.id}`
+        : null;
 
-// Mock data per request ID
-const requestData: Record<string, RequestMock> = {
-  'SL-1048': {
-    title: 'Washing machine not draining',
-    status: 'new', statusLabel: 'New request',
-    customer: 'Anil Sharma', phone: '9841 234 567', address: 'Baneshwor, Kathmandu',
-    preferredVisit: 'Today · 3–5 PM', receivedAgo: '18 minutes ago',
-    applianceType: 'Washing machine', brand: 'LG', model: 'Unknown', problem: 'Not draining',
-    submitted: 'September 16, 2026 · 11:22 AM',
-    extraNotes: 'Customer is available after 3 PM.',
-    problemDesc: 'The washing machine fills with water but does not drain at the end of the cycle. The customer noticed the problem this morning.',
-    photos: 2,
-    currentStep: 2,
-    internalNote: 'Customer prefers a call after 6 PM. Confirm parking access before assigning visit.',
-    createdAt: 'Today, 11:22 AM', lastUpdated: 'Today, 11:31 AM', source: 'Website request',
-    nextStep: "Confirm the customer's visit before assigning a technician.",
-    nextAction: 'Call and confirm',
-    timeline: [
-      { title: 'Request received', desc: 'Customer submitted a washing machine repair request', time: 'Today · 11:22 AM', done: true, current: false },
-      { title: 'Request opened by admin', desc: 'Request is waiting for customer confirmation', time: 'Today · 11:31 AM', done: true, current: false },
-      { title: 'Customer call pending', desc: 'Admin should call the customer before confirming the visit', time: '', done: false, current: true },
-    ],
-  },
-  'SL-1047': {
-    title: 'AC is not cooling',
-    status: 'needs_confirmation', statusLabel: 'Needs confirmation',
-    customer: 'Mina Gurung', phone: '9802 118 452', address: 'Maharajgunj, Kathmandu',
-    preferredVisit: 'Tomorrow · Morning', receivedAgo: '42 minutes ago',
-    applianceType: 'Air conditioner', brand: 'Samsung', model: '1.5 ton', problem: 'Not cooling',
-    submitted: 'September 16, 2026 · 10:58 AM',
-    extraNotes: 'AC unit is on the second floor.',
-    problemDesc: 'AC is running and making sound, but the room is not getting cool at all. Tried cleaning the filter but problem persists.',
-    photos: 0,
-    currentStep: 2,
-    internalNote: 'Customer has requested a morning visit only. Do not schedule afternoon.',
-    createdAt: 'Today, 10:58 AM', lastUpdated: 'Today, 11:10 AM', source: 'Phone request',
-    nextStep: 'Confirm the visit time with the customer.',
-    nextAction: 'Call and confirm',
-    timeline: [
-      { title: 'Request received', desc: 'Customer submitted an AC repair request', time: 'Today · 10:58 AM', done: true, current: false },
-      { title: 'Request opened by admin', desc: 'Waiting for customer confirmation', time: 'Today · 11:10 AM', done: true, current: false },
-      { title: 'Customer call pending', desc: 'Admin should confirm visit time with the customer', time: '', done: false, current: true },
-    ],
-  },
-  'SL-1046': {
-    title: 'Refrigerator making unusual noise',
-    status: 'unassigned', statusLabel: 'Unassigned',
-    customer: 'Suresh KC', phone: '9818 443 220', address: 'Koteshwor, Kathmandu',
-    preferredVisit: 'Today · 11 AM–1 PM', receivedAgo: '1 hour ago',
-    applianceType: 'Refrigerator', brand: 'Whirlpool', model: 'WB400', problem: 'Unusual grinding noise',
-    submitted: 'September 16, 2026 · 10:30 AM',
-    extraNotes: 'Noise happens mainly at night.',
-    problemDesc: 'A loud grinding noise is coming from the back of the refrigerator. It started two days ago and is getting louder.',
-    photos: 1,
-    currentStep: 3,
-    internalNote: 'Customer confirmed the visit. Assign an available technician immediately.',
-    createdAt: 'Today, 10:30 AM', lastUpdated: 'Today, 11:00 AM', source: 'Website request',
-    nextStep: 'Assign an available technician to this confirmed visit.',
-    nextAction: 'Assign technician',
-    timeline: [
-      { title: 'Request received', desc: 'Customer submitted a refrigerator repair request', time: 'Today · 10:30 AM', done: true, current: false },
-      { title: 'Request opened by admin', desc: 'Request reviewed and confirmed with customer', time: 'Today · 10:45 AM', done: true, current: false },
-      { title: 'Customer confirmed', desc: 'Customer confirmed the visit for today 11 AM–1 PM', time: 'Today · 11:00 AM', done: true, current: false },
-      { title: 'Technician assignment pending', desc: 'No technician has been assigned yet', time: '', done: false, current: true },
-    ],
-  },
-  'SL-1045': {
-    title: 'TV turns off after a few minutes',
-    status: 'confirmed', statusLabel: 'Confirmed',
-    customer: 'Rita Shrestha', phone: '9860 210 778', address: 'Kalanki, Kathmandu',
-    preferredVisit: 'Tomorrow · Afternoon', receivedAgo: '2 hours ago',
-    applianceType: 'Television', brand: 'Sony', model: 'Bravia 43"', problem: 'Auto shut-off',
-    submitted: 'September 16, 2026 · 9:45 AM',
-    extraNotes: 'None.',
-    problemDesc: 'The TV turns off automatically after watching for about 5–10 minutes. This started after a power outage last week.',
-    photos: 0,
-    currentStep: 3,
-    internalNote: '',
-    createdAt: 'Today, 9:45 AM', lastUpdated: 'Today, 10:30 AM', source: 'Website request',
-    nextStep: 'Bikash Thapa is assigned. Visit is confirmed for tomorrow afternoon.',
-    nextAction: 'View technician',
-    timeline: [
-      { title: 'Request received', desc: 'Customer submitted a TV repair request', time: 'Today · 9:45 AM', done: true, current: false },
-      { title: 'Request opened by admin', desc: 'Reviewed and confirmed with customer', time: 'Today · 10:00 AM', done: true, current: false },
-      { title: 'Technician assigned', desc: 'Bikash Thapa has been assigned to this visit', time: 'Today · 10:30 AM', done: true, current: false },
-    ],
-  },
-  'SL-1044': {
-    title: 'Washing machine is leaking',
-    status: 'in_progress', statusLabel: 'In progress',
-    customer: 'Prakash Adhikari', phone: '9851 776 901', address: 'Chabahil, Kathmandu',
-    preferredVisit: 'Today · 2–4 PM', receivedAgo: '3 hours ago',
-    applianceType: 'Washing machine', brand: 'Whirlpool', model: 'WM500', problem: 'Water leaking',
-    submitted: 'September 16, 2026 · 9:00 AM',
-    extraNotes: 'Water leaking from the bottom front.',
-    problemDesc: 'Water is dripping from the bottom of the washing machine during the wash cycle. It puddles on the floor by the end.',
-    photos: 3,
-    currentStep: 4,
-    internalNote: 'Ramesh KC is on-site. Expected to submit diagnosis by 3 PM.',
-    createdAt: 'Today, 9:00 AM', lastUpdated: 'Today, 12:15 PM', source: 'Phone request',
-    nextStep: 'Technician Ramesh KC is currently on-site diagnosing the issue.',
-    nextAction: 'View diagnosis',
-    timeline: [
-      { title: 'Request received', desc: 'Customer submitted a washing machine repair request', time: 'Today · 9:00 AM', done: true, current: false },
-      { title: 'Request opened by admin', desc: 'Confirmed with customer', time: 'Today · 9:30 AM', done: true, current: false },
-      { title: 'Technician assigned', desc: 'Ramesh KC was assigned', time: 'Today · 10:00 AM', done: true, current: false },
-      { title: 'Technician on the way', desc: 'Ramesh KC confirmed and departed', time: 'Today · 1:45 PM', done: true, current: false },
-      { title: 'Diagnosing', desc: 'Technician is currently at the site', time: 'Today · 2:10 PM', done: false, current: true },
-    ],
-  },
-};
-
-// Business: Unknown IDs must never silently show another customer's case.
-// Technical: Explicit demo fallback with a visible warning banner (no silent alias).
-const rawReq: RequestMock | undefined = requestData[id ?? ""];
-const isUnknownId = !rawReq;
-const req: RequestMock = rawReq ?? requestData["SL-1048"] as RequestMock;
-
-const steps = [
-  'Request received',
-  'Customer confirmed',
-  'Technician assigned',
-  'Diagnosis completed',
-  'Price approved',
-  'Repair completed',
-];
 ---
 
 <AdminDashboardLayout title={`${req.title} - Sudhar Lab Admin`} activeNav="requests">
@@ -206,19 +57,16 @@ const steps = [
         <div class="hero-left">
           <div class="hero-top">
             <h1 class="req-title">{req.title}</h1>
-            <span class={`status-badge ${req.status}`}>{req.statusLabel}</span>
+            <StatusBadge status={req.status} />
           </div>
           <div class="hero-meta">
-            <span class="meta-chip">{req.customer}</span>
+            <span class="meta-chip">{req.customerName}</span>
             <span class="dot-sep">·</span>
             <span class="meta-chip">{req.address.split(',')[0]}</span>
             <span class="dot-sep">·</span>
             <span class="meta-chip">Received {req.receivedAgo}</span>
           </div>
         </div>
-        {isUnknownId && (
-          <p class="form-notice form-notice-info" role="status" style="display:block">Unknown demo ID — showing SL-1048 as a placeholder. Wire to GET /api/requests/:id when the backend exists.</p>
-        )}
         <div class="hero-actions">
           <a class="btn-call" href={`tel:${req.phone.replace(/\s/g, '')}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -240,7 +88,7 @@ const steps = [
 
       <!-- STATUS PROGRESS TRACKER -->
       <div class="progress-tracker card">
-        {steps.map((step, i) => (
+        {REQUEST_STEPS.map((step, i) => (
           <div class={`progress-step ${i + 1 < req.currentStep ? 'done' : ''} ${i + 1 === req.currentStep ? 'active' : ''}`}>
             <div class="step-circle">
               {i + 1 < req.currentStep ? (
@@ -249,7 +97,7 @@ const steps = [
                 <span>{i + 1}</span>
               )}
             </div>
-            {i < steps.length - 1 && <div class={`step-line ${i + 1 < req.currentStep ? 'done' : ''}`}></div>}
+            {i < REQUEST_STEPS.length - 1 && <div class={`step-line ${i + 1 < req.currentStep ? 'done' : ''}`}></div>}
             <div class="step-label">{step}</div>
           </div>
         ))}
@@ -297,11 +145,11 @@ const steps = [
             <div class="detail-label">Problem description</div>
             <p class="problem-desc">{req.problemDesc}</p>
 
-            {req.photos > 0 && (
+            {req.photoCount > 0 && (
               <div class="attachments-section">
                 <div class="detail-label">Attachments</div>
                 <div class="photo-grid">
-                  {Array.from({length: req.photos}).map(() => (
+                  {Array.from({length: req.photoCount}).map(() => (
                     <div class="photo-thumb-lg"></div>
                   ))}
                 </div>
@@ -309,7 +157,7 @@ const steps = [
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                   View attachments
                 </span>
-                <div class="photo-count-label">{req.photos} photos</div>
+                <div class="photo-count-label">{req.photoCount} photos</div>
               </div>
             )}
           </div>
@@ -320,7 +168,7 @@ const steps = [
       <div class="card section-card">
         <h2 class="section-title">Activity timeline</h2>
         <div class="activity-timeline">
-          {req.timeline.map((entry: TimelineEntry) => (
+          {req.timeline.map((entry) => (
             <div class={`timeline-event ${entry.done ? 'done' : ''} ${entry.current ? 'current' : ''}`}>
               <div class="tl-icon">
                 {entry.done && !entry.current && (
@@ -346,19 +194,44 @@ const steps = [
       <!-- DIAGNOSIS SECTION -->
       <div class="card section-card">
         <h2 class="section-title">Diagnosis and repair</h2>
-        <div class="diagnosis-empty">
-          <div class="diagnosis-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-          </div>
-          <div>
-            <div class="diagnosis-title">Diagnosis not submitted yet</div>
-            <div class="diagnosis-desc">The technician's findings and repair price will appear here after the visit.</div>
-            <div class="diagnosis-locked">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              Available after technician visit
+        {record.diagnosis ? (
+          <div class="details-grid">
+            <div class="details-left">
+              <div class="detail-row">
+                <div class="detail-label">Fault identified</div>
+                <div class="detail-value">{record.diagnosis.fault}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Proposed repair</div>
+                <div class="detail-value">{record.diagnosis.proposal}</div>
+              </div>
+            </div>
+            <div class="details-right">
+              <div class="detail-row">
+                <div class="detail-label">Submitted by</div>
+                <div class="detail-value">{assignedTechnician?.name ?? 'Technician'} · {record.diagnosis.submittedAt}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Approval</div>
+                <div class="detail-value">{req.status === 'PRICE_APPROVAL' ? 'Waiting for customer approval' : 'Customer approved — repair proceeding'}</div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div class="diagnosis-empty">
+            <div class="diagnosis-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            </div>
+            <div>
+              <div class="diagnosis-title">Diagnosis not submitted yet</div>
+              <div class="diagnosis-desc">The technician's findings and repair price will appear here after the visit.</div>
+              <div class="diagnosis-locked">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Available after technician visit
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
     </div><!-- /main-col -->
@@ -371,7 +244,7 @@ const steps = [
         <h3 class="side-card-title">Customer</h3>
         <div class="side-field">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          <span class="side-value">{req.customer}</span>
+          <span class="side-value">{req.customerName}</span>
         </div>
         <div class="side-field">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -390,10 +263,10 @@ const steps = [
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
           Call customer
         </a>
-        <span class="side-link is-disabled" aria-disabled="true" title="Needs a customerId — wire to GET /api/customers/:id when the backend exists">
+        <a class="side-link" href={`/admin/customers/${record.customerId}`}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
           Open customer record
-        </span>
+        </a>
       </div>
 
       <!-- APPLIANCE CARD -->
@@ -406,7 +279,7 @@ const steps = [
           <div>
             <div class="side-value">{req.applianceType}</div>
             <div class="side-meta">{req.brand}</div>
-            <div class="side-meta">Model not provided</div>
+            <div class="side-meta">{req.model === 'Not provided' ? 'Model not provided' : `Model ${req.model}`}</div>
             <div class="side-meta">Problem: {req.problem}</div>
           </div>
         </div>
@@ -421,14 +294,18 @@ const steps = [
           <h3 class="side-card-title" style="margin-bottom:0">Next step</h3>
         </div>
         <p class="next-step-desc">{req.nextStep}</p>
-        {req.nextAction === 'Call and confirm' ? (
-          <a class="btn-next-action" href={`tel:${req.phone.replace(/\s/g, '')}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        {nextActionHref ? (
+          <a class="btn-next-action" href={nextActionHref}>
+            {nextActionHref.startsWith('tel:') ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            )}
             {req.nextAction}
           </a>
         ) : (
           <button class="btn-next-action" type="button" disabled title="Available after backend API">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
             {req.nextAction}
           </button>
         )}
@@ -469,29 +346,11 @@ const steps = [
 </AdminDashboardLayout>
 
 <style is:global>
-  /* BREADCRUMB */
-  .breadcrumb-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.875rem;
-    color: var(--graphite-mid);
-  }
-  .breadcrumb-row svg { color: var(--graphite-lt); }
-  .breadcrumb-link {
-    color: var(--graphite-mid);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.15s;
-  }
-  .breadcrumb-link:hover { color: var(--teal); }
-  .breadcrumb-current { color: var(--navy); font-weight: 600; }
-
   /* LAYOUT */
   .request-layout {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    /* Technical: minmax(0,1fr) — content can never widen the main track past the viewport. */
+    grid-template-columns: minmax(0, 1fr) 300px;
     gap: 1.5rem;
     align-items: flex-start;
   }
@@ -600,29 +459,6 @@ const steps = [
   .dropdown-item:hover { background-color: var(--bg-off); }
   .dropdown-item.danger { color: #EF4444; }
 
-  /* STATUS BADGES */
-  .status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.875rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .status-badge.new { background: #DCFCE7; color: #16A34A; }
-  .status-badge.needs_confirmation { background: #FFF3CD; color: #D97706; }
-  .status-badge.unassigned { background: #F1F0FE; color: #7C3AED; }
-  .status-badge.confirmed { background: var(--navy); color: var(--pure-white); }
-  .status-badge.in_progress { background: var(--teal); color: var(--pure-white); }
-
-  /* CARD */
-  .card {
-    background: var(--pure-white);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-  }
-
   /* PROGRESS TRACKER */
   .progress-tracker {
     display: flex;
@@ -686,7 +522,8 @@ const steps = [
   .progress-step.active .step-label { color: var(--navy); font-weight: 700; }
 
   /* SECTION CARD */
-  .section-card { }
+  /* Technical: Frame comes from the layout's .card; this page owns only the padding. */
+  .section-card { padding: 1.5rem; }
   .section-title {
     font-family: var(--font-h);
     font-size: 1.0625rem;
@@ -698,7 +535,7 @@ const steps = [
   /* DETAILS GRID */
   .details-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 2rem;
   }
   .detail-row { margin-bottom: 1rem; }
@@ -1023,8 +860,8 @@ const steps = [
   /* RESPONSIVE */
   @media (max-width: 1100px) {
     .request-layout { grid-template-columns: minmax(0, 1fr); }
-    .sidebar-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .details-grid { grid-template-columns: 1fr; }
+    .sidebar-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    .details-grid { grid-template-columns: minmax(0, 1fr); }
   }
 
   @media (max-width: 767px) {
@@ -1034,7 +871,7 @@ const steps = [
     .request-header-actions .btn, .header-actions .btn { flex: 1 1 140px; justify-content: center; }
     .progress-steps { overflow-x: auto; padding-bottom: 0.5rem; }
     .progress-step { min-width: 92px; }
-    .sidebar-col { grid-template-columns: 1fr; }
+    .sidebar-col { grid-template-columns: minmax(0, 1fr); }
     .side-card { padding: 1rem; }
     .details-grid { gap: 0; }
     .photo-grid { overflow-x: auto; padding-bottom: 0.25rem; }

@@ -1,5 +1,25 @@
 ---
 import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
+import {
+  DEMO_LOGGED_IN_TECH_ID,
+  getDemoCustomer,
+  requestsForTechnician,
+  isRequestDone,
+  statusLabel,
+} from '../../lib/demo-data';
+
+// Business: "My Jobs" is the technician's slice of the one request table — the
+// same rows the dispatcher assigned on the admin side, no second feed of mocks.
+// Technical: Filter membership is stamped into data-group at build time from the
+// canonical status predicates; job-filters.ts only reads those attributes back.
+const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
+  .map((r) => ({
+    r,
+    cust: getDemoCustomer(r.customerId),
+    done: isRequestDone(r.status),
+    group: isRequestDone(r.status) ? 'completed' : 'today',
+  }))
+  .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
 ---
 
 <TechDashboardLayout title="Jobs" activeNav="jobs">
@@ -19,53 +39,29 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
 
     <!-- Job Feed -->
     <div class="job-list" id="jobList">
-      <!-- Card 1 -->
-      <a href="/tech/jobs/1042" class="job-card" data-group="today">
-        <div class="card-header">
-          <span class="req tnum">REQ-1042</span>
-          <span class="badge active">Assigned</span>
-        </div>
-        <div class="card-body">
-          <div class="time">Today, 11:30 AM</div>
-          <h3 class="appliance">LG Washing Machine</h3>
-          <p class="location">Hari Thapa &middot; Baneshwor</p>
-        </div>
-        <div class="card-footer">
-          <span class="action-text">Open Job</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        </div>
-      </a>
+      {myJobs.map(({ r, cust, done, group }) => (
+        <a href={`/tech/jobs/${r.id}`} class={`job-card${done ? ' completed' : ''}`} data-group={group}>
+          <div class="card-header">
+            <span class="req tnum">#{r.id}</span>
+            <span class={`badge ${done ? 'completed' : 'active'}`}>{done ? 'Completed' : statusLabel(r.status)}</span>
+          </div>
+          <div class="card-body">
+            <div class="time">Today &middot; {r.visitTime}</div>
+            <h3 class="appliance">{r.brand} {r.applianceType}</h3>
+            <p class="location">{cust?.name ?? 'Customer'} &middot; {cust?.area ?? ''}</p>
+          </div>
+          {!done && (
+            <div class="card-footer">
+              <span class="action-text">Open Job</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </div>
+          )}
+        </a>
+      ))}
 
-      <!-- Card 2 -->
-      <a href="/tech/jobs/1055" class="job-card" data-group="upcoming">
-        <div class="card-header">
-          <span class="req tnum">REQ-1055</span>
-          <span class="badge upcoming">Upcoming</span>
-        </div>
-        <div class="card-body">
-          <div class="time">Tomorrow, 10:00 AM</div>
-          <h3 class="appliance">Samsung AC</h3>
-          <p class="location">Bina Shrestha &middot; Lalitpur</p>
-        </div>
-        <div class="card-footer">
-          <span class="action-text">Open Job</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        </div>
-      </a>
-
-      <!-- Card 3 (Completed) -->
-      <a href="/tech/jobs/1021" class="job-card completed" data-group="completed">
-        <div class="card-header">
-          <span class="req tnum">REQ-1021</span>
-          <span class="badge completed">Completed</span>
-        </div>
-        <div class="card-body">
-          <div class="time">Yesterday, 02:00 PM</div>
-          <h3 class="appliance">Sony TV</h3>
-          <p class="location">Ram Kumar &middot; Maharajgunj</p>
-        </div>
-      </a>
-
+      {myJobs.length === 0 && (
+        <p class="jobs-empty">No jobs assigned yet. New visits from the dispatcher appear here.</p>
+      )}
       <p id="jobsEmpty" class="jobs-empty" hidden>No jobs in this view.</p>
     </div>
   </div>
@@ -165,7 +161,7 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
   }
 
   .badge {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 800;
     padding: 0.25rem 0.6rem;
     border-radius: 12px;

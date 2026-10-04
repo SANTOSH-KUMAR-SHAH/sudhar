@@ -82,8 +82,10 @@ export interface CustomerSummary {
   area: string;
   applianceCount: number;
   totalRequests: number;
-  lastOutcomeLabel: string;
-  lastOutcomeTone: 'active' | 'progress' | 'done' | 'cancel' | 'neutral' | 'warning' | 'success' | 'danger';
+  // Business: The directory row shows the customer's latest request at a glance,
+  // so it must speak the canonical status language, not a private outcome vocabulary.
+  // Technical: Label + badge derive from service-status.ts; only the display date is stored.
+  lastOutcomeStatus: ServiceStatusKey;
   lastDate: string;
   avatarHue: string;
 }

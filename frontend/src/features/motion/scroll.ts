@@ -117,30 +117,57 @@ function setupScrollParallax(
 }
 
 export function initServiceStagger(): void {
-  // Business: Service cards fade up with teal glow so categories feel alive.
-  // Technical: JS-only hidden state, then stagger to visible on scroll.
+  // Business: Services is the SELECTION point, so the entrance must sell recognition
+  // and the urge to choose — each card is "offered" (rises) while its appliance
+  // photo comes into focus (zooms out to rest) and the teal dash draws across to
+  // mark it as an option. That is purpose (find yours, pick it), not a generic fade.
+  // Technical: one ScrollTrigger.create per card (the same proven path as the trust
+  // icons) with a left→right in-row stagger; each stacked mobile card fires on its own
+  // as it's reached. Transform and opacity only; clearProps hands control back to CSS hover.
+  const cards = gsap.utils.toArray<HTMLElement>('.svc-card');
+  if (cards.length === 0) return;
+  const child = (card: Element, sel: string) => card.querySelector<HTMLElement>(sel);
+
   const mm = gsap.matchMedia();
   mm.add('(prefers-reduced-motion: no-preference)', () => {
-    gsap.set('.svc-card', { autoAlpha: 0, y: 18 });
-    ScrollTrigger.batch('.svc-card', {
-      interval: 0.1,
-      batchMax: 4,
-      onEnter: (batch) => {
-        gsap.to(batch, {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.55,
-          stagger: 0.1,
-          ease: 'power2.out',
-          clearProps: 'transform,visibility,opacity',
-        });
-      },
-      start: 'top 88%',
-      once: true,
+    cards.forEach((card, i) => {
+      const img = child(card, '.svc-img img');
+      const dash = child(card, '.svc-teal-dash');
+      gsap.set(card, { autoAlpha: 0, y: 22 });
+      if (img) gsap.set(img, { scale: 1.18 });
+      if (dash) gsap.set(dash, { scaleX: 0, transformOrigin: 'left center' });
+      const offset = (i % 2) * 0.1;
+      ScrollTrigger.create({
+        trigger: card,
+        start: 'top 88%',
+        once: true,
+        onEnter: () => {
+          const tl = gsap.timeline();
+          tl.to(card, {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.5,
+            ease: 'power2.out',
+            clearProps: 'transform,opacity,visibility',
+          }, offset);
+          if (img) {
+            tl.to(img, { scale: 1, duration: 0.75, ease: 'power2.out', clearProps: 'transform' }, offset);
+          }
+          if (dash) {
+            tl.to(dash, { scaleX: 1, duration: 0.35, ease: 'power2.out', clearProps: 'transform' }, offset + 0.28);
+          }
+        },
+      });
     });
   });
-  gsap.matchMedia().add('(prefers-reduced-motion: reduce)', () => {
-    gsap.set('.svc-card', { clearProps: 'all' });
+  mm.add('(prefers-reduced-motion: reduce)', () => {
+    cards.forEach((card) => {
+      gsap.set(card, { clearProps: 'all' });
+      const img = child(card, '.svc-img img');
+      const dash = child(card, '.svc-teal-dash');
+      if (img) gsap.set(img, { clearProps: 'transform' });
+      if (dash) gsap.set(dash, { clearProps: 'transform' });
+    });
   });
 }
 
@@ -195,4 +222,53 @@ export function initFooterClose(): void {
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+}
+
+export function initTrustIcons(): void {
+  // Business: Each trust medallion draws itself — the line-art takes shape as the
+  // customer reads it. Chosen for trust psychology: high processing fluency (easy =
+  // truthful), a calm competence/craft cue, and identical behaviour on every screen.
+  // No connector lines (visual disorder erodes trust) and no wait (fires per icon).
+  // Technical: stroke-dashoffset draw on every stroked path/circle; fill-only accents
+  // (the gold seal) fade in last. Triggered per icon at 'top 88%', once. Reduced-motion
+  // and no-JS leave the icons fully drawn.
+  const wraps = Array.from(document.querySelectorAll<HTMLElement>('.trust-icon-wrap'));
+  if (wraps.length === 0 || prefersReducedMotion()) return;
+
+  wraps.forEach((wrap) => {
+    const svg = wrap.querySelector<SVGSVGElement>('svg');
+    if (!svg) return;
+    const strokes = Array.from(
+      svg.querySelectorAll<SVGGeometryElement>('path, circle, line'),
+    ).filter((el) => !el.classList.contains('tm-gold-fill'));
+    const fills = Array.from(svg.querySelectorAll<SVGElement>('.tm-gold-fill'));
+    if (strokes.length === 0) return;
+
+    strokes.forEach((el) => {
+      const len = typeof el.getTotalLength === 'function' ? el.getTotalLength() : 0;
+      el.style.strokeDasharray = String(len);
+      el.style.strokeDashoffset = String(len);
+    });
+    fills.forEach((el) => {
+      el.style.opacity = '0';
+    });
+
+    ScrollTrigger.create({
+      trigger: wrap,
+      start: 'top 88%',
+      once: true,
+      onEnter: () => {
+        const tl = gsap.timeline();
+        tl.to(strokes, {
+          strokeDashoffset: 0,
+          duration: 0.55,
+          ease: 'power1.inOut',
+          stagger: 0.06,
+        });
+        if (fills.length) {
+          tl.to(fills, { opacity: 1, duration: 0.28, ease: 'power2.out' }, '-=0.18');
+        }
+      },
+    });
+  });
 }

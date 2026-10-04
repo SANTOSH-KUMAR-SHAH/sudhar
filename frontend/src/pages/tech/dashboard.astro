@@ -1,76 +1,146 @@
 ---
 import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
+import {
+  DEMO_LOGGED_IN_TECH_ID,
+  getDemoTechnician,
+  getDemoCustomer,
+  currentJobForTechnician,
+  requestsForTechnician,
+  isRequestActive,
+  isRequestDone,
+} from '../../lib/demo-data';
+
+// Business: The technician home screen is the same day the dispatcher sees — the
+// hero job, later visits and completed visits all come from the one request table.
+// Technical: Splits use the canonical status predicates so the portal and the
+// admin queue can never disagree about what counts as active or done.
+const me = getDemoTechnician(DEMO_LOGGED_IN_TECH_ID);
+const isOnline = me?.availability !== 'offline';
+const firstName = me?.name.split(' ')[0] ?? 'Technician';
+const myRequests = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID);
+const nextJob = currentJobForTechnician(DEMO_LOGGED_IN_TECH_ID) ?? null;
+const nextCustomer = nextJob ? getDemoCustomer(nextJob.customerId) : null;
+const laterJobs = myRequests
+  .filter((r) => isRequestActive(r.status) && r.id !== nextJob?.id)
+  .map((r) => ({ r, cust: getDemoCustomer(r.customerId) }));
+const completedJobs = myRequests
+  .filter((r) => isRequestDone(r.status))
+  .map((r) => ({ r, cust: getDemoCustomer(r.customerId) }));
 ---
 
 <TechDashboardLayout title="Home - Sudhar Lab" activeNav="home">
   <div class="feed-container">
     
     <!-- Top Availability Banner -->
-    <div class="availability-banner online">
+    <div class={`availability-banner ${isOnline ? 'online' : 'offline'}`} id="availBanner">
       <div class="avail-content">
         <div class="pulse-ring"></div>
         <div class="status-dot"></div>
-        <span>You are ONLINE</span>
+        <span id="availLabel">You are {isOnline ? 'ONLINE' : 'OFFLINE'}</span>
       </div>
-      <button class="toggle-switch">Go Offline</button>
+      <button type="button" class="toggle-switch" id="availToggle">{isOnline ? 'Go Offline' : 'Go Online'}</button>
     </div>
 
     <div class="greeting">
-      <h2>Good morning, Ramesh</h2>
-      <p>Today is Sunday, September 14</p>
+      <h2 id="techGreet">Hello, {firstName}</h2>
+      <p id="techToday">Welcome back on shift.</p>
     </div>
 
     <!-- Massive Next Visit Hero Card -->
-    <div class="hero-card">
-      <div class="hero-header">
-        <div class="badge assigned">Next Visit</div>
-        <div class="time">11:30 AM</div>
-      </div>
-      
-      <div class="hero-body">
-        <h3 class="appliance">LG Washing Machine</h3>
-        <p class="customer">Hari Thapa &middot; Baneshwor</p>
-        <div class="problem-box">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-          Not draining
+    {nextJob ? (
+      <div class="hero-card">
+        <div class="hero-header">
+          <div class="badge assigned">Next Visit</div>
+          <div class="time tnum">{nextJob.visitTime}</div>
+        </div>
+        
+        <div class="hero-body">
+          <h3 class="appliance">{nextJob.brand} {nextJob.applianceType}</h3>
+          <p class="customer">{nextCustomer?.name ?? 'Customer'} &middot; {nextCustomer?.area ?? ''}</p>
+          <div class="problem-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            {nextJob.problem}
+          </div>
+        </div>
+
+        <div class="hero-footer">
+          <a href={`/tech/jobs/${nextJob.id}`} class="btn-primary massive">Open Job</a>
         </div>
       </div>
-
-      <div class="hero-footer">
-        <a href="/tech/jobs/1042" class="btn-primary massive">Open Job</a>
+    ) : (
+      <div class="hero-card">
+        <div class="hero-empty">No open job right now. New assignments from the dispatcher appear here.</div>
       </div>
-    </div>
+    )}
 
     <!-- Later Today -->
     <div class="section-heading">Later Today</div>
     
     <div class="job-list">
-      <a href="/tech/jobs/1055" class="job-item">
-        <div class="time-col">03:00 PM</div>
-        <div class="details-col">
-          <h4>Samsung Refrigerator</h4>
-          <p>Koteshwor</p>
-        </div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </a>
+      {laterJobs.length > 0 ? laterJobs.map(({ r, cust }) => (
+        <a href={`/tech/jobs/${r.id}`} class="job-item">
+          <div class="time-col tnum">{r.visitTime}</div>
+          <div class="details-col">
+            <h4>{r.brand} {r.applianceType}</h4>
+            <p>{cust?.area ?? ''}</p>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+      )) : (
+        <div class="list-empty">Nothing else scheduled for today.</div>
+      )}
     </div>
 
     <!-- Completed -->
     <div class="section-heading">Completed</div>
     
     <div class="job-list">
-      <a href="/tech/jobs/1021" class="job-item completed">
-        <div class="time-col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="color:var(--green)"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-        <div class="details-col">
-          <h4>Sony TV</h4>
-          <p>Maharajgunj</p>
-        </div>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </a>
+      {completedJobs.length > 0 ? completedJobs.map(({ r, cust }) => (
+        <a href={`/tech/jobs/${r.id}`} class="job-item completed">
+          <div class="time-col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="color:var(--green)"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <div class="details-col">
+            <h4>{r.brand} {r.applianceType}</h4>
+            <p>{cust?.area ?? ''}</p>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+      )) : (
+        <div class="list-empty">No completed visits yet today.</div>
+      )}
     </div>
 
   </div>
 </TechDashboardLayout>
+
+<script is:inline define:vars={{ firstName }}>
+  // Business: Greeting and date track the technician's real clock, not the build date.
+  // Technical: The availability flip is session-only until the backend PATCH lands;
+  // it changes this device's state honestly and never claims dispatcher sync yet.
+  (function () {
+    var now = new Date();
+    var day = document.getElementById('techToday');
+    if (day) {
+      day.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+    var greet = document.getElementById('techGreet');
+    if (greet) {
+      var h = now.getHours();
+      var part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+      greet.textContent = 'Good ' + part + ', ' + firstName;
+    }
+    var banner = document.getElementById('availBanner');
+    var label = document.getElementById('availLabel');
+    var toggle = document.getElementById('availToggle');
+    if (banner && label && toggle) {
+      toggle.addEventListener('click', function () {
+        var online = banner.classList.toggle('online');
+        banner.classList.toggle('offline', !online);
+        label.textContent = online ? 'You are ONLINE' : 'You are OFFLINE';
+        toggle.textContent = online ? 'Go Offline' : 'Go Online';
+      });
+    }
+  })();
+</script>
 
 <style is:global>
   .feed-container {
@@ -97,6 +167,11 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     background-color: #FAFDFA;
   }
 
+  .availability-banner.offline {
+    border-color: var(--border);
+    background-color: var(--pure-white);
+  }
+
   .avail-content {
     display: flex;
     align-items: center;
@@ -113,6 +188,14 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     background-color: var(--green);
     border-radius: 50%;
     z-index: 2;
+  }
+
+  .availability-banner.offline .status-dot {
+    background-color: var(--graphite-lt);
+  }
+
+  .availability-banner.offline .pulse-ring {
+    display: none;
   }
 
   .pulse-ring {
@@ -245,6 +328,23 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
 
   .btn-primary.massive:active {
     transform: scale(0.98);
+  }
+
+  .hero-empty {
+    padding: 2rem 1.5rem;
+    text-align: center;
+    color: var(--graphite-mid);
+    font-size: 0.9375rem;
+  }
+
+  .list-empty {
+    background-color: var(--pure-white);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    color: var(--graphite-mid);
+    font-size: 0.875rem;
   }
 
   /* Lists */

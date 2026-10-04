@@ -185,7 +185,7 @@
       }
 
       .hero-h1 {
-        font-size: clamp(38px, 8.5vw, 56px);
+        font-size: clamp(38px, 8.5vw, var(--fs-h2-lg));
         line-height: 1.06;
         max-width: 300px;
       }
@@ -230,19 +230,19 @@
 
       /* â”€â”€â”€ SECTIONS â”€â”€â”€ */
       .sec {
-        padding: 60px 0;
+        padding: var(--sp-5) 0;
       }
 
       .container {
-        padding: 0 20px;
+        padding: 0 var(--sp-3);
       }
 
       .sec-head {
-        margin-bottom: 32px;
+        margin-bottom: var(--sp-4);
       }
 
       .sec-head h2 {
-        font-size: clamp(26px, 6.5vw, 36px);
+        font-size: clamp(26px, 6.5vw, var(--fs-title));
       }
 
       /* â”€â”€â”€ SERVICES GRID â”€â”€â”€ */
@@ -404,7 +404,7 @@
 
       .trust-grid {
         grid-template-columns: 1fr;
-        row-gap: 36px;
+        row-gap: var(--sp-4);
       }
 
       .trust-block {
@@ -455,7 +455,7 @@
 
       /* â”€â”€â”€ FAQ â”€â”€â”€ */
       .sec-faq {
-        padding: 60px 0;
+        padding: var(--sp-5) 0;
       }
 
       /* Show tabs on mobile, hide on desktop */
@@ -592,7 +592,7 @@
       }
 
       .final-cta h2 {
-        font-size: clamp(30px, 7.5vw, 44px);
+        font-size: clamp(30px, 7.5vw, var(--fs-h2));
       }
 
       .final-cta-btns {

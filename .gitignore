@@ -19,3 +19,6 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# Local QA scratch (screenshots, slide dumps) — never commit
+.qa/

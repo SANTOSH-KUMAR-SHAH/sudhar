@@ -97,16 +97,17 @@
       padding: 140px 56px 72px;
     }
 
-    /* Business: Heaviest weight carries the hero promise at a glance. */
-    /* Technical: Nunito Black 900 exists — no faux-bold, full impact. */
+    /* Business: A soft-serif promise — warmth + credibility before the ask. */
+    /* Technical: Fraunces display at optical size; 600 reads confident without going heavy. */
     .hero-h1 {
-      font-family: var(--font-h);
-      font-size: clamp(48px, 7vw, 88px);
-      font-weight: 900;
+      font-family: var(--font-display);
+      /* Technical: max = φ^3.5 rung (--fs-h1); fluid min unchanged. */
+      font-size: clamp(48px, 7vw, var(--fs-h1));
+      font-weight: 600;
       color: var(--white);
-      line-height: 1.03;
-      letter-spacing: -0.03em;
-      margin-bottom: 36px;
+      line-height: 1.06;
+      letter-spacing: -0.015em;
+      margin-bottom: var(--sp-4);
       max-width: 600px;
     }
 

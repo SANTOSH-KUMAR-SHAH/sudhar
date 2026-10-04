@@ -1,43 +1,67 @@
 ---
 import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
+import {
+  DEMO_LOGGED_IN_TECH_ID,
+  getDemoTechnician,
+  requestsForTechnician,
+  isRequestActive,
+  isRequestDone,
+} from '../../lib/demo-data';
+
+// Business: The profile is the technician's own record read back — name, trade
+// line and counts all come from the same rows the admin sees for this technician.
+// Technical: Stats are derived from the request table; no stored lifetime totals
+// exist yet, so only verifiable windows (this week, current board) are shown.
+const me = getDemoTechnician(DEMO_LOGGED_IN_TECH_ID);
+const myRequests = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID);
+const activeCount = myRequests.filter((r) => isRequestActive(r.status)).length;
+const doneCount = myRequests.filter((r) => isRequestDone(r.status)).length;
+const initials = (me?.name ?? 'T')
+  .split(' ')
+  .map((part) => part[0])
+  .join('')
+  .slice(0, 2)
+  .toUpperCase();
 ---
 
 <TechDashboardLayout title="Profile" activeNav="profile">
   <div class="feed-container">
     
     <div class="profile-header">
-      <div class="avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="48" height="48"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-      </div>
-      <h2>Ramesh Tech</h2>
-      <p>Senior Technician</p>
+      <div class="avatar" style={`background-color: ${me?.avatarHue ?? 'var(--navy)'}`}>{initials}</div>
+      <h2>{me?.name ?? 'Technician'}</h2>
+      <p>{me?.subtitle ?? 'Technician · Kathmandu Valley'}</p>
+      {me && <p class="tech-code tnum">{me.techCode} · Joined {me.joined}</p>}
     </div>
 
     <!-- Stats -->
     <div class="stats-row">
       <div class="stat-box">
-        <div class="stat-num">142</div>
-        <div class="stat-label">Jobs Done</div>
+        <div class="stat-num tnum">{me?.completedThisWeek ?? 0}</div>
+        <div class="stat-label">Done This Week</div>
       </div>
       <div class="stat-box">
-        <div class="stat-num">4.9</div>
-        <div class="stat-label">Rating</div>
+        <div class="stat-num tnum">{activeCount}</div>
+        <div class="stat-label">Active Jobs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num tnum">{doneCount}</div>
+        <div class="stat-label">Done On Board</div>
       </div>
     </div>
 
     <!-- Menu Links -->
     <div class="menu-list">
-      <a href="#" class="menu-item">
+      <a href="/tech/jobs" class="menu-item">
         <div class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
         <span>My Job History</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </a>
       
-      <a href="#" class="menu-item">
+      <button type="button" class="menu-item" disabled title="Settings arrive with the backend API">
         <div class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
         <span>Settings</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </a>
+      </button>
 
       <a href="tel:+977" class="menu-item">
         <div class="icon-bg" style="background-color: var(--teal-light); color: var(--teal);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div>
@@ -80,6 +104,9 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     align-items: center;
     justify-content: center;
     margin-bottom: 1rem;
+    font-family: var(--font-h);
+    font-size: 2rem;
+    font-weight: 700;
   }
 
   .profile-header h2 {
@@ -92,6 +119,12 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
   .profile-header p {
     font-size: 0.9375rem;
     color: var(--graphite-mid);
+  }
+
+  .tech-code {
+    font-size: 0.8125rem;
+    color: var(--graphite-lt);
+    margin-top: 0.25rem;
   }
 
   /* Stats Row */
@@ -125,6 +158,7 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     text-transform: uppercase;
   }
 
+
   /* Menu List */
   .menu-list {
     background-color: var(--pure-white);
@@ -141,10 +175,27 @@ import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
     text-decoration: none;
     color: var(--navy);
     border-bottom: 1px solid var(--bg-off);
+    width: 100%;
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
   }
   
   .menu-item:active {
     background-color: var(--bg-off);
+  }
+
+  .menu-item:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  .menu-item:disabled:active {
+    background-color: transparent;
   }
 
   .menu-item:last-child {

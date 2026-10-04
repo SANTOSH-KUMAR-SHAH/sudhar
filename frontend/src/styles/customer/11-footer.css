@@ -120,6 +120,12 @@
       color: var(--white);
     }
 
+    /* Technical: muted, non-interactive state for links whose pages do not exist yet. */
+    .ft-link--soon {
+      cursor: default;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
     .ft-link-icon {
       width: 18px;
       height: 18px;

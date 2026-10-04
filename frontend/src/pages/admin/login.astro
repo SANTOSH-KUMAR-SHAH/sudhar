@@ -64,7 +64,9 @@ import AdminAuthLayout from '../../layouts/AdminAuthLayout.astro';
             <input type="checkbox" name="remember" />
             <span>Remember this device</span>
           </label>
-          <a href="#" class="forgot-link">Forgot password?</a>
+          <!-- Business: Password reset needs the email backend; surface intent, never a dead link. -->
+          <!-- Technical: Disabled button communicates unavailability; styling matches the unset state. -->
+          <button type="button" class="forgot-link" disabled title="Password reset arrives with the backend API">Forgot password?</button>
         </div>
 
         <p id="adminLoginError" class="form-notice form-notice-error" role="alert" style="display:none"></p>
@@ -254,10 +256,13 @@ import AdminAuthLayout from '../../layouts/AdminAuthLayout.astro';
   .forgot-link {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--teal);
-    text-decoration: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    font-family: inherit;
+    cursor: default;
+    color: var(--graphite-mid, #6b7280);
   }
-  .forgot-link:hover { text-decoration: underline; }
 
   .btn-submit {
     width: 100%;

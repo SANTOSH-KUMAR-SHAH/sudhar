@@ -17,6 +17,9 @@
   --color-graphite-lt: #7c8186;
   --color-line: #e0ddd7;
 
-  --font-heading: "Nunito", "Nunito Sans", sans-serif;
-  --font-body: "Nunito Sans", "Nunito", sans-serif;
+  /* Customer voice: Fraunces (soft serif display) + Manrope (modern body). */
+  /* Technical: --font-display is section headlines; --font-heading stays the UI-label sans. */
+  --font-display: "Fraunces", "Manrope", Georgia, serif;
+  --font-heading: "Manrope", "Fraunces", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
 }

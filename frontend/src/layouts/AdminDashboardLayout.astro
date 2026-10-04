@@ -11,14 +11,18 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
   <link rel="icon" type="image/png" href="/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
   <style is:global>
+    /* Business: Brand colours are company law — one palette across every portal. */
+    /* Technical: Brand values mirror @theme in styles/tailwind.css (canonical source).
+       Portal neutrals (--bg, --border) and status colours below are admin-only and
+       intentionally local; change brand hues in @theme first, then here. */
     :root {
       --navy:         #10263D;
       --teal:         #0C7C82;
       --teal-light:   #E9F6F7;
-      --teal-hover:   #0A666B;
+      --teal-hover:   #0E9198;
       --bg:           #F5F6FA;
       --bg-off:       #F8F7F3;
       --pure-white:   #FFFFFF;
@@ -27,12 +31,12 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
       --graphite-lt:  #7C8186;
       --border:       #E4E6EA;
 
-      /* Business: Titles command a triage queue — formal, cool authority. */
-      /* Technical: Archivo 700/800; falls back to system grotesque, never body. */
-      --font-h: 'Archivo', 'Source Sans 3', sans-serif;
-      /* Business: Long-shift reading with zero fatigue. */
-      /* Technical: Source Sans 3 covers the full 400–700 label range. */
-      --font-b: 'Source Sans 3', 'Archivo', sans-serif;
+      /* Business: Titles command a triage queue — friendly authority staff lean on. */
+      /* Technical: Space Grotesk 400–700 (quirky, crafted ops voice); falls back to Plex Sans, never mono. */
+      --font-h: 'Space Grotesk', 'IBM Plex Sans', sans-serif;
+      /* Business: Long-shift reading with zero fatigue — familiar, not clinical. */
+      /* Technical: IBM Plex Sans covers the full 400–700 label range. */
+      --font-b: 'IBM Plex Sans', 'Space Grotesk', sans-serif;
       /* Business: One misread digit sends a tech to the wrong house. */
       /* Technical: Mono eliminates 0/O + 1/l confusion; use for IDs/invoices. */
       --font-fig: 'IBM Plex Mono', ui-monospace, monospace;
@@ -137,6 +141,7 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      width: 100%;
       padding: 0.6875rem 0.875rem;
       border-radius: 8px;
       color: rgba(255,255,255,0.6);
@@ -163,6 +168,19 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
       width: 3px;
       background: var(--teal);
       border-radius: 0 3px 3px 0;
+    }
+    /* Technical: button reset for disabled nav items; hover suppressed via higher-specificity rule. */
+    .nav-link--disabled {
+      background: none;
+      border: 0;
+      font-family: inherit;
+      text-align: left;
+      cursor: default;
+      opacity: 0.55;
+    }
+    .nav-link--disabled:hover {
+      background: none;
+      color: rgba(255,255,255,0.6);
     }
     .nav-badge {
       margin-left: auto;
@@ -398,12 +416,32 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
     .btn-full { width: 100%; justify-content: center; }
 
     /* Cards */
+    /* Business: Every framed surface in admin is the same card — lists, records, panels. */
+    /* Technical: One frame definition; pages add padding via their own section class only. */
     .card {
       background: var(--pure-white);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 10px;
     }
     .card-pad { padding: 1.25rem; }
+
+    /* Breadcrumb trail */
+    /* Business: Detail records always show the way back through the same three steps. */
+    /* Technical: Defined once here — request/technician/customer pages must not re-declare. */
+    .breadcrumb-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem; color: var(--graphite-mid);
+    }
+    .breadcrumb-row svg { color: var(--graphite-lt); }
+    .breadcrumb-link {
+      color: var(--graphite-mid);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .breadcrumb-link:hover { color: var(--teal); }
+    .breadcrumb-current { color: var(--navy); font-weight: 600; }
 
     /* Divider */
     .divider { width: 100%; height: 1px; background: var(--border); }
@@ -559,10 +597,12 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
 
       <span class="nav-section-label">System</span>
 
-      <a href="#" class={`nav-link ${activeNav === 'settings' ? 'active' : ''}`}>
+      <!-- Business: Settings has no page yet; keep the roadmap visible without a dead destination. -->
+      <!-- Technical: button[disabled] cannot navigate; disabled styling declared, not inherited. -->
+      <button type="button" class="nav-link nav-link--disabled" disabled title="Settings arrive with the backend API">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         Settings
-      </a>
+      </button>
     </nav>
 
     <div class="sidebar-footer">

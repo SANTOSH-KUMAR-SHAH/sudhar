@@ -1,13 +1,30 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import {
+  getCustomerSummaries,
+  isRequestActive,
+  isRequestCancelled,
+  isRequestDone,
+  requestsForCustomer,
+  statusBadgeClass,
+  statusLabel,
+} from '../../../lib/demo-data';
 
-const customers = [
-  { id: 'HT', name: 'Hari Thapa',    phone: '98XX XXX XXX', area: 'Baneshwor',   appliances: 2, totalReqs: 3, lastOutcome: 'Active',             outcomeClass: 'badge-active',  lastDate: 'Today',        color: '#10263D' },
-  { id: 'MS', name: 'Mina Shrestha', phone: '98XX XXX XXX', area: 'Lalitpur',    appliances: 1, totalReqs: 2, lastOutcome: 'Price Approval',     outcomeClass: 'badge-progress',lastDate: '2 hrs ago',    color: '#0C7C82' },
-  { id: 'SR', name: 'Suresh Rai',    phone: '98XX XXX XXX', area: 'Koteshwor',   appliances: 3, totalReqs: 4, lastOutcome: 'Successful Repair',  outcomeClass: 'badge-done',    lastDate: 'Yesterday',    color: '#8B5CF6' },
-  { id: 'AG', name: 'Anita Gurung',  phone: '98XX XXX XXX', area: 'Maharajgunj', appliances: 1, totalReqs: 1, lastOutcome: 'Customer Cancelled', outcomeClass: 'badge-cancel',  lastDate: 'September 10', color: '#4A4E52' },
-  { id: 'BR', name: 'Bikash Rai',    phone: '98XX XXX XXX', area: 'Kirtipur',    appliances: 1, totalReqs: 1, lastOutcome: 'No Technician Visit', outcomeClass: 'badge-neutral', lastDate: 'September 8',  color: '#D97706' },
-];
+// Business: The directory answers "who have we served" from the same store the detail
+// pages read — request counts and last outcomes are joined, never retyped.
+// Technical: Quick-filter membership is stamped per row (data-filters) at render time,
+// so the client script never re-lists statuses and can't drift from the data layer.
+const customers = getCustomerSummaries();
+const filtersFor = (id: string) => {
+  const reqs = requestsForCustomer(id);
+  return [
+    reqs.some((r) => isRequestActive(r.status)) && 'active',
+    reqs.some((r) => isRequestDone(r.status)) && 'completed',
+    reqs.some((r) => isRequestCancelled(r.status)) && 'cancelled',
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
 ---
 
 <AdminDashboardLayout title="Customers - Sudhar Lab Admin" activeNav="customers">
@@ -28,15 +45,15 @@ const customers = [
   <div class="cs-search-card card card-pad">
     <div class="cs-search-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" class="cs-search" placeholder="Search by name, phone number, area, or appliance…" autofocus />
+      <input type="text" id="csSearch" class="cs-search" placeholder="Search by name, phone number or area…" autofocus />
     </div>
     <div class="cs-search-meta">
-      <span class="text-sm text-muted">248 customer records</span>
+      <span class="text-sm text-muted" id="csCount">{customers.length} customer records</span>
       <div class="cs-quick-filters">
-        <button class="qf-btn active">All</button>
-        <button class="qf-btn">Active requests</button>
-        <button class="qf-btn">Completed</button>
-        <button class="qf-btn">Cancelled</button>
+        <button class="qf-btn active" data-qf="all" type="button">All</button>
+        <button class="qf-btn" data-qf="active" type="button">Active requests</button>
+        <button class="qf-btn" data-qf="completed" type="button">Completed</button>
+        <button class="qf-btn" data-qf="cancelled" type="button">Cancelled</button>
       </div>
     </div>
   </div>
@@ -44,11 +61,11 @@ const customers = [
   <!-- CUSTOMER LIST -->
   <div class="cs-list card">
     {customers.map(cust => (
-      <div class="cs-row" onclick={`window.location.href='/admin/customers/${cust.id}'`}>
+      <a class="cs-row" href={`/admin/customers/${cust.id}`} data-filters={filtersFor(cust.id)} data-text={`${cust.name} ${cust.phone} ${cust.area}`.toLowerCase()}>
 
         <!-- Left: Identity -->
         <div class="cs-identity">
-          <div class="cs-avatar" style={`background: ${cust.color}`}>{cust.id}</div>
+          <div class="cs-avatar" style={`background: ${cust.avatarHue}`}>{cust.id}</div>
           <div>
             <div class="cs-name">{cust.name}</div>
             <div class="cs-meta">
@@ -64,11 +81,11 @@ const customers = [
         <!-- Middle: Stats -->
         <div class="cs-stats">
           <div class="cs-stat">
-            <div class="cs-stat-num">{cust.appliances}</div>
+            <div class="cs-stat-num">{cust.applianceCount}</div>
             <div class="cs-stat-label">Appliances</div>
           </div>
           <div class="cs-stat">
-            <div class="cs-stat-num">{cust.totalReqs}</div>
+            <div class="cs-stat-num">{cust.totalRequests}</div>
             <div class="cs-stat-label">Requests</div>
           </div>
         </div>
@@ -76,19 +93,52 @@ const customers = [
         <!-- Right: Last status + action -->
         <div class="cs-right">
           <div class="cs-last">
-            <span class={`badge ${cust.outcomeClass}`}>{cust.lastOutcome}</span>
+            <span class={`badge ${statusBadgeClass(cust.lastOutcomeStatus)}`}>{statusLabel(cust.lastOutcomeStatus)}</span>
             <div class="cs-last-date">{cust.lastDate}</div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick={`event.stopPropagation(); window.location.href='/admin/customers/${cust.id}'`}>
+          <span class="btn btn-secondary btn-sm">
             Open Record
-          </button>
+          </span>
         </div>
 
-      </div>
+      </a>
     ))}
+    <div class="cs-empty" id="csEmpty" hidden>No customers match this search.</div>
   </div>
 
 </AdminDashboardLayout>
+
+<script is:inline>
+// Business: Search text and quick filters combine, like the requests queue works.
+// Technical: Row membership lives in data-filters/data-text (stamped at render);
+// this script only reads attributes — it never learns what a status key is.
+let csFilter = 'all';
+function applyCustomerFilters() {
+  const input = document.getElementById('csSearch');
+  const q = (input.value || '').trim().toLowerCase();
+  let visible = 0;
+  const rows = document.querySelectorAll('.cs-row');
+  rows.forEach((row) => {
+    const kinds = (row.getAttribute('data-filters') || '').split(' ');
+    const text = row.getAttribute('data-text') || '';
+    const show = (csFilter === 'all' || kinds.includes(csFilter)) && (!q || text.includes(q));
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const count = document.getElementById('csCount');
+  count.textContent = (csFilter === 'all' && !q)
+    ? rows.length + ' customer records'
+    : visible + ' of ' + rows.length + ' customer records';
+  document.getElementById('csEmpty').hidden = visible > 0;
+}
+function setCustomerFilter(kind) {
+  csFilter = kind;
+  document.querySelectorAll('.qf-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-qf') === kind));
+  applyCustomerFilters();
+}
+document.getElementById('csSearch').addEventListener('input', applyCustomerFilters);
+document.querySelectorAll('.qf-btn').forEach((b) => b.addEventListener('click', () => setCustomerFilter(b.getAttribute('data-qf'))));
+</script>
 
 <style is:global>
   .cs-header {
@@ -132,14 +182,21 @@ const customers = [
 
   /* Customer list */
   .cs-list { overflow: hidden; }
+  /* Business: the whole row opens the record — a real anchor, keyboard focusable. */
   .cs-row {
     display: flex; align-items: center; gap: 1.25rem;
     padding: 1.125rem 1.5rem;
     border-bottom: 1px solid var(--border);
     cursor: pointer; transition: background 0.12s;
+    color: inherit; text-decoration: none;
   }
   .cs-row:last-child { border-bottom: none; }
   .cs-row:hover { background: #FAFBFC; }
+  .cs-empty {
+    padding: 1.25rem 1.5rem;
+    font-size: 0.875rem;
+    color: var(--graphite-lt);
+  }
 
   .cs-identity { display: flex; align-items: center; gap: 0.875rem; flex: 1; min-width: 0; }
   .cs-avatar {

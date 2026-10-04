@@ -325,11 +325,11 @@
     }
 
     .final-cta h2 {
-      font-family: var(--font-h);
-      font-size: clamp(40px, 4.5vw, 56px);
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: clamp(40px, 4.5vw, var(--fs-h2-lg));
+      font-weight: 600;
       color: var(--white);
-      letter-spacing: -0.02em;
+      letter-spacing: -0.012em;
       line-height: 1.15;
       margin-bottom: 20px;
     }

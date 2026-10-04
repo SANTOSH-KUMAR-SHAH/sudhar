@@ -1,5 +1,44 @@
 ---
 import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
+import {
+  DEMO_REQUESTS,
+  completedTodayRequests,
+  currentJobForTechnician,
+  getDemoCustomer,
+  getDemoTechnician,
+  getTechnicianSummaries,
+  liveJobRequests,
+  newRequestCount,
+  onlineTechnicians,
+  statusBadgeClass,
+  statusLabel,
+  todaySummary,
+} from '../../lib/demo-data';
+
+// Business: The dashboard is a live read of the queue, never a second copy of it.
+// Technical: Every group, chip and count below renders from demo-data selectors;
+// changing a request in one place updates dashboard, lists and detail together.
+const callConfirm = DEMO_REQUESTS.filter((r) => r.status === 'NEW_REQUEST');
+const toAssign = DEMO_REQUESTS.filter((r) => r.status === 'ORDER_CONFIRMED' && !r.technicianId);
+const waitingCustomer = DEMO_REQUESTS.filter((r) => r.status === 'PRICE_APPROVAL');
+const liveJobs = liveJobRequests().map((r) => {
+  const tech = r.technicianId ? getDemoTechnician(r.technicianId) : undefined;
+  const cust = getDemoCustomer(r.customerId);
+  return { r, detail: `${tech?.name.split(' ')[0] ?? '—'} · ${r.brand} ${r.applianceType} · ${cust?.area ?? ''}` };
+});
+const techRows = getTechnicianSummaries();
+const completedToday = completedTodayRequests().map((r) => ({ r, cust: getDemoCustomer(r.customerId) }));
+const summary = todaySummary();
+
+// Business: Queue cards say "Samsung AC", not "Air conditioner" — staff shorthand.
+// Technical: Display-only abbreviation; the stored appliance type stays canonical.
+const APPLIANCE_SHORT: Record<string, string> = {
+  'Washing machine': 'Washer',
+  Refrigerator: 'Fridge',
+  'Air conditioner': 'AC',
+  Television: 'TV',
+};
+const applianceShort = (type: string) => APPLIANCE_SHORT[type] ?? type;
 ---
 
 <AdminDashboardLayout title="Home - Sudhar Lab Admin" activeNav="dashboard">
@@ -10,11 +49,11 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
     <div class="today-stats">
       <div class="stat-chip chip-green">
         <span class="chip-dot"></span>
-        3 technicians online
+        {onlineTechnicians().length} technicians online
       </div>
       <div class="stat-chip chip-amber">
         <span class="chip-dot"></span>
-        2 unassigned
+        {newRequestCount()} unassigned
       </div>
     </div>
   </div>
@@ -29,65 +68,42 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
       <div class="group-title">
         <div class="group-dot red"></div>
         <span>Call &amp; Confirm</span>
-        <span class="group-count">2</span>
+        <span class="group-count">{callConfirm.length}</span>
       </div>
       <div class="group-sub">New requests waiting — call the customer and confirm the visit</div>
     </div>
 
     <div class="queue-cards">
-
-      <div class="queue-card urgent">
-        <div class="qc-top">
-          <div class="qc-id tnum">SL-000126</div>
-          <span class="badge badge-new">New Request</span>
-          <div class="qc-time">Just now</div>
-        </div>
-        <div class="qc-customer">
-          <div class="qc-avatar" style="background:#10263D">HT</div>
-          <div>
-            <div class="qc-name">Hari Thapa</div>
-            <div class="qc-meta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              Baneshwor · LG Washing Machine
+      {callConfirm.map((req) => {
+        const cust = getDemoCustomer(req.customerId);
+        return (
+          <div class:list={['queue-card', { urgent: req.urgent }]}>
+            <div class="qc-top">
+              <div class="qc-id tnum">{req.id}</div>
+              <span class={`badge ${statusBadgeClass(req.status)}`}>{statusLabel(req.status)}</span>
+              <div class="qc-time">{req.receivedAgo}</div>
+            </div>
+            <div class="qc-customer">
+              <div class="qc-avatar" style={`background:${cust?.avatarColor ?? 'var(--navy)'}`}>{cust?.initials}</div>
+              <div>
+                <div class="qc-name">{cust?.name}</div>
+                <div class="qc-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  {cust?.area} · {req.brand} {req.applianceType}
+                </div>
+              </div>
+            </div>
+            <div class="qc-problem">&ldquo;{req.problem}&rdquo;</div>
+            <div class="qc-actions">
+              <a class="btn btn-primary btn-sm qc-main-btn" href={`/admin/requests/${req.id}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Call &amp; Confirm
+              </a>
+              <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>View</a>
             </div>
           </div>
-        </div>
-        <div class="qc-problem">"Not draining after spin cycle"</div>
-        <div class="qc-actions">
-          <button class="btn btn-primary btn-sm qc-main-btn" onclick="window.location.href='/admin/requests/SL-000126'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-            Call &amp; Confirm
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="window.location.href='/admin/requests/SL-000126'">View</button>
-        </div>
-      </div>
-
-      <div class="queue-card urgent">
-        <div class="qc-top">
-          <div class="qc-id tnum">SL-000125</div>
-          <span class="badge badge-new">New Request</span>
-          <div class="qc-time">14 min ago</div>
-        </div>
-        <div class="qc-customer">
-          <div class="qc-avatar" style="background:#0C7C82">SR</div>
-          <div>
-            <div class="qc-name">Sunita Rai</div>
-            <div class="qc-meta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              Lalitpur · Samsung Refrigerator
-            </div>
-          </div>
-        </div>
-        <div class="qc-problem">"Not cooling, makes loud noise"</div>
-        <div class="qc-actions">
-          <button class="btn btn-primary btn-sm qc-main-btn" onclick="window.location.href='/admin/requests/SL-000125'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-            Call &amp; Confirm
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="window.location.href='/admin/requests/SL-000125'">View</button>
-        </div>
-      </div>
-
+        );
+      })}
     </div>
   </div>
 
@@ -97,43 +113,54 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
       <div class="group-title">
         <div class="group-dot amber"></div>
         <span>Assign Technician</span>
-        <span class="group-count">1</span>
+        <span class="group-count">{toAssign.length}</span>
       </div>
       <div class="group-sub">Order confirmed — pick a technician and send them out</div>
     </div>
 
     <div class="queue-cards">
-
-      <div class="queue-card">
-        <div class="qc-top">
-          <div class="qc-id tnum">SL-000124</div>
-          <span class="badge badge-confirm">Confirmed</span>
-          <div class="qc-time">Yesterday</div>
-        </div>
-        <div class="qc-customer">
-          <div class="qc-avatar" style="background:#10263D">HT</div>
-          <div>
-            <div class="qc-name">Hari Thapa</div>
-            <div class="qc-meta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              Baneshwor · LG Washing Machine
+      {toAssign.map((req) => {
+        const cust = getDemoCustomer(req.customerId);
+        return (
+          <div class:list={['queue-card', { urgent: req.urgent }]}>
+            <div class="qc-top">
+              <div class="qc-id tnum">{req.id}</div>
+              <span class={`badge ${statusBadgeClass(req.status)}`}>{statusLabel(req.status)}</span>
+              <div class="qc-time">{req.receivedAgo}</div>
+            </div>
+            <div class="qc-customer">
+              <div class="qc-avatar" style={`background:${cust?.avatarColor ?? 'var(--navy)'}`}>{cust?.initials}</div>
+              <div>
+                <div class="qc-name">{cust?.name}</div>
+                <div class="qc-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  {cust?.area} · {req.brand} {req.applianceType}
+                </div>
+              </div>
+            </div>
+            <div class="qc-avail-row">
+              {(req.suggestedTechnicianIds ?? []).map((techId) => {
+                const tech = getDemoTechnician(techId);
+                const job = currentJobForTechnician(techId);
+                const chip = !tech ? { label: '—', cls: 'grey' }
+                  : tech.availability === 'offline' ? { label: `${tech.name.split(' ')[0]} — Offline`, cls: 'grey' }
+                  : job ? { label: `${tech.name.split(' ')[0]} — ${statusLabel(job.status)}`, cls: 'amber' }
+                  : { label: `${tech.name.split(' ')[0]} — Available`, cls: 'green' };
+                return (
+                  <div class={`avail-chip ${chip.cls}`}><span class="avail-dot"></span>{chip.label}</div>
+                );
+              })}
+            </div>
+            <div class="qc-actions">
+              <a class="btn btn-primary btn-sm qc-main-btn" href={`/admin/requests/${req.id}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Assign Technician
+              </a>
+              <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>View</a>
             </div>
           </div>
-        </div>
-        <div class="qc-avail-row">
-          <div class="avail-chip green"><span class="avail-dot"></span>Ramesh — Available</div>
-          <div class="avail-chip green"><span class="avail-dot"></span>Bikash — Available</div>
-          <div class="avail-chip grey"><span class="avail-dot"></span>Prabin — Busy</div>
-        </div>
-        <div class="qc-actions">
-          <button class="btn btn-primary btn-sm qc-main-btn" onclick="window.location.href='/admin/requests/SL-000124'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            Assign Technician
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="window.location.href='/admin/requests/SL-000124'">View</button>
-        </div>
-      </div>
-
+        );
+      })}
     </div>
   </div>
 
@@ -143,42 +170,47 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
       <div class="group-title">
         <div class="group-dot purple"></div>
         <span>Waiting for Customer</span>
-        <span class="group-count">1</span>
+        <span class="group-count">{waitingCustomer.length}</span>
       </div>
       <div class="group-sub">Diagnosis done — follow up with customer on repair price</div>
     </div>
 
     <div class="queue-cards">
-
-      <div class="queue-card">
-        <div class="qc-top">
-          <div class="qc-id tnum">SL-000121</div>
-          <span class="badge badge-progress">Price Approval</span>
-          <div class="qc-time">2 hrs ago</div>
-        </div>
-        <div class="qc-customer">
-          <div class="qc-avatar" style="background:#8B5CF6">MS</div>
-          <div>
-            <div class="qc-name">Mina Shrestha</div>
-            <div class="qc-meta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              Lalitpur · Samsung AC
+      {waitingCustomer.map((req) => {
+        const cust = getDemoCustomer(req.customerId);
+        return (
+          <div class:list={['queue-card', { urgent: req.urgent }]}>
+            <div class="qc-top">
+              <div class="qc-id tnum">{req.id}</div>
+              <span class={`badge ${statusBadgeClass(req.status)}`}>{statusLabel(req.status)}</span>
+              <div class="qc-time">{req.receivedAgo}</div>
+            </div>
+            <div class="qc-customer">
+              <div class="qc-avatar" style={`background:${cust?.avatarColor ?? 'var(--navy)'}`}>{cust?.initials}</div>
+              <div>
+                <div class="qc-name">{cust?.name}</div>
+                <div class="qc-meta">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  {cust?.area} · {req.brand} {req.applianceType}
+                </div>
+              </div>
+            </div>
+            {req.diagnosis && (
+              <div class="qc-diagnosis">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {req.diagnosis.fault} — proposed repair: <strong>{req.diagnosis.proposal}</strong>
+              </div>
+            )}
+            <div class="qc-actions">
+              <a class="btn btn-primary btn-sm qc-main-btn" href={`/admin/requests/${req.id}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Follow Up with Customer
+              </a>
+              <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>View</a>
             </div>
           </div>
-        </div>
-        <div class="qc-diagnosis">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          Compressor fault — proposed repair: <strong>Rs. 4,500</strong>
-        </div>
-        <div class="qc-actions">
-          <button class="btn btn-primary btn-sm qc-main-btn" onclick="window.location.href='/admin/requests/SL-000121'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-            Follow Up with Customer
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="window.location.href='/admin/requests/SL-000121'">View</button>
-        </div>
-      </div>
-
+        );
+      })}
     </div>
   </div>
 
@@ -198,27 +230,15 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
         <a href="/admin/requests" class="see-all">See all →</a>
       </div>
       <div class="live-jobs-list">
-        <div class="live-job-row">
-          <div class="live-job-info">
-            <div class="lj-id tnum">SL-000123</div>
-            <div class="lj-detail">Ramesh · LG Washing Machine · Koteshwor</div>
-          </div>
-          <span class="badge badge-progress">Diagnosing</span>
-        </div>
-        <div class="live-job-row">
-          <div class="live-job-info">
-            <div class="lj-id tnum">SL-000122</div>
-            <div class="lj-detail">Bikash · Samsung AC · Maharajgunj</div>
-          </div>
-          <span class="badge badge-assigned">On the Way</span>
-        </div>
-        <div class="live-job-row">
-          <div class="live-job-info">
-            <div class="lj-id tnum">SL-000118</div>
-            <div class="lj-detail">Suman · Whirlpool Fridge · Kirtipur</div>
-          </div>
-          <span class="badge badge-progress">In Progress</span>
-        </div>
+        {liveJobs.map(({ r, detail }) => (
+          <a class="live-job-row" href={`/admin/requests/${r.id}`}>
+            <div class="live-job-info">
+              <div class="lj-id tnum">{r.id}</div>
+              <div class="lj-detail">{detail}</div>
+            </div>
+            <span class={`badge ${statusBadgeClass(r.status)}`}>{statusLabel(r.status)}</span>
+          </a>
+        ))}
       </div>
     </div>
 
@@ -229,51 +249,29 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
         <a href="/admin/technicians" class="see-all">Manage →</a>
       </div>
       <div class="tech-list">
-        <div class="tech-row">
-          <div class="tech-av-dot online"></div>
-          <div class="tech-av" style="background:#10263D">BT</div>
-          <div class="tech-info">
-            <div class="tech-name">Bikash Thapa</div>
-            <div class="tech-status">On the Way — SL-000122</div>
-          </div>
-          <span class="badge badge-assigned">Busy</span>
-        </div>
-        <div class="tech-row">
-          <div class="tech-av-dot online"></div>
-          <div class="tech-av" style="background:#0C7C82">RK</div>
-          <div class="tech-info">
-            <div class="tech-name">Ramesh KC</div>
-            <div class="tech-status">Diagnosing — SL-000123</div>
-          </div>
-          <span class="badge badge-progress">Diagnosing</span>
-        </div>
-        <div class="tech-row">
-          <div class="tech-av-dot online"></div>
-          <div class="tech-av" style="background:#8B5CF6">SR</div>
-          <div class="tech-info">
-            <div class="tech-name">Suman Rai</div>
-            <div class="tech-status">In Progress — SL-000118</div>
-          </div>
-          <span class="badge badge-progress">In Progress</span>
-        </div>
-        <div class="tech-row">
-          <div class="tech-av-dot offline"></div>
-          <div class="tech-av" style="background:#4A4E52">PS</div>
-          <div class="tech-info">
-            <div class="tech-name">Prabin Shrestha</div>
-            <div class="tech-status">Offline</div>
-          </div>
-          <span class="badge badge-neutral">Offline</span>
-        </div>
-        <div class="tech-row">
-          <div class="tech-av-dot offline"></div>
-          <div class="tech-av" style="background:#4A4E52">NG</div>
-          <div class="tech-info">
-            <div class="tech-name">Nabin Gurung</div>
-            <div class="tech-status">Offline</div>
-          </div>
-          <span class="badge badge-neutral">Offline</span>
-        </div>
+        {techRows.map((t) => {
+          // Business: one honest line per technician — live job first, then availability.
+          // Technical: label and badge both derive from the joined request, never typed here.
+          const statusText = t.currentJobId && t.currentJobStatus
+            ? `${statusLabel(t.currentJobStatus)} — ${t.currentJobId}`
+            : t.availability === 'offline' ? 'Offline' : 'Available';
+          const badge = t.currentJobStatus
+            ? { label: statusLabel(t.currentJobStatus), cls: statusBadgeClass(t.currentJobStatus) }
+            : t.availability === 'offline'
+              ? { label: 'Offline', cls: 'badge-neutral' }
+              : { label: 'Available', cls: 'badge-done' };
+          return (
+            <a class="tech-row" href={`/admin/technicians/${t.id}`}>
+              <div class:list={['tech-av-dot', t.availability]}></div>
+              <div class="tech-av" style={`background:${t.avatarHue}`}>{t.id}</div>
+              <div class="tech-info">
+                <div class="tech-name">{t.name}</div>
+                <div class="tech-status">{statusText}</div>
+              </div>
+              <span class={`badge ${badge.cls}`}>{badge.label}</span>
+            </a>
+          );
+        })}
       </div>
     </div>
 
@@ -284,30 +282,36 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
       </div>
       <div class="summary-grid">
         <div class="sum-item">
-          <div class="sum-num amber">2</div>
+          <div class="sum-num amber">{summary.newRequests}</div>
           <div class="sum-label">New Requests</div>
         </div>
         <div class="sum-item">
-          <div class="sum-num blue">1</div>
+          <div class="sum-num blue">{toAssign.length}</div>
           <div class="sum-label">To Assign</div>
         </div>
         <div class="sum-item">
-          <div class="sum-num purple">3</div>
+          <div class="sum-num purple">{summary.activeVisits}</div>
           <div class="sum-label">Active Jobs</div>
         </div>
         <div class="sum-item">
-          <div class="sum-num green">1</div>
+          <div class="sum-num green">{summary.completed}</div>
           <div class="sum-label">Completed</div>
         </div>
       </div>
       <div class="divider" style="margin: 1rem 0;"></div>
       <div class="recently-done">
         <div class="rd-label">Completed today</div>
-        <div class="rd-row">
-          <div class="lj-id tnum" style="font-size:0.75rem">SL-000117</div>
-          <span class="rd-detail">Anita Gurung · TV · Bagbazar</span>
-          <span class="badge badge-done">Done</span>
-        </div>
+        {completedToday.length === 0 ? (
+          <div class="rd-detail">No completed visits yet today.</div>
+        ) : (
+          completedToday.map(({ r, cust }) => (
+            <div class="rd-row">
+              <a class="lj-id tnum" style="font-size:0.75rem" href={`/admin/requests/${r.id}`}>{r.id}</a>
+              <span class="rd-detail">{cust?.name} · {applianceShort(r.applianceType)} · {cust?.area}</span>
+              <span class="badge badge-done">Done</span>
+            </div>
+          ))
+        )}
       </div>
     </div>
 
@@ -379,7 +383,9 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
   /* Queue Cards */
   .queue-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    /* Technical: minmax(320px, minmax(0,1fr)) — tracks shrink below 320px on narrow screens
+       instead of blowing the page out horizontally (grid auto-min trap). */
+    grid-template-columns: repeat(auto-fill, minmax(320px, minmax(0, 1fr)));
     gap: 1rem;
   }
   .queue-card {
@@ -428,6 +434,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
     padding: 0.25rem 0.625rem; border-radius: 20px;
   }
   .avail-chip.green { background: #DCFCE7; color: #16A34A; }
+  .avail-chip.amber { background: #FEF3C7; color: #D97706; }
   .avail-chip.grey  { background: #F3F4F6; color: var(--graphite-mid); }
   .avail-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
@@ -445,7 +452,8 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
   /* Bottom Grid */
   .bottom-grid {
     display: grid;
-    grid-template-columns: 1.2fr 1fr 0.8fr;
+    /* Technical: minmax(0,xfr) so long activity text cannot widen a track past the viewport. */
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
     gap: 1.25rem;
     margin-top: 0.5rem;
   }
@@ -478,6 +486,10 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
   .live-job-row:last-child { border-bottom: none; }
   .lj-id { font-size: 0.8125rem; font-weight: 700; color: var(--teal); margin-bottom: 0.125rem; }
   .lj-detail { font-size: 0.75rem; color: var(--graphite-lt); }
+  /* Rows link to the request/technician; underline on the ID/name keeps it quiet. */
+  a.live-job-row, a.tech-row { color: inherit; text-decoration: none; }
+  a.live-job-row:hover .lj-id, a.tech-row:hover .tech-name { text-decoration: underline; }
+  a.lj-id:hover { text-decoration: underline; }
 
   /* Tech list */
   .tech-list { display: flex; flex-direction: column; gap: 0; }
@@ -516,7 +528,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
 
   /* Summary grid */
   .summary-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.875rem;
   }
   .sum-item {
@@ -540,7 +552,7 @@ import AdminDashboardLayout from '../../layouts/AdminDashboardLayout.astro';
   .rd-detail { font-size: 0.75rem; color: var(--graphite-mid); flex: 1; }
 
   @media (max-width: 1100px) {
-    .bottom-grid { grid-template-columns: 1fr 1fr; }
+    .bottom-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   }
   @media (max-width: 767px) {
     /* Dashboard mobile overrides */

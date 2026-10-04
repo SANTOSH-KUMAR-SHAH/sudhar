@@ -12,9 +12,11 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400..700&display=swap" rel="stylesheet">
 
     <style is:global>
+    /* Technical: Brand values mirror @theme in styles/tailwind.css (canonical source);
+       Rubik type and the cooler --border/--bg-off are technician-portal local. */
     :root {
       --navy: #10263D;
       --teal: #0C7C82;
@@ -31,12 +33,12 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
       --border: #E5E7EB;
       --bg-off: #F3F4F6;
 
-      /* Business: Titles shout job state at a glance, in sunlight, one-thumbed. */
-      /* Technical: Condensed signage voice; Barlow fallback keeps texture on failure. */
-      --font-h: 'Barlow Condensed', 'Barlow', sans-serif;
-      /* Business: Descriptions must disappear into understanding between tasks. */
-      /* Technical: Barlow covers the full 400–700 label range, no synthesis. */
-      --font-b: 'Barlow', 'Barlow Condensed', sans-serif;
+      /* Business: Titles shout job state at a glance — sturdy, friendly, one-thumbed. */
+      /* Technical: Rubik 700 headings; rounded forms read warm, not clinical. */
+      --font-h: 'Rubik', system-ui, sans-serif;
+      /* Business: Warm, sturdy, low-strain reading so field work feels like family. */
+      /* Technical: Rubik covers the full 400–700 label range, no synthesis. */
+      --font-b: 'Rubik', system-ui, sans-serif;
 
       --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
       --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
@@ -224,7 +226,8 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
     }
 
     .nav-tab svg { width: 24px; height: 24px; stroke-width: 2; }
-    .nav-tab span { font-size: 0.6875rem; font-weight: 600; }
+    /* Business: Tab names are content for tired eyes in the field — 12px floor (font.md §4.1). */
+    .nav-tab span { font-size: 0.75rem; font-weight: 600; }
     .nav-tab.active { color: var(--navy); }
     .nav-tab.active svg { fill: var(--navy); stroke: var(--navy); }
 
@@ -252,7 +255,7 @@ const { title = "Technician Portal", activeNav = "home" } = Astro.props;
     @media (max-width: 380px) {
       .app-header { padding: 0 0.75rem; }
       .app-title { font-size: 1.125rem; }
-      .nav-tab span { font-size: 0.625rem; }
+      .nav-tab span { font-size: 0.6875rem; }
       .nav-tab svg { width: 22px; height: 22px; }
     }
 
