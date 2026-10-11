@@ -27,7 +27,6 @@ export function todayLabel(timeZone = 'Asia/Kathmandu'): string {
   }
 }
 
-export function isValidNepalPhone(input: string): boolean {
-  const digits = input.replace(/[\s-]/g, '');
-  return /^(98\d{8}|\+97798\d{8})$/.test(digits);
-}
+// Business: The Nepal-phone rule is single-sourced in packages/shared (the API uses it too).
+// Technical: Re-export so existing imports from this file keep working unchanged.
+export { isValidNepalPhone } from '../../../packages/shared/src/validation';

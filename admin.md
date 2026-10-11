@@ -35,7 +35,7 @@ The admin's job is therefore: **see the request → decide → click → the cus
 
 **Views**
 1. **Request queue** — all requests, with the filters/tabs the admin pages already have.
-2. **Technician roster** — who is available and what they service (checked *before* accepting).
+2. **Technician roster** — who is **online/offline** and what they service (checked *before* accepting). Availability is tracked, but the **admin still picks a person manually** — there is no auto "who fits" suggestion (you know your people).
 3. **Request detail = the live service record** — one screen where the case is worked from new to done.
 
 **Actions (the only things that push the customer page forward)**
@@ -43,7 +43,7 @@ The admin's job is therefore: **see the request → decide → click → the cus
 5. **Assign** a technician (after the technician agrees on the phone).
 6. **Fault found** (after the technician calls with the diagnosis).
 7. **Price → Yes** (customer approved on the call) or **Price → No** (customer declined).
-8. **Repair & payment done** (repair finished, cash received).
+8. **Repair & payment done** (repair finished). This also **records the invoice number + amount + a Paid/Pending mark** — the money itself arrives by QR/Esewa *outside* the system; the admin just writes down that it happened.
 
 ---
 
@@ -59,7 +59,7 @@ The admin's job is therefore: **see the request → decide → click → the cus
 | 5 | Admin clicks **Fault found** and types the fault | `PRICE_APPROVAL` | **Fault found — waiting for price approval** |
 | 6a | Admin calls with price; customer says **yes** → clicks **Yes** | `IN_PROGRESS` | **Price approved · Repairing** |
 | 6b | Customer says **no** → clicks **No** | `CANCELLED` (labelled **Declined**) | Ends; record is **kept**, marked *Declined* |
-| 7 | Repair finished, cash paid → clicks **Repair & payment done** | `COMPLETED` → `CLOSED` | **Repair complete · Thank you · Please rate us** + the **full service record** |
+| 7 | Repair finished; admin records invoice + amount + payment → clicks **Repair & payment done** | `COMPLETED` → `INVOICED` → `PAID` → `CLOSED` | **Repair complete · Thank you · Please rate us** + the **full service record** |
 
 *Optional in-between:* if parts are needed, the case can sit at `WAITING_FOR_PARTS` and display as a note
 under **Repairing**. Cancellation by the customer is only simple **before** Accept (step 2) — matching
@@ -96,7 +96,7 @@ When step 7 finishes, the customer's page displays the complete record. It conta
 - **Appliance**: type, brand, model
 - **Problem** as reported by the customer
 - **Fault found** (admin-entered diagnosis)
-- **Price agreed** and **payment method = Cash / on visit**
+- **Invoice number** (e.g. `INV-00123`), **price agreed**, **amount**, and **payment status** (Paid / Pending) — recorded only; the money arrives by **QR / Esewa / cash outside the system**
 - **Assigned technician** name
 - **Visit date**
 - **Timeline** of the steps with their timestamps (who moved it forward, when) — the accountability trail
@@ -116,10 +116,13 @@ The PPT gives the admin more powers. **Not built now:**
 | Manage spare parts inventory | ❌ No |
 | Manage warranty | ❌ No |
 | Generate reports / analytics | ❌ No (kept data allows this later) |
-| Manage payments / gateway | ❌ No — cash, off-system |
+| Online payment **gateway** | ❌ No — money arrives by QR/Esewa outside the system |
 | Manage a full customer directory with accounts | ❌ No — no customer accounts exist |
 
 What the admin **does** have is exactly the list in section 3 — a focused control room, not a full ERP.
+
+> **Note:** although there is no payment *gateway*, the admin **does record** an invoice number, the amount,
+> and a Paid/Pending mark on the service record (see §7). Recording a fact is not the same as processing money.
 
 ---
 
@@ -128,7 +131,7 @@ What the admin **does** have is exactly the list in section 3 — a focused cont
 - Does the admin **first** mark `UNDER_REVIEW` as a distinct step, or jump straight to Accept? (Currently shown as optional.)
 - Whether "Technician assigned" and "On the way" stay **combined** on the customer page (as you described) or split later.
 - Light rules for **re-assigning** a technician if the first one cancels after accepting.
-- Admin **login** details — how many admin users and roles (Supabase auth, backend phase).
+- *(Decided)* **Admin creates staff logins** — each technician gets a login from the admin; a small number of admin accounts exist (Supabase Auth, backend phase).
 
 ---
 

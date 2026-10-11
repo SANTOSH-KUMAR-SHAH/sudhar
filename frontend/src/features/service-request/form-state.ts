@@ -196,7 +196,7 @@ export function submitRequest(): void {
   };
   api
     .createServiceRequest(payload)
-    .then((res) => showSuccess(res.data.id))
+    .then((res) => showSuccess(res.code))
     .catch((err: unknown) => {
       if (err instanceof BackendNotConfigured) {
         showSuccess(requestRef());

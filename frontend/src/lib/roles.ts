@@ -1,9 +1,11 @@
-// Business: Who is allowed to do what — customer, admin, technician, system.
-// Business: Frontend uses this only to decide what to SHOW, never to enforce access.
-// Technical: Single union; API will enforce every permission check server-side.
-export const ROLES = ['customer', 'admin', 'technician', 'system'] as const;
+// Business: Presentation-side role helpers. The canonical role names live in
+// Business: packages/shared; only the portal landing routes stay here.
+// Technical: Re-export shared roles, then add the frontend PORTAL_HOME map.
 
-export type Role = (typeof ROLES)[number];
+import { ROLES, type Role, isStaffRole } from '../../../packages/shared/src/roles';
+
+export { ROLES, isStaffRole };
+export type { Role };
 
 export const PORTAL_HOME: Record<Role, string> = {
   customer: '/',
@@ -12,6 +14,4 @@ export const PORTAL_HOME: Record<Role, string> = {
   system: '/',
 };
 
-export function isStaffRole(role: Role): boolean {
-  return role === 'admin' || role === 'technician';
-}
+// isStaffRole is re-exported from packages/shared above.

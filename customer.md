@@ -19,7 +19,7 @@ The customer portal does exactly **two things**: **submit a service request**, t
 - Report the broken appliance clearly (one submission).
 - Be reachable by phone (admin calls to confirm, and calls again with the price).
 - Approve or decline the repair price **over the phone**.
-- Pay for the repair **in person / cash, on the visit**.
+- Pay via the **QR / Esewa** details shared on the visit — the money moves **outside** our system; we only **record** that it was paid.
 - Track progress themselves using their **Request Code + phone number** (no login).
 
 ## 3. Customer features (the complete list — nothing more)
@@ -112,8 +112,8 @@ The PPT lists these customer capabilities. **We are NOT building them now:**
 | Register owned appliances | ❌ No | Appliance is captured per-request, not stored as a profile list |
 | Book appointment (self-serve) | ❌ No | Appointment is confirmed by admin over the phone |
 | Approve estimate on-page | ❌ No | Approval happens by phone |
-| Online payment / payment gateway | ❌ No | Paid in cash / on visit, outside our system |
-| Invoice as a system feature | ❌ No | Handled offline |
+| Online payment / payment **gateway** | ❌ No | Paid by QR/Esewa/cash outside our system; we only record the amount + paid |
+| Invoice generation / PDF | 🟡 Recorded only | The system stores an invoice number + amount + Paid/Pending for your books; no gateway, no PDF |
 | Give feedback / ratings | 🟡 Redirect only | The Completed page shows a **"Please rate us"** button to your **real Google business profile** — no in-app rating capture, no star counts, no fake numbers |
 
 ---

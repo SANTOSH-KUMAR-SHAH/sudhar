@@ -12,8 +12,9 @@
 
 ## 1. The idea in one line
 
-The technician portal does exactly **two things**: **see the jobs assigned to you**, and **accept one**.
-Everything after that happens in the physical world and is reported to the admin **by phone.**
+The technician portal does **three thin things**: **see the jobs assigned to you**, **accept one**, and
+**mark yourself online/offline**. Everything else happens in the physical world and is reported to the admin
+**by phone.**
 
 ---
 
@@ -24,19 +25,23 @@ Everything after that happens in the physical world and is reported to the admin
 - **Diagnose the real fault** on site.
 - **Call the admin** with the fault (the admin then types it and quotes the price).
 - **Do the repair** once the customer approves the price.
-- **Take payment in person / cash** (off-system).
+- **Take payment** however it happens (QR/Esewa/cash) — the money is outside the system; the admin records it.
+- **Keep their availability honest** (online/offline) so the admin knows who can be called.
 
 ## 3. Technician features (the complete list — nothing more)
 
-1. **Log in** (their own staff login; no customer-style public page).
+1. **Log in** (a staff login the **admin creates** for them; no customer-style public page).
 2. **My jobs** — the list of requests assigned to *this* technician (their slice of the one service record).
 3. **Job detail** — everything needed to do the visit (see section 5).
-4. **Accept job** — the single action that confirms they'll take it.
-5. **Call customer** and **Call admin** — tap-to-dial links on the job detail.
-6. **My profile** — the technician's own record (name, trade/skills, contact).
+4. **Accept job** — confirms they'll take it.
+5. **Mark myself online / offline** — updates **availability only**, so the admin can see who's free. This
+   never touches a customer's status page.
+6. **Call customer** and **Call admin** — tap-to-dial links on the job detail.
+7. **My profile** — the technician's own record (name, trade/skills, contact).
 
 That's the whole app for the technician. There is **no** diagnosis typing, **no** price entry, **no**
-status buttons — those live with the admin by design.
+customer-status buttons — those live with the admin by design. The admin also **picks technicians manually**
+(they know their people); the system only shows availability, it does **not** auto-suggest who fits.
 
 ---
 
@@ -54,6 +59,9 @@ status buttons — those live with the admin by design.
 here to **Accept Job** only. That is a deliberate choice to keep a **single decision point** (the admin)
 so the customer's page can never get two contradictory updates. If you later want the technician to
 self-report arrival/completion, that's a `technician.md` upgrade — noted in §7.
+
+**Not to be confused:** marking **online/offline** (a *do*, see §3) only changes internal availability — it
+is **not** one of the customer-facing status updates above, which stay the admin's alone.
 
 ---
 
@@ -96,13 +104,15 @@ Using the single status list in `frontend/src/lib/service-status.ts`, the techni
   back to admin) — not built yet.
 - **Technician self-reporting** arrival/completion (the §4 upgrade) — a possible future phase to save phone
   calls, kept out of the MVP on purpose.
-- **Login** mechanics (Supabase staff auth, backend phase).
+- *(Decided)* Login is created by the **admin** (Supabase staff auth, backend phase); technicians also **toggle
+  their own online/offline availability**.
 
 ---
 
 ## 8. One-line summary for a new developer
 
-> **The technician portal is deliberately thin: log in, see only your assigned jobs (their slice of the
-> one service record), and Accept them. Every real status change — and the fault/price typing — is done by
-> the admin, because the admin is the single driver of the customer's page. The technician's tools are the
-> phone and the visit, not the screen.**
+> **The technician portal is deliberately thin: log in (via an admin-created account), see only your assigned
+> jobs, Accept them, and toggle your own online/offline availability. Nothing else changes — every real status
+> move and the fault/price typing are done by the admin, the single driver of the customer's page. The admin
+> picks technicians by hand; the system only shows who's free. The technician's real tools are the phone and
+> the visit, not the screen.**

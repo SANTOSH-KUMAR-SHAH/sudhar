@@ -8,5 +8,11 @@ export default defineConfig({
   output: 'static',
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      fs: {
+        // Technical: allow importing the shared rulebook from packages/ outside this root.
+        allow: ['..'],
+      },
+    },
   },
 });

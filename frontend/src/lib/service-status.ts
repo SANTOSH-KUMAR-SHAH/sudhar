@@ -1,30 +1,17 @@
-// Business: One canonical list of service-request states so admin, tech and customer
-// Business: pages never drift apart ("Diagnosing" vs "diagnosing" vs "In progress").
-// Technical: String-union + lookup tables; mirrors prd.md §8 and systemprompt.md §5.
-// NOTE: When packages/shared/src/service-status.ts exists (backend phase), this
-// file must re-export from there instead of duplicating. Frontend-only for now.
+// Business: Presentation layer for the canonical service-request statuses. The status
+// Business: names, order and transition rules come from packages/shared (one source of
+// Business: truth); only the human labels and badge colours live here, so pages never drift.
+// Technical: Re-export the shared domain, then layer UI-only maps on top.
 
-export const SERVICE_STATUSES = [
-  'NEW_REQUEST',
-  'UNDER_REVIEW',
-  'ORDER_CONFIRMED',
-  'ASSIGNED',
-  'TECHNICIAN_CONFIRMED',
-  'TECHNICIAN_ON_THE_WAY',
-  'ARRIVED',
-  'DIAGNOSING',
-  'PRICE_APPROVAL',
-  'IN_PROGRESS',
-  'WAITING_FOR_PARTS',
-  'COMPLETED',
-  'INVOICED',
-  'PAID',
-  'CLOSED',
-  'CANCELLED',
-  'UNABLE_TO_COMPLETE',
-] as const;
+import {
+  SERVICE_STATUSES,
+  ALLOWED_TRANSITIONS,
+  isValidTransition,
+  type ServiceStatusKey,
+} from '../../../packages/shared/src/service-status';
 
-export type ServiceStatusKey = (typeof SERVICE_STATUSES)[number];
+export { SERVICE_STATUSES, ALLOWED_TRANSITIONS, isValidTransition };
+export type { ServiceStatusKey };
 
 export const SERVICE_STATUS_LABEL: Record<ServiceStatusKey, string> = {
   NEW_REQUEST: 'New Request',
@@ -69,34 +56,7 @@ export const SERVICE_STATUS_BADGE: Record<ServiceStatusKey, string> = {
   UNABLE_TO_COMPLETE: 'badge-cancel',
 };
 
-// Business: Every transition must have a defined actor and rule (systemprompt §5).
-// Technical: Adjacency list of the happy path + explicit escape hatches. Anything
-// not listed here is blocked by isValidTransition().
-export const ALLOWED_TRANSITIONS: Record<ServiceStatusKey, ServiceStatusKey[]> = {
-  NEW_REQUEST: ['UNDER_REVIEW', 'CANCELLED'],
-  UNDER_REVIEW: ['ORDER_CONFIRMED', 'CANCELLED'],
-  ORDER_CONFIRMED: ['ASSIGNED', 'CANCELLED'],
-  ASSIGNED: ['TECHNICIAN_CONFIRMED', 'CANCELLED', 'UNABLE_TO_COMPLETE'],
-  TECHNICIAN_CONFIRMED: ['TECHNICIAN_ON_THE_WAY', 'CANCELLED', 'UNABLE_TO_COMPLETE'],
-  TECHNICIAN_ON_THE_WAY: ['ARRIVED', 'UNABLE_TO_COMPLETE'],
-  ARRIVED: ['DIAGNOSING', 'UNABLE_TO_COMPLETE'],
-  DIAGNOSING: ['PRICE_APPROVAL', 'IN_PROGRESS', 'UNABLE_TO_COMPLETE'],
-  PRICE_APPROVAL: ['IN_PROGRESS', 'CANCELLED', 'UNABLE_TO_COMPLETE'],
-  IN_PROGRESS: ['WAITING_FOR_PARTS', 'COMPLETED', 'UNABLE_TO_COMPLETE'],
-  WAITING_FOR_PARTS: ['IN_PROGRESS', 'UNABLE_TO_COMPLETE'],
-  COMPLETED: ['INVOICED'],
-  INVOICED: ['PAID'],
-  PAID: ['CLOSED'],
-  CLOSED: [],
-  CANCELLED: [],
-  UNABLE_TO_COMPLETE: [],
-};
-
-// Business: Cancellation is locked once the admin confirms the order with the customer.
-// Technical: Check ORDER_CONFIRMED status before allowing any CANCELLED transition.
-export function isValidTransition(from: ServiceStatusKey, to: ServiceStatusKey): boolean {
-  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
-}
+// Business: ALLOWED_TRANSITIONS and isValidTransition are re-exported from packages/shared above.
 
 export function getStatusLabel(key: ServiceStatusKey): string {
   return SERVICE_STATUS_LABEL[key];

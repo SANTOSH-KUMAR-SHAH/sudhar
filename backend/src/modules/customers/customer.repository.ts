@@ -1,0 +1,58 @@
+// Business: A customer is identified by their phone number — the same anchor used to track a job later.
+// Business: Submitting twice from one phone must NOT create two people; it reuses the same customer.
+// Technical: No invariant-rich aggregate here (a phone and a name carry no rules to guard at this
+// boundary), so this is a plain record + async port, deliberately lighter than the ServiceRequest
+// aggregate. Async now so the Supabase implementation drops in with the exact same shape.
+
+export interface CustomerRecord {
+  id: string;
+  name: string;
+  phone: string;
+  area: string;
+}
+
+export interface NewCustomer {
+  name: string;
+  phone: string;
+  area: string;
+}
+
+export interface CustomerRepository {
+  findOrCreate(input: NewCustomer): Promise<CustomerRecord>;
+  findByPhone(phone: string): Promise<CustomerRecord | null>;
+  findById(id: string): Promise<CustomerRecord | null>;
+}
+
+// Business: The phone digits ARE the identity, so the id is derived — one number, one customer, always.
+// Business: +977 98… and 98… are the SAME person, so Track can never lock someone out over formatting.
+// Technical: Exported so submit (create) and track share one rule; if they ever differed, a customer's
+// own code would stop matching their own phone. Normalise by dropping the 977 country prefix.
+export function customerIdForPhone(phone: string): string {
+  let digits = phone.replace(/\D/g, '');
+  if (digits.length > 10 && digits.startsWith('977')) digits = digits.slice(3);
+  return `C-${digits}`;
+}
+
+export class InMemoryCustomerRepository implements CustomerRepository {
+  private readonly store = new Map<string, CustomerRecord>();
+
+  async findOrCreate(input: NewCustomer): Promise<CustomerRecord> {
+    const id = customerIdForPhone(input.phone);
+    const existing = this.store.get(id);
+    // Returning a copy keeps callers from mutating the store through the object we hand back.
+    if (existing) return { ...existing };
+    const record: CustomerRecord = { id, name: input.name, phone: input.phone, area: input.area };
+    this.store.set(id, record);
+    return { ...record };
+  }
+
+  async findByPhone(phone: string): Promise<CustomerRecord | null> {
+    const record = this.store.get(customerIdForPhone(phone));
+    return record ? { ...record } : null;
+  }
+
+  async findById(id: string): Promise<CustomerRecord | null> {
+    const record = this.store.get(id);
+    return record ? { ...record } : null;
+  }
+}
