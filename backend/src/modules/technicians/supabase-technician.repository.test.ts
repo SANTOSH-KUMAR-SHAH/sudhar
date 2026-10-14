@@ -33,3 +33,43 @@ describe('SupabaseTechnicianRepository.setAvailability', () => {
     await expect(repo.setAvailability('T-9999', 'offline')).rejects.toBeInstanceOf(NotFoundError);
   });
 });
+
+// Business: Adding a technician for real writes EVERY column we own — including the auth_user_id link that lets
+// Business: them sign in — and reads the stored row back, so the id/defaults the DB filled in are honoured.
+// Technical: The fake PostgREST asserts a POST to /technicians with a representation preference and the mapped
+// snake_case body; the echoed row (with auth_user_id) must map back onto the record's authUserId.
+describe('SupabaseTechnicianRepository.create', () => {
+  it('inserts the full row (incl. auth_user_id) and maps the stored copy back', async () => {
+    const stored = { id: 'T-2003', name: 'Sita', phone: '9841902385', area: 'Thamel', availability: 'offline', skills: ['Television'], auth_user_id: 'uuid-9' };
+    const { repo, calls } = repoFor(() => [stored]);
+
+    const record = await repo.create({
+      id: 'T-2003', name: 'Sita', phone: '9841902385', area: 'Thamel', availability: 'offline', skills: ['Television'], authUserId: 'uuid-9',
+    });
+
+    expect(calls[0].method).toBe('POST');
+    expect(calls[0].url.pathname).toBe('/rest/v1/technicians');
+    expect(calls[0].prefer).toBe('return=representation');
+    expect(calls[0].body).toEqual({
+      id: 'T-2003', name: 'Sita', phone: '9841902385', area: 'Thamel', availability: 'offline', skills: ['Television'], auth_user_id: 'uuid-9',
+    });
+    expect(record.authUserId).toBe('uuid-9');
+  });
+
+  it('writes a null auth_user_id for a technician without a login (offline demo add)', async () => {
+    const { repo, calls } = repoFor(() => []);
+    await repo.create({ id: 'T-2004', name: 'No Login', phone: '9841902385', area: 'Baneshwar', availability: 'offline', skills: [] });
+    expect(calls[0].body).toMatchObject({ auth_user_id: null });
+  });
+});
+
+// Business: The next friendly technician number comes from the database sequence (exactly one per call), so two
+// Business: admins adding at once can never mint the same id. Technical: it is a volatile RPC, not a cached read.
+describe('SupabaseTechnicianRepository.nextTechnicianCode', () => {
+  it('calls the sequence function and coerces the scalar to a number', async () => {
+    const { repo, calls } = repoFor(() => 2003);
+    expect(await repo.nextTechnicianCode()).toBe(2003);
+    expect(calls[0].method).toBe('POST');
+    expect(calls[0].url.pathname).toBe('/rest/v1/rpc/next_technician_code');
+  });
+});

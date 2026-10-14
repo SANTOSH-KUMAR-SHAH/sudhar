@@ -14,13 +14,28 @@ import {
 const TABLE = 'technicians';
 
 function toRecord(row: RestRow): TechnicianRecord {
-  return {
+  const record: TechnicianRecord = {
     id: String(row.id),
     name: String(row.name ?? ''),
     phone: String(row.phone ?? ''),
     area: String(row.area ?? ''),
     availability: (row.availability as Availability) ?? 'offline',
     skills: Array.isArray(row.skills) ? (row.skills as unknown[]).map(String) : [],
+  };
+  if (row.auth_user_id != null) record.authUserId = String(row.auth_user_id);
+  return record;
+}
+
+// Technical: Write every column; availability defaults to offline for a brand-new technician until they sign in.
+function toRow(record: TechnicianRecord): RestRow {
+  return {
+    id: record.id,
+    name: record.name,
+    phone: record.phone,
+    area: record.area,
+    availability: record.availability,
+    skills: record.skills,
+    auth_user_id: record.authUserId ?? null,
   };
 }
 
@@ -42,5 +57,16 @@ export class SupabaseTechnicianRepository implements TechnicianRepository {
     // Mirror the in-memory store: flipping the flag of an unknown technician is a genuine not-found.
     if (!updated) throw new NotFoundError('Technician', id);
     return toRecord(updated);
+  }
+
+  async create(record: TechnicianRecord): Promise<TechnicianRecord> {
+    const inserted = await this.client.insert(TABLE, toRow(record));
+    // The insert echoes the stored row; fall back to the input if the API returned none.
+    return inserted ? toRecord(inserted) : record;
+  }
+
+  async nextTechnicianCode(): Promise<number> {
+    const value = await this.client.rpc<number | string>('next_technician_code');
+    return Number(value);
   }
 }

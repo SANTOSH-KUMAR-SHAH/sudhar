@@ -19,7 +19,7 @@ import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
         <div class="online-dot-big"></div>
         <span><strong id="tcOnlineCount">—</strong> online</span>
       </div>
-      <button class="btn btn-secondary btn-sm" type="button" disabled title="Technician onboarding arrives with the backend API">
+      <button class="btn btn-primary btn-sm" type="button" id="tcAddBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         Add Technician
       </button>
@@ -38,6 +38,49 @@ import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
     <div class="tc-status" style="grid-column: 1 / -1;">Loading the roster…</div>
   </div>
 
+  <!-- ADD TECHNICIAN MODAL: one form creates the Supabase login AND the roster row in a single action. -->
+  <div class="tc-modal-backdrop" id="tcAddModal" hidden>
+    <div class="tc-modal" role="dialog" aria-modal="true" aria-labelledby="tcAddTitle">
+      <div class="tc-modal-head">
+        <h2 class="tc-modal-title" id="tcAddTitle">Add a technician</h2>
+        <button class="tc-modal-close" type="button" id="tcAddClose" aria-label="Close">×</button>
+      </div>
+      <form class="tc-form" id="tcAddForm">
+        <div class="tc-field">
+          <label for="ntName">Full name</label>
+          <input id="ntName" name="name" type="text" autocomplete="name" required />
+        </div>
+        <div class="tc-row">
+          <div class="tc-field">
+            <label for="ntPhone">Phone</label>
+            <input id="ntPhone" name="phone" type="tel" autocomplete="tel" placeholder="98XXXXXXXX" required />
+          </div>
+          <div class="tc-field">
+            <label for="ntArea">Area</label>
+            <input id="ntArea" name="area" type="text" autocomplete="off" placeholder="e.g. Baneshwor" required />
+          </div>
+        </div>
+        <div class="tc-field">
+          <label for="ntEmail">Login email</label>
+          <input id="ntEmail" name="email" type="email" autocomplete="email" placeholder="technician@example.com" required />
+        </div>
+        <div class="tc-field">
+          <label for="ntPassword">Initial password</label>
+          <input id="ntPassword" name="password" type="text" autocomplete="new-password" minlength="8" placeholder="min 8 characters — share it with them" required />
+        </div>
+        <div class="tc-field">
+          <span class="tc-field-label">Skills (what they can repair)</span>
+          <div class="tc-skills-picker" id="ntSkills"></div>
+        </div>
+        <p class="tc-form-error" id="tcAddError" hidden></p>
+        <div class="tc-modal-actions">
+          <button class="btn btn-ghost" type="button" id="tcAddCancel">Cancel</button>
+          <button class="btn btn-primary" type="submit" id="tcAddSubmit">Create technician</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </AdminDashboardLayout>
 
 <script>
@@ -49,6 +92,7 @@ import { ApiError, staff } from '../../../lib/api-client';
 import { requireSession } from '../../../lib/session';
 import { getBadgeClass, SERVICE_STATUS_LABEL, type ServiceStatusKey } from '../../../lib/service-status';
 import { deriveRoster, type TechnicianCard } from '../../../features/staff/roster';
+import { APPLIANCE_TYPES } from '../../../lib/appliances';
 
 const session = requireSession('admin');
 
@@ -141,7 +185,91 @@ async function load(): Promise<void> {
   }
 }
 
-if (session) void load();
+// Business: The Add-Technician form is the single path to onboard staff — it creates their Supabase login
+// Business: and their roster row together. A taken email (409) or a validation miss (400) is shown inline;
+// Business: on success the roster repaints from the live Worker so the new card appears immediately.
+// Technical: Skill checkboxes render from the shared APPLIANCE_TYPES, so the offered skills can never drift
+// from what a customer can request (which is what the recommender matches against).
+function renderSkillPicker(): void {
+  const host = document.getElementById('ntSkills');
+  if (!host) return;
+  host.innerHTML = APPLIANCE_TYPES.map(
+    (type) => `<label class="tc-skill-opt"><input type="checkbox" name="skill" value="${esc(type)}" /> ${esc(type)}</label>`,
+  ).join('');
+}
+
+function showAddError(message: string): void {
+  const el = document.getElementById('tcAddError');
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = message === '';
+}
+
+function openAddModal(): void {
+  const modal = document.getElementById('tcAddModal');
+  if (!modal) return;
+  modal.hidden = false;
+  (document.getElementById('ntName') as HTMLElement | null)?.focus();
+}
+
+function closeAddModal(): void {
+  const modal = document.getElementById('tcAddModal');
+  if (modal) modal.hidden = true;
+  showAddError('');
+}
+
+function selectedSkills(form: HTMLFormElement): string[] {
+  return Array.from(form.querySelectorAll<HTMLInputElement>('input[name="skill"]:checked')).map((i) => i.value);
+}
+
+function wireAddForm(): void {
+  const form = document.getElementById('tcAddForm') as HTMLFormElement | null;
+  if (!form) return;
+  form.addEventListener('submit', (event: SubmitEvent) => {
+    event.preventDefault();
+    const submitBtn = document.getElementById('tcAddSubmit') as HTMLButtonElement | null;
+    const skills = selectedSkills(form);
+    if (skills.length === 0) { showAddError('Pick at least one skill.'); return; }
+    const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating…'; }
+    const restore = (): void => {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Create technician'; }
+    };
+    staff
+      .createTechnician({
+        name: value('ntName'),
+        phone: value('ntPhone'),
+        email: value('ntEmail'),
+        area: value('ntArea'),
+        password: value('ntPassword'),
+        skills,
+      })
+      .then(() => {
+        form.reset();
+        closeAddModal();
+        void load();
+      })
+      .catch((err: unknown) => {
+        restore();
+        if (err instanceof ApiError && err.status === 409) { showAddError('That email is already registered. Use a different one.'); return; }
+        if (err instanceof ApiError && err.status === 400) { showAddError('Some details are invalid — check phone, email and password length.'); return; }
+        if (err instanceof ApiError && err.status === 403) { showAddError('You are not allowed to add technicians.'); return; }
+        showAddError('Could not create the technician. Please try again.');
+      });
+  });
+}
+
+if (session) {
+  renderSkillPicker();
+  wireAddForm();
+  document.getElementById('tcAddBtn')?.addEventListener('click', openAddModal);
+  document.getElementById('tcAddClose')?.addEventListener('click', closeAddModal);
+  document.getElementById('tcAddCancel')?.addEventListener('click', closeAddModal);
+  document.getElementById('tcAddModal')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeAddModal();
+  });
+  void load();
+}
 </script>
 
 <style is:global>
@@ -267,6 +395,42 @@ if (session) void load();
   }
   .tc-week { font-size: 0.75rem; color: var(--graphite-lt); }
   .tc-week-num { font-weight: 700; color: var(--navy); }
+
+  /* Add-Technician modal */
+  .tc-modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .tc-modal-backdrop[hidden] { display: none; }
+  .tc-modal {
+    background: var(--pure-white); border-radius: 14px;
+    width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .tc-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+  }
+  .tc-modal-title { font-family: var(--font-h); font-size: 1.125rem; font-weight: 800; color: var(--navy); }
+  .tc-modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; color: var(--graphite-lt); cursor: pointer; }
+  .tc-form { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  .tc-row { display: flex; gap: 1rem; }
+  .tc-row .tc-field { flex: 1; }
+  .tc-field { display: flex; flex-direction: column; gap: 0.375rem; }
+  .tc-field label, .tc-field-label { font-size: 0.8125rem; font-weight: 600; color: var(--navy); }
+  .tc-field input { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.625rem; font-size: 0.875rem; color: var(--navy); font-family: inherit; width: 100%; }
+  .tc-field input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(20,184,166,0.15); }
+  .tc-skills-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .tc-skill-opt {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 0.8125rem; color: var(--graphite-mid);
+    border: 1px solid var(--border); border-radius: 20px; padding: 0.25rem 0.625rem;
+    cursor: pointer;
+  }
+  .tc-form-error { color: #DC2626; font-size: 0.8125rem; margin: 0; }
+  .tc-modal-actions { display: flex; justify-content: flex-end; gap: 0.625rem; margin-top: 0.25rem; }
 
   @media (max-width: 767px) {
     .tc-header { flex-direction: column; gap: 0.75rem; align-items: stretch; }

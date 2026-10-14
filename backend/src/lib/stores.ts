@@ -5,9 +5,11 @@
 // pieces (notifier, clock, rate limiter, CORS). Nothing here reads process.env — values arrive from Worker bindings.
 
 import { PostgrestClient } from './supabase';
+import { createSupabaseUserProvisioner, type AuthUserProvisioner, type SupabaseAdminConfig } from './supabase-auth';
 import type { AppDependencies } from '../app';
 import { SessionAuthVerifier } from '../modules/authentication/session';
 import { InMemorySessionTokens } from '../modules/authentication/session';
+import { SupabaseJwtVerifier } from '../modules/authentication/supabase-jwt-verifier';
 import { InMemoryStaffRepository, seedStaff } from '../modules/authentication/staff';
 import { SupabaseStaffRepository } from '../modules/authentication/supabase-staff.repository';
 import { SupabaseSessionStore } from '../modules/authentication/supabase-session-store';
@@ -21,10 +23,12 @@ import { InMemoryTechnicianRepository } from '../modules/technicians/technician.
 import { SupabaseTechnicianRepository } from '../modules/technicians/supabase-technician.repository';
 import { seedTechnicians } from '../modules/technicians/fixtures';
 
-// Business: The three bindings the Worker needs to reach Supabase, plus the optional browser allow-list.
+// Business: The bindings the Worker needs to reach Supabase. SUPABASE_ANON_KEY is the browser-safe publishable
+// Business: key (handed to the frontend for sign-in); only the service-role key is secret.
 export interface SupabaseEnv {
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_ANON_KEY?: string;
   CORS_ORIGIN?: string;
 }
 
@@ -59,12 +63,28 @@ export function buildStores(env: SupabaseEnv): StoreSlots {
     serviceKey: env.SUPABASE_SERVICE_ROLE_KEY as string,
   });
   const tokens = new SupabaseSessionStore(client);
+  // Sign-in is now Supabase Auth: the browser holds a GoTrue JWT and we verify it locally. The opaque-token
+  // session store below is unused on this path (kept only to satisfy the slot); routes read the JWT verifier.
+  const auth = new SupabaseJwtVerifier(env.SUPABASE_URL as string);
   return {
     requests: new SupabaseRequestRepository(client),
     customers: new SupabaseCustomerRepository(client),
     technicians: new SupabaseTechnicianRepository(client),
     staff: new SupabaseStaffRepository(client),
     tokens,
-    auth: new SessionAuthVerifier(tokens),
+    auth,
   };
+}
+
+// Business: The service-role config the admin "create technician" path needs to mint a Supabase login. Returns
+// null when Supabase isn't configured, so the in-memory build simply can't offer that endpoint.
+export function supabaseAdminConfig(env: SupabaseEnv): SupabaseAdminConfig | null {
+  if (!supabaseConfigured(env)) return null;
+  return { url: env.SUPABASE_URL as string, serviceKey: env.SUPABASE_SERVICE_ROLE_KEY as string };
+}
+
+// Business: The login provisioner the admin needs to open a technician's Supabase Auth account. Null offline.
+export function buildProvisioner(env: SupabaseEnv): AuthUserProvisioner | null {
+  const config = supabaseAdminConfig(env);
+  return config ? createSupabaseUserProvisioner(config) : null;
 }

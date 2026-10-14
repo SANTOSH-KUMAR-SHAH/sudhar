@@ -9,6 +9,12 @@ SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
 # frontend or commit it — it bypasses Row Level Security and can read/write every row.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
+# From Supabase: Project Settings -> API -> `anon` public key. The Worker does NOT authenticate with it
+# (it verifies each request's JWT against the project's public JWKS and uses the service_role key only to
+# create logins), but recording it here keeps all three project values in one place so the deploy config is
+# complete. The SAME anon key + Project URL go in the frontend's env (see frontend/.env.example).
+SUPABASE_ANON_KEY=your-anon-public-key
+
 # Optional: exact browser origin(s) allowed to call the API, comma-separated. Empty = mirror any origin
 # (fine for local dev). Set this before going live, e.g. http://localhost:4321 or https://sudhar.example.
 CORS_ORIGIN=

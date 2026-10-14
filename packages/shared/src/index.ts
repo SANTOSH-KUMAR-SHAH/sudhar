@@ -6,3 +6,4 @@ export * from './service-status';
 export * from './roles';
 export * from './validation';
 export * from './contracts';
+export * from './appliances';

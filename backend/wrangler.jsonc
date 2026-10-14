@@ -6,9 +6,12 @@
   // Business: non-secret config. Empty SUPABASE_URL means "run in-memory" (local dev + tests).
   // Business: Set SUPABASE_URL here (or via `wrangler vars`) and SUPABASE_SERVICE_ROLE_KEY as a SECRET
   // Business: (`wrangler secret put SUPABASE_SERVICE_ROLE_KEY`) to switch the live Worker onto Supabase.
+  // Business: SUPABASE_ANON_KEY is the browser-safe publishable key (not secret); the Worker only echoes it to
+  // Business: nothing — it is the frontend's sign-in key. Kept here so one deploy config carries all three.
   // Business: CORS_ORIGIN is the exact site(s) allowed to call; leave empty for mirror-any local dev.
   "vars": {
     "SUPABASE_URL": "",
+    "SUPABASE_ANON_KEY": "",
     "CORS_ORIGIN": ""
   }
 }

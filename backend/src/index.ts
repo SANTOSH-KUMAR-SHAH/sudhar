@@ -7,7 +7,7 @@
 
 import { createApp } from './app';
 import { FixedWindowRateLimiter } from './lib/rate-limit';
-import { buildStores, type SupabaseEnv } from './lib/stores';
+import { buildProvisioner, buildStores, type SupabaseEnv } from './lib/stores';
 import { LoggingRequestCodeNotifier } from './modules/notifications/request-code-notifier';
 
 type BuiltApp = ReturnType<typeof createApp>;
@@ -16,8 +16,11 @@ let app: BuiltApp | null = null;
 
 function resolveApp(env: SupabaseEnv): BuiltApp {
   if (!app) {
+    const users = buildProvisioner(env);
     app = createApp({
       ...buildStores(env),
+      // Business: Only present under Supabase — it turns on the admin "add technician (with login)" endpoint.
+      ...(users ? { users } : {}),
       notifier: new LoggingRequestCodeNotifier(),
       // Business: A deploy sets CORS_ORIGIN to the exact site(s) allowed to call; local dev leaves it unset
       // (which the app reads as "mirror any origin"), so no browser is blocked during development.

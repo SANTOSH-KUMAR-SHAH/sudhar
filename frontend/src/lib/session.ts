@@ -8,6 +8,9 @@ export type SessionRole = 'admin' | 'technician';
 
 const TOKEN_KEY = 'sl.token';
 const ROLE_KEY = 'sl.role';
+// Business: Supabase hands back a refresh token alongside the short-lived access token; keeping it lets a
+// Business: silent refresh extend a session instead of bouncing a working staff member back to the login page.
+const REFRESH_KEY = 'sl.refresh';
 
 const LOGIN_PATH: Record<SessionRole, string> = {
   admin: '/admin/login',
@@ -25,6 +28,20 @@ export function getRole(): SessionRole | null {
   return stored === 'admin' || stored === 'technician' ? stored : null;
 }
 
+export function getRefreshToken(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+// Business: Swap in a freshly refreshed token (and its new refresh token) without disturbing the stored role.
+export function setAccessToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_KEY, token);
+}
+
 export function saveSession(token: string, role: SessionRole): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(ROLE_KEY, role);
@@ -34,6 +51,7 @@ export function clearSession(): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
 export function loginPathFor(role: SessionRole): string {

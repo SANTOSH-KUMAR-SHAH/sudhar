@@ -15,12 +15,28 @@ export interface TechnicianRecord {
   area: string;
   availability: Availability;
   skills: string[];
+  // Business: The Supabase Auth user this technician signs in as. Optional because demo/offline technicians
+  // Business: exist without a login; a real one created through the admin form always carries it.
+  authUserId?: string;
+}
+
+// A technician being added for real: everything but the id (minted by the store) and availability (starts offline).
+export interface NewTechnician {
+  name: string;
+  phone: string;
+  area: string;
+  skills: string[];
+  authUserId?: string;
 }
 
 export interface TechnicianRepository {
   findAll(): Promise<TechnicianRecord[]>;
   findById(id: string): Promise<TechnicianRecord | null>;
   setAvailability(id: string, availability: Availability): Promise<TechnicianRecord>;
+  // Business: Persist a brand-new technician. nextTechnicianCode issues the next human id so two adds can't
+  // Technical: collide — the Supabase version backs it with a real sequence, mirroring the request codes.
+  create(record: TechnicianRecord): Promise<TechnicianRecord>;
+  nextTechnicianCode(): Promise<number>;
 }
 
 export class InMemoryTechnicianRepository implements TechnicianRepository {
@@ -48,5 +64,21 @@ export class InMemoryTechnicianRepository implements TechnicianRepository {
     const updated: TechnicianRecord = { ...record, availability };
     this.store.set(id, updated);
     return { ...updated, skills: [...updated.skills] };
+  }
+
+  async create(record: TechnicianRecord): Promise<TechnicianRecord> {
+    if (this.store.has(record.id)) throw new Error(`duplicate technician id: ${record.id}`);
+    this.store.set(record.id, { ...record, skills: [...record.skills] });
+    return { ...record, skills: [...record.skills] };
+  }
+
+  async nextTechnicianCode(): Promise<number> {
+    // One past the highest existing T-#### (seeds start at 2001, so the first real add is 2003 after 2002).
+    let max = 2000;
+    for (const id of this.store.keys()) {
+      const match = /^T-(\d+)$/.exec(id);
+      if (match) max = Math.max(max, Number(match[1]));
+    }
+    return max + 1;
   }
 }

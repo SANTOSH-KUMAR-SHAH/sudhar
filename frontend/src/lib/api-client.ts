@@ -3,10 +3,24 @@
 // Technical: Thin fetch wrapper. Shapes below MIRROR the real API (a bare record / array, statuses from
 // the shared vocabulary) — the earlier {data:{id}} guess never existed server-side, so it is corrected here.
 
-import { clearSession, loginPathFor } from './session';
+import {
+  clearSession,
+  getRefreshToken,
+  loginPathFor,
+  setAccessToken,
+  setRefreshToken,
+} from './session';
 
 export const API_BASE_URL =
   import.meta.env.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787';
+
+// Business: When a Supabase project is configured, the browser signs staff in DIRECTLY against Supabase
+// Business: Auth — the password only ever reaches Supabase, never our Worker. The anon key and project URL
+// Business: are public-by-design (they are guarded by Row Level Security); only the service_role key is a
+// Business: secret, and that stays on the Worker. With no project set we fall back to the dev login.
+// Technical: These two env vars are the entire frontend seam for live auth; absence = offline memory seeds.
+export const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL ?? '';
+export const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 export class BackendNotConfigured extends Error {
   constructor() {
@@ -124,6 +138,18 @@ export interface LoginResult {
   role: 'admin' | 'technician' | 'customer';
 }
 
+// Business: What the admin "Add Technician" form sends. The Worker mints a Supabase login from the email +
+// Business: initial password AND writes the roster row in one action, so a half-created technician is impossible.
+// Technical: Mirrors createTechnicianSchema on the server; `skills` are drawn from the shared APPLIANCE_TYPES.
+export interface NewTechnicianInput {
+  name: string;
+  phone: string;
+  email: string;
+  area: string;
+  skills: string[];
+  password: string;
+}
+
 // Business: A failed call carries its HTTP status so the caller can tell "wrong password" (401 on login)
 // Business: apart from a genuine network fault — without guessing from a message string.
 export class ApiError extends Error {
@@ -163,12 +189,55 @@ function onExpiredToken(): void {
   if (typeof window !== 'undefined') window.location.replace(role ? loginPathFor(role) : '/admin/login');
 }
 
-// Technical: Unlike the public `request()` above, staff calls have no demo fallback — they always target
-// the live base URL and attach the bearer token.
-async function authorizedFetch<T>(path: string): Promise<T> {
-  const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
-    headers: { authorization: `Bearer ${getTokenOrNull() ?? ''}` },
+// Business: Supabase access tokens are short-lived. Rather than bounce a busy staff member back to the login
+// Business: page the moment one expires, we spend the stored refresh token once for a fresh pair and replay the
+// Business: call. Only when that too fails is the session genuinely over — then we clear it and redirect.
+// Technical: Returns true when a new access token was stored; network/401 on the refresh returns false.
+interface SupabaseTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  user?: { app_metadata?: { role?: unknown } };
+}
+
+async function exchangeSupabaseToken(
+  grant: 'password' | 'refresh_token',
+  payload: Record<string, string>,
+): Promise<SupabaseTokenResponse> {
+  const res = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/token?grant_type=${grant}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+    body: JSON.stringify(payload),
   });
+  if (!res.ok) {
+    throw new ApiError(res.status === 0 ? 0 : 401, 'auth_failed');
+  }
+  return (await res.json()) as SupabaseTokenResponse;
+}
+
+async function trySilentRefresh(): Promise<boolean> {
+  if (!SUPABASE_URL) return false; // offline mode has no refresh token to spend
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+  try {
+    const next = await exchangeSupabaseToken('refresh_token', { refresh_token: refresh });
+    setAccessToken(next.access_token);
+    setRefreshToken(next.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Technical: Unlike the public `request()` above, staff calls have no demo fallback — they always target
+// the live base URL and attach the bearer token. A 401 earns exactly one silent-refresh replay.
+async function authorizedRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const send = () =>
+    fetchWithTimeout(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: { ...init.headers, authorization: `Bearer ${getTokenOrNull() ?? ''}` },
+    });
+  let res = await send();
+  if (res.status === 401 && (await trySilentRefresh())) res = await send();
   if (res.status === 401) {
     onExpiredToken();
     throw new ApiError(401, 'Session expired');
@@ -179,22 +248,18 @@ async function authorizedFetch<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-// Technical: The technician portal's two writes (accept a job, flip availability) post a JSON body with
-// the same token handling as reads — a dead token redirects, a rejected move surfaces its status code.
+async function authorizedFetch<T>(path: string): Promise<T> {
+  return authorizedRequest<T>(path, {});
+}
+
+// Technical: The technician portal's writes (accept a job, flip availability) and the admin create-technician
+// post share the same read path — one bearer token, one refresh replay, honest status codes on rejection.
 async function authorizedPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
+  return authorizedRequest<T>(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', authorization: `Bearer ${getTokenOrNull() ?? ''}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (res.status === 401) {
-    onExpiredToken();
-    throw new ApiError(401, 'Session expired');
-  }
-  if (!res.ok) {
-    throw new ApiError(res.status, await res.text());
-  }
-  return (await res.json()) as T;
 }
 
 // Small lazy reads so this module owns no storage format of its own.
@@ -207,9 +272,20 @@ function currentRoleOr(fallback: 'admin' | 'technician' | null) {
   return r === 'admin' || r === 'technician' ? r : fallback;
 }
 
+function roleFromMetadata(raw: unknown): LoginResult['role'] {
+  return raw === 'admin' || raw === 'technician' ? raw : 'customer';
+}
+
 export const staff = {
-  // Business: Sign-in is a real round trip; a wrong credential is a 401 we surface, never a silent redirect.
+  // Business: Sign-in goes straight to Supabase Auth when a project is configured — the password never touches
+  // Business: our Worker, and the role we land on comes from the token's own app_metadata. With no project set
+  // Business: (local dev/tests) we fall back to the Worker's in-memory login so those flows keep working.
   login: async (identifier: string, secret: string): Promise<LoginResult> => {
+    if (SUPABASE_URL) {
+      const data = await exchangeSupabaseToken('password', { email: identifier, password: secret });
+      setRefreshToken(data.refresh_token);
+      return { token: data.access_token, role: roleFromMetadata(data.user?.app_metadata?.role) };
+    }
     const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -219,6 +295,11 @@ export const staff = {
     if (!res.ok) throw new ApiError(res.status, await res.text());
     return (await res.json()) as LoginResult;
   },
+
+  // Business: One admin action creates a technician's login AND their roster row; a taken email comes back as
+  // Business: a 409 the form shows inline. The Worker owns the service_role secret, so the browser never can.
+  createTechnician: (payload: NewTechnicianInput) =>
+    authorizedPost<{ id: string; name: string }>('/api/admin/technicians', payload),
 
   listAdminRequests: () => authorizedFetch<ApiRequest[]>('/api/admin/requests'),
   getAdminRequest: (code: string) =>

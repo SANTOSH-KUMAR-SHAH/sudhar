@@ -26,9 +26,12 @@ import { CustomerService } from './modules/customers/customer.service';
 import { customerRoutes } from './modules/customers/customer.routes';
 import { TechnicianService } from './modules/technicians/technician.service';
 import { technicianRoutes } from './modules/technicians/technician.routes';
+import { TechnicianAdminService } from './modules/technicians/technician-admin.service';
+import { technicianAdminRoutes } from './modules/technicians/technician-admin.routes';
 import type { TechnicianRepository } from './modules/technicians/technician.repository';
 import type { CustomerRepository } from './modules/customers/customer.repository';
 import type { RequestCodeNotifier } from './modules/notifications/request-code-notifier';
+import type { AuthUserProvisioner } from './lib/supabase-auth';
 
 // Business/Technical: The app is built from injected ports, never from concrete stores. Production hands
 // in the in-memory implementations; tests hand in fakes; Supabase later swaps the same slots.
@@ -42,6 +45,9 @@ export interface AppDependencies {
   auth: AuthVerifier;
   staff: StaffRepository;
   tokens: TokenStore;
+  // Business: Optional, present only when Supabase Auth is wired. It is what makes the admin "add a technician
+  // Business: with a real login" endpoint possible; without it that route is simply not mounted.
+  users?: AuthUserProvisioner;
   clock?: () => string;
   // Business/Technical: Optional explicit allow-list of browser origins; empty means mirror-any (local dev).
   corsOrigin?: string;
@@ -106,6 +112,11 @@ export function createApp(deps: AppDependencies): Hono {
   app.route('/api/customers', customerRoutes(customerService, deps.auth));
   app.route('/api/admin/requests', adminRequestRoutes(service, deps.auth));
   app.route('/api/admin/staff', staffAdminRoutes(staffAdminService, deps.auth));
+  // Business: Only offer "create technician (with login)" when a real Supabase provisioner exists — so the
+  // Business: offline/demo build never advertises a capability it cannot honour.
+  if (deps.users) {
+    app.route('/api/admin/technicians', technicianAdminRoutes(new TechnicianAdminService(deps.technicians, deps.users), deps.auth));
+  }
 
   // Domain and contract failures become clean, stable JSON — never a stack trace to the caller.
   app.onError((error, context) => {

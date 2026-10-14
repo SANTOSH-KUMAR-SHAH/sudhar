@@ -153,7 +153,7 @@ function boot(): void {
     errorId: 'adminLoginError',
     submitId: 'adminSubmitBtn',
     redirectTo: '/admin/dashboard',
-    identityLabel: 'email or phone number',
+    identityLabel: 'email',
     portal: 'admin',
   });
   initLoginForm({
@@ -163,7 +163,7 @@ function boot(): void {
     errorId: 'techLoginError',
     submitId: 'techSubmitBtn',
     redirectTo: '/tech/dashboard',
-    identityLabel: 'phone number or email',
+    identityLabel: 'email',
     portal: 'technician',
   });
   initAdminToggle();
