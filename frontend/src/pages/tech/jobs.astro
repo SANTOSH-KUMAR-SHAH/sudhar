@@ -1,74 +1,114 @@
 ---
 import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
-import {
-  DEMO_LOGGED_IN_TECH_ID,
-  getDemoCustomer,
-  requestsForTechnician,
-  isRequestDone,
-  statusLabel,
-} from '../../lib/demo-data';
-
-// Business: "My Jobs" is the technician's slice of the one request table — the
-// same rows the dispatcher assigned on the admin side, no second feed of mocks.
-// Technical: Filter membership is stamped into data-group at build time from the
-// canonical status predicates; job-filters.ts only reads those attributes back.
-const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
-  .map((r) => ({
-    r,
-    cust: getDemoCustomer(r.customerId),
-    done: isRequestDone(r.status),
-    group: isRequestDone(r.status) ? 'completed' : 'today',
-  }))
-  .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+// Business: "My Jobs" is the technician's OWN slice of the one request table, read LIVE from the Worker.
+// Business: Each card shows what the API really has — the request code, its status, the appliance, the
+// Business: customer to visit and their area — and links to the same job detail the home hero opens.
+// Business: The demo's invented "visit time" is gone; a real visit DATE is shown, else "to be scheduled".
+// Technical: Always-emitted page. The shell ships empty; a module script fetches /me/jobs, derives rows
+// (features/staff/tech-view) and paints. The filter pills act on data-group set at paint time.
 ---
 
-<TechDashboardLayout title="Jobs" activeNav="jobs">
+<TechDashboardLayout title="Jobs - Sudhar Lab" activeNav="jobs">
   <div class="feed-container">
-    
     <div class="page-header">
       <h2>My Jobs</h2>
     </div>
 
-    <!-- Filter Pills (Scrollable) -->
     <div class="filter-scroll" role="tablist" aria-label="Filter jobs">
-      <button type="button" class="pill active" data-filter="today" role="tab" aria-selected="true">Today</button>
-      <button type="button" class="pill" data-filter="upcoming" role="tab" aria-selected="false">Upcoming</button>
+      <button type="button" class="pill active" data-filter="all" role="tab" aria-selected="true">All</button>
+      <button type="button" class="pill" data-filter="active" role="tab" aria-selected="false">Active</button>
       <button type="button" class="pill" data-filter="completed" role="tab" aria-selected="false">Completed</button>
-      <button type="button" class="pill" data-filter="all" role="tab" aria-selected="false">All</button>
     </div>
 
-    <!-- Job Feed -->
-    <div class="job-list" id="jobList">
-      {myJobs.map(({ r, cust, done, group }) => (
-        <a href={`/tech/jobs/${r.id}`} class={`job-card${done ? ' completed' : ''}`} data-group={group}>
-          <div class="card-header">
-            <span class="req tnum">#{r.id}</span>
-            <span class={`badge ${done ? 'completed' : 'active'}`}>{done ? 'Completed' : statusLabel(r.status)}</span>
-          </div>
-          <div class="card-body">
-            <div class="time">Today &middot; {r.visitTime}</div>
-            <h3 class="appliance">{r.brand} {r.applianceType}</h3>
-            <p class="location">{cust?.name ?? 'Customer'} &middot; {cust?.area ?? ''}</p>
-          </div>
-          {!done && (
-            <div class="card-footer">
-              <span class="action-text">Open Job</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </div>
-          )}
-        </a>
-      ))}
+    <div class="jb-status" id="jbStatus">Loading your jobs…</div>
 
-      {myJobs.length === 0 && (
-        <p class="jobs-empty">No jobs assigned yet. New visits from the dispatcher appear here.</p>
-      )}
-      <p id="jobsEmpty" class="jobs-empty" hidden>No jobs in this view.</p>
-    </div>
+    <div class="job-list" id="jbList" hidden></div>
+    <p id="jbEmpty" class="jobs-empty" hidden>No jobs in this view.</p>
   </div>
 </TechDashboardLayout>
 
 <script>
-  import "../../features/technician/job-filters.ts";
+import { ApiError, staff, type ApiTechnicianJob } from '../../lib/api-client';
+import { requireSession } from '../../lib/session';
+import { toRows, visitLabel, type TechJobRow } from '../../features/staff/tech-view';
+import { statusLabel } from '../../features/requests/queue';
+
+const session = requireSession('technician');
+
+const statusEl = document.getElementById('jbStatus') as HTMLElement;
+const listEl = document.getElementById('jbList') as HTMLElement;
+const emptyEl = document.getElementById('jbEmpty') as HTMLParagraphElement;
+let rows: TechJobRow[] = [];
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+function group(row: TechJobRow): string {
+  if (row.active) return 'active';
+  if (row.done) return 'completed';
+  return 'other';
+}
+
+function card(row: TechJobRow): string {
+  const job = row.job;
+  const href = `/tech/jobs/detail?code=${encodeURIComponent(job.code)}`;
+  const badge = row.done ? 'completed' : row.active ? 'active' : 'upcoming';
+  const badgeText = row.done ? 'Completed' : statusLabel(job);
+  const c = job.customer;
+  const where = c ? `${esc(c.name)}${c.area ? ` &middot; ${esc(c.area)}` : ''}` : 'Customer being confirmed';
+  return `<a href="${href}" class="job-card${row.done ? ' completed' : ''}" data-group="${group(row)}">
+    <div class="card-header">
+      <span class="req tnum">#${esc(job.code)}</span>
+      <span class="badge ${badge}">${esc(badgeText)}</span>
+    </div>
+    <div class="card-body">
+      <div class="time">${esc(visitLabel(job))}</div>
+      <h3 class="appliance">${esc(job.appliance.brand)} ${esc(job.appliance.type)}</h3>
+      <p class="location">${where}</p>
+    </div>
+    ${!row.done ? `<div class="card-footer"><span class="action-text">Open Job</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>` : ''}
+  </a>`;
+}
+
+function applyFilter(filter: string): void {
+  const visible = rows.filter((row) => filter === 'all' || group(row) === filter);
+  listEl.innerHTML = visible.map(card).join('');
+  emptyEl.hidden = visible.length > 0;
+}
+
+function wirePills(): void {
+  document.querySelectorAll('.pill').forEach((pill) => pill.addEventListener('click', () => {
+    document.querySelectorAll('.pill').forEach((p) => {
+      p.classList.toggle('active', p === pill);
+      p.setAttribute('aria-selected', p === pill ? 'true' : 'false');
+    });
+    applyFilter(pill.getAttribute('data-filter') ?? 'all');
+  }));
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  try {
+    const jobs: ApiTechnicianJob[] = await staff.myJobs();
+    rows = toRows(jobs);
+    statusEl.style.display = 'none';
+    if (rows.length === 0) {
+      listEl.hidden = false;
+      listEl.innerHTML = '<p class="jobs-empty">No jobs assigned yet. New visits from the dispatcher appear here.</p>';
+    } else {
+      listEl.hidden = false;
+      applyFilter('all');
+      wirePills();
+    }
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return;
+    statusEl.textContent = 'Could not load your jobs. Please refresh.';
+  }
+}
+
+if (session) void load();
 </script>
 
 <style is:global>
@@ -78,6 +118,8 @@ const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
     flex-direction: column;
     gap: 1.25rem;
   }
+
+  .jb-status { text-align: center; color: var(--graphite-mid); font-size: 0.875rem; }
 
   .page-header h2 {
     font-family: var(--font-h);
@@ -93,11 +135,10 @@ const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
     overflow-x: auto;
     padding-bottom: 0.5rem;
     margin-top: -0.5rem;
-    /* Hide scrollbar */
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .filter-scroll::-webkit-scrollbar {
     display: none;
   }
@@ -140,7 +181,7 @@ const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
     flex-direction: column;
     overflow: hidden;
   }
-  
+
   .job-card:active {
     transform: scale(0.98);
   }
@@ -167,7 +208,7 @@ const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
     border-radius: 12px;
     text-transform: uppercase;
   }
-  
+
   .badge.active { background-color: var(--teal-light); color: var(--teal); }
   .badge.upcoming { background-color: var(--gold-light); color: #9A6A00; }
   .badge.completed { background-color: var(--bg-off); color: var(--graphite-mid); }
@@ -215,4 +256,3 @@ const myJobs = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID)
     opacity: 0.6;
   }
 </style>
-

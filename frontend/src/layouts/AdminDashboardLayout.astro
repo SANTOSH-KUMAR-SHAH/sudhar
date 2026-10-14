@@ -612,7 +612,7 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
           <div class="user-name">Sudhar Lab Admin</div>
           <div class="user-role">Operations</div>
         </div>
-        <div class="logout-icon" onclick="window.location.href='/admin/login'" title="Logout">
+        <div class="logout-icon" role="button" tabindex="0" title="Logout" id="adminLogout">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         </div>
       </div>
@@ -684,5 +684,16 @@ const { title = "Admin - Sudhar Lab", activeNav = "dashboard" } = Astro.props;
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
   </button>
 
+  <script>
+    // Business: Signing out must truly end the session — dropping the token, not just leaving the page —
+    // Business: so the back button or a shared machine cannot reopen the portal without credentials.
+    // Technical: Bound here once so every admin page inherits correct logout without repeating the logic.
+    import { clearSession } from '../lib/session';
+    const logout = document.getElementById('adminLogout');
+    logout?.addEventListener('click', () => {
+      clearSession();
+      window.location.href = '/admin/login';
+    });
+  </script>
 </body>
 </html>

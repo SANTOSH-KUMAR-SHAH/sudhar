@@ -3,6 +3,8 @@
 // Technical: no business rules live here. The service owns the queries; this owns routing and codes.
 
 import { Hono } from 'hono';
+import { authenticate } from '../authentication/guard';
+import type { AuthVerifier } from '../authentication/principal';
 import {
   advanceRequestSchema,
   createRequestSchema,
@@ -24,7 +26,7 @@ function parseQuery(raw: Record<string, string | undefined>): RequestQuery {
   return query;
 }
 
-export function requestRoutes(service: RequestService): Hono {
+export function requestRoutes(service: RequestService, auth: AuthVerifier): Hono {
   const routes = new Hono();
 
   routes.get('/', async (context) => {
@@ -46,24 +48,14 @@ export function requestRoutes(service: RequestService): Hono {
     return context.json(serviceRequestRecordSchema.parse(created), 201);
   });
 
-  // Business: The admin "advance" endpoint. An illegal move throws inside the aggregate and becomes a 409.
+  // Business: The admin "advance" endpoint. It is STAFF-ONLY, and the actor recorded in the timeline is
+  // Business: the verified caller — never whatever the body claimed. An illegal move throws and becomes a 409.
   routes.post('/:code/status', async (context) => {
     const code = context.req.param('code');
+    const principal = await authenticate(auth, context.req.header('authorization'), ['admin', 'technician']);
     const input = advanceRequestSchema.parse(await context.req.json());
-    const updated = await service.advance(code, input);
+    const updated = await service.advance(code, input, principal);
     return context.json(serviceRequestRecordSchema.parse(updated));
-  });
-
-  return routes;
-}
-
-export function technicianJobRoutes(service: RequestService): Hono {
-  const routes = new Hono();
-
-  routes.get('/:id/jobs', async (context) => {
-    const id = context.req.param('id');
-    const jobs = await service.jobsForTechnician(id);
-    return context.json(serviceRequestRecordSchema.array().parse(jobs));
   });
 
   return routes;

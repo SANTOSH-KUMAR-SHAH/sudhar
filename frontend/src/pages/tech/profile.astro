@@ -1,82 +1,86 @@
 ---
 import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
-import {
-  DEMO_LOGGED_IN_TECH_ID,
-  getDemoTechnician,
-  requestsForTechnician,
-  isRequestActive,
-  isRequestDone,
-} from '../../lib/demo-data';
-
-// Business: The profile is the technician's own record read back — name, trade
-// line and counts all come from the same rows the admin sees for this technician.
-// Technical: Stats are derived from the request table; no stored lifetime totals
-// exist yet, so only verifiable windows (this week, current board) are shown.
-const me = getDemoTechnician(DEMO_LOGGED_IN_TECH_ID);
-const myRequests = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID);
-const activeCount = myRequests.filter((r) => isRequestActive(r.status)).length;
-const doneCount = myRequests.filter((r) => isRequestDone(r.status)).length;
-const initials = (me?.name ?? 'T')
-  .split(' ')
-  .map((part) => part[0])
-  .join('')
-  .slice(0, 2)
-  .toUpperCase();
+// Business: The technician's own card, read LIVE from the Worker. It shows what the API really stores —
+// Business: name, service area, skills and current availability — plus counts DERIVED from their jobs
+// Business: (done this week, active, finished). The demo's invented fields (a subtitle, a "TECH-" code,
+// Business: a join month, a fake dispatch phone) are gone: the backend never returns them, so we do not.
+// Technical: Always-emitted page; module script fetches me + jobs and paints into the retained markup.
 ---
 
-<TechDashboardLayout title="Profile" activeNav="profile">
+<TechDashboardLayout title="Profile - Sudhar Lab" activeNav="profile">
   <div class="feed-container">
-    
-    <div class="profile-header">
-      <div class="avatar" style={`background-color: ${me?.avatarHue ?? 'var(--navy)'}`}>{initials}</div>
-      <h2>{me?.name ?? 'Technician'}</h2>
-      <p>{me?.subtitle ?? 'Technician · Kathmandu Valley'}</p>
-      {me && <p class="tech-code tnum">{me.techCode} · Joined {me.joined}</p>}
-    </div>
+    <div class="pf-status" id="pfStatus">Loading your profile…</div>
 
-    <!-- Stats -->
-    <div class="stats-row">
-      <div class="stat-box">
-        <div class="stat-num tnum">{me?.completedThisWeek ?? 0}</div>
-        <div class="stat-label">Done This Week</div>
+    <div id="pfRoot" hidden>
+      <div class="profile-header" id="pfHead"></div>
+      <div class="stats-row" id="pfStats"></div>
+      <div class="menu-list">
+        <a href="/tech/jobs" class="menu-item">
+          <div class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+          <span>My Job History</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
       </div>
-      <div class="stat-box">
-        <div class="stat-num tnum">{activeCount}</div>
-        <div class="stat-label">Active Jobs</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-num tnum">{doneCount}</div>
-        <div class="stat-label">Done On Board</div>
-      </div>
+      <a href="/tech/login" class="logout-btn" id="pfLogout">Log Out</a>
     </div>
-
-    <!-- Menu Links -->
-    <div class="menu-list">
-      <a href="/tech/jobs" class="menu-item">
-        <div class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
-        <span>My Job History</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </a>
-      
-      <button type="button" class="menu-item" disabled title="Settings arrive with the backend API">
-        <div class="icon-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
-        <span>Settings</span>
-      </button>
-
-      <a href="tel:+977" class="menu-item">
-        <div class="icon-bg" style="background-color: var(--teal-light); color: var(--teal);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div>
-        <span>Contact Dispatch Admin</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </a>
-    </div>
-
-    <!-- Logout -->
-    <a href="/tech/login" class="logout-btn">
-      Log Out
-    </a>
-
   </div>
 </TechDashboardLayout>
+
+<script>
+import { ApiError, staff, type ApiTechnician, type ApiTechnicianJob } from '../../lib/api-client';
+import { requireSession, clearSession } from '../../lib/session';
+import { avatarHueFor, initialsFor } from '../../features/staff/roster';
+import { completedThisWeek } from '../../features/staff/tech-view';
+import { isActive, isDone } from '../../features/requests/queue';
+
+const session = requireSession('technician');
+
+const statusEl = document.getElementById('pfStatus') as HTMLElement;
+const root = document.getElementById('pfRoot') as HTMLElement;
+const headEl = document.getElementById('pfHead') as HTMLElement;
+const statsEl = document.getElementById('pfStats') as HTMLElement;
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+function headHtml(tech: ApiTechnician): string {
+  return `<div class="avatar" style="background-color:${esc(avatarHueFor(tech.id))}">${esc(initialsFor(tech.name))}</div>
+    <h2>${esc(tech.name)}</h2>
+    <p>Technician &middot; ${esc(tech.area)}</p>
+    <p class="tech-code tnum">${esc(tech.id)} &middot; ${tech.availability === 'online' ? 'Online now' : 'Offline'}</p>
+    ${tech.skills.length ? `<div class="skill-row">${tech.skills.map((s) => `<span class="skill-chip">${esc(s)}</span>`).join('')}</div>` : ''}`;
+}
+
+function statsHtml(jobs: ApiTechnicianJob[]): string {
+  const boxes: Array<[number, string]> = [
+    [completedThisWeek(jobs), 'Done This Week'],
+    [jobs.filter(isActive).length, 'Active Jobs'],
+    [jobs.filter(isDone).length, 'Done On Board'],
+  ];
+  return boxes.map(([n, label]) => `<div class="stat-box"><div class="stat-num tnum">${n}</div><div class="stat-label">${label}</div></div>`).join('');
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  try {
+    const [tech, jobs] = await Promise.all([staff.me(), staff.myJobs()]);
+    headEl.innerHTML = headHtml(tech);
+    statsEl.innerHTML = statsHtml(jobs);
+    statusEl.style.display = 'none';
+    root.hidden = false;
+    const logout = document.getElementById('pfLogout');
+    // Business: Signing out clears this device's token and returns to the technician sign-in page.
+    if (logout) logout.addEventListener('click', () => clearSession());
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return;
+    statusEl.textContent = 'Could not load your profile. Please refresh.';
+  }
+}
+
+if (session) void load();
+</script>
 
 <style is:global>
   .feed-container {
@@ -85,6 +89,8 @@ const initials = (me?.name ?? 'T')
     flex-direction: column;
     gap: 2rem;
   }
+
+  .pf-status { text-align: center; color: var(--graphite-mid); font-size: 0.875rem; }
 
   /* Profile Header */
   .profile-header {
@@ -127,6 +133,9 @@ const initials = (me?.name ?? 'T')
     margin-top: 0.25rem;
   }
 
+  .skill-row { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+  .skill-chip { background-color: var(--teal-light); color: var(--teal); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 12px; }
+
   /* Stats Row */
   .stats-row {
     display: flex;
@@ -158,7 +167,6 @@ const initials = (me?.name ?? 'T')
     text-transform: uppercase;
   }
 
-
   /* Menu List */
   .menu-list {
     background-color: var(--pure-white);
@@ -177,25 +185,13 @@ const initials = (me?.name ?? 'T')
     border-bottom: 1px solid var(--bg-off);
     width: 100%;
     background: none;
-    border-left: none;
-    border-right: none;
-    border-top: none;
     font-family: inherit;
     text-align: left;
     cursor: pointer;
   }
-  
+
   .menu-item:active {
     background-color: var(--bg-off);
-  }
-
-  .menu-item:disabled {
-    cursor: default;
-    opacity: 0.55;
-  }
-
-  .menu-item:disabled:active {
-    background-color: transparent;
   }
 
   .menu-item:last-child {
@@ -237,9 +233,8 @@ const initials = (me?.name ?? 'T')
     background-color: rgba(239, 68, 68, 0.1);
     border-radius: 12px;
   }
-  
+
   .logout-btn:active {
     background-color: rgba(239, 68, 68, 0.15);
   }
 </style>
-

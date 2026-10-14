@@ -18,6 +18,7 @@ export interface NewCustomer {
 }
 
 export interface CustomerRepository {
+  findAll(): Promise<CustomerRecord[]>;
   findOrCreate(input: NewCustomer): Promise<CustomerRecord>;
   findByPhone(phone: string): Promise<CustomerRecord | null>;
   findById(id: string): Promise<CustomerRecord | null>;
@@ -35,6 +36,17 @@ export function customerIdForPhone(phone: string): string {
 
 export class InMemoryCustomerRepository implements CustomerRepository {
   private readonly store = new Map<string, CustomerRecord>();
+
+  // Business: demo requests point at real customers, so the directory and joined views resolve to
+  // names, not "unknown". Seeded ids (C-1001…) are distinct from the phone-derived ids that live
+  // submissions create, so a real submit can never silently overwrite a seed.
+  constructor(seed: CustomerRecord[] = []) {
+    for (const record of seed) this.store.set(record.id, { ...record });
+  }
+
+  async findAll(): Promise<CustomerRecord[]> {
+    return [...this.store.values()].map((record) => ({ ...record }));
+  }
 
   async findOrCreate(input: NewCustomer): Promise<CustomerRecord> {
     const id = customerIdForPhone(input.phone);

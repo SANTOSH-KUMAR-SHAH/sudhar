@@ -26,3 +26,22 @@ export class NotFoundError extends DomainError {
     super(`${resource} not found: ${identifier}`);
   }
 }
+
+// Business: Two different "no" the API must not blur — we don't know who you are (unauthenticated,
+// Business: 401) versus we know you and you're not allowed here (forbidden, 403).
+export class AuthorizationError extends DomainError {
+  constructor(
+    public readonly kind: 'unauthenticated' | 'forbidden',
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+// Business: The action is legal on its own but collides with something that already exists — e.g.
+// Business: provisioning a staff login whose username is taken. Nothing is overwritten; it just refuses.
+export class ConflictError extends DomainError {
+  constructor(resource: string, identifier: string) {
+    super(`${resource} already exists: ${identifier}`);
+  }
+}

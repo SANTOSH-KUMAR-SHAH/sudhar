@@ -2,5 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sudhar-lab-api",
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-14"
+  "compatibility_date": "2026-09-14",
+  // Business: non-secret config. Empty SUPABASE_URL means "run in-memory" (local dev + tests).
+  // Business: Set SUPABASE_URL here (or via `wrangler vars`) and SUPABASE_SERVICE_ROLE_KEY as a SECRET
+  // Business: (`wrangler secret put SUPABASE_SERVICE_ROLE_KEY`) to switch the live Worker onto Supabase.
+  // Business: CORS_ORIGIN is the exact site(s) allowed to call; leave empty for mirror-any local dev.
+  "vars": {
+    "SUPABASE_URL": "",
+    "CORS_ORIGIN": ""
+  }
 }

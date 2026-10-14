@@ -1,0 +1,88 @@
+-- Business: This creates the real home for the data that until now lived only in the Worker's memory.
+-- Business: Tables mirror the domain EXACTLY: a customer is keyed by phone-derived id, a technician stores
+-- Business: only availability (workload is derived, never a column), and a request stores its whole
+-- Business: timeline as JSON so rehydrating it rebuilds the same aggregate the code already guards.
+-- Technical: Column names are snake_case; the repositories map to/from the camelCase domain at their edge.
+-- Timestamps are TEXT on purpose: the app writes Asia/Kathmandu +05:45 strings and must read them back
+-- byte-for-byte, so we do NOT let Postgres reformat them into UTC. RLS is enabled with NO public policies,
+-- meaning only the service-role backend (which bypasses RLS) can touch these rows — the anon key cannot.
+
+create extension if not exists pgcrypto with schema extensions;
+
+-- One person per phone. id is the phone-derived C-<digits> the app computes, so it is the primary key.
+create table if not exists public.customers (
+  id    text primary key,
+  name  text not null,
+  phone text not null,
+  area  text not null
+);
+
+-- The roster. skills is a text array; availability is the one mutable flag the technician owns.
+create table if not exists public.technicians (
+  id           text primary key,
+  name         text not null,
+  phone        text not null,
+  area         text not null,
+  availability text not null default 'offline' check (availability in ('online', 'offline')),
+  skills       text[] not null default '{}'
+);
+
+-- The central job. Nested appliance / price / timeline are JSONB so the aggregate round-trips unchanged.
+create table if not exists public.requests (
+  code          text primary key,
+  status        text not null,
+  source        text not null check (source in ('Website', 'Phone')),
+  customer_id   text not null references public.customers (id),
+  technician_id text references public.technicians (id),
+  appliance     jsonb not null,
+  problem       text not null,
+  fault         text,
+  price         jsonb,
+  visit_date    text,
+  urgent        boolean,
+  created_at    text not null,
+  updated_at    text not null,
+  timeline      jsonb not null default '[]'::jsonb
+);
+
+create index if not exists requests_technician_id_idx on public.requests (technician_id);
+create index if not exists requests_status_idx on public.requests (status);
+create index if not exists requests_customer_id_idx on public.requests (customer_id);
+
+-- Staff logins. secret holds a salted SHA-256 (`sha256$salt$hex`), never a readable password.
+create table if not exists public.staff_accounts (
+  id         text primary key,
+  role       text not null check (role in ('admin', 'technician')),
+  identifier text not null unique,
+  secret     text not null
+);
+
+-- Live sessions. We store only the SHA-256 of the opaque token we handed out, so a stolen row is unusable.
+create table if not exists public.auth_sessions (
+  token_hash text primary key,
+  subject    text not null,
+  role       text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Business: the next human-friendly job number (the NNNN in SL-YYYY-NNNN). A real sequence is atomic, so two
+-- Business: submissions from two Worker instances can never be handed the same code.
+create sequence if not exists public.request_code_seq;
+
+-- Technical: exposed to PostgREST so the repository awaits one number; the year prefix is added in code.
+create or replace function public.next_request_sequence()
+returns bigint
+language sql
+volatile
+as $$
+  select nextval('public.request_code_seq');
+$$;
+
+-- Business: Lock every table down. No policies are granted to anon/authenticated, so the browser-facing keys
+-- Business: can read nothing; only our backend (service_role, which bypasses RLS) can. This is defence-in-depth:
+-- Business: the app already authorises every request by role — RLS just means a raw API call cannot bypass it.
+alter table public.customers enable row level security;
+alter table public.technicians enable row level security;
+alter table public.requests enable row level security;
+alter table public.staff_accounts enable row level security;
+alter table public.auth_sessions enable row level security;

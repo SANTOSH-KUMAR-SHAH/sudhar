@@ -39,6 +39,7 @@ export const serviceRequestRecordSchema = z.object({
   fault: z.string().optional(),
   price: priceRecordSchema.optional(),
   visitDate: z.string().optional(),
+  urgent: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   timeline: z.array(statusEventSchema),
@@ -58,6 +59,7 @@ export const createRequestSchema = z.object({
   phone: z.string().refine(isValidNepalPhone, { message: 'Enter a valid Nepal mobile number' }),
   area: z.string().min(1),
   visitDate: z.string().optional(),
+  urgent: z.boolean().optional(),
   source: z.enum(['Website', 'Phone']).default('Website'),
 });
 
@@ -65,15 +67,18 @@ export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 
 // Business: What an admin (or technician) sends to move a job forward. The status machine — not this
 // Business: schema — decides if the move is legal; here we only type the request and its side-effects.
+// Business: NOTE: there is deliberately NO `actor` here — who performed a move comes from the verified
+// Business: token in the route, never from the body, so no caller can claim to be someone they are not.
 export const advanceRequestSchema = z.object({
   to: serviceStatusSchema,
-  actor: z.enum(ROLES).default('admin'),
   note: z.string().optional(),
   technicianId: z.string().nullable().optional(),
   fault: z.string().optional(),
   price: priceRecordSchema.optional(),
 });
 
+// Technical: the shape the service consumes = the validated body. WHO acts is the verified principal
+// passed separately by the route — never a field the caller can set.
 export type AdvanceRequestInput = z.infer<typeof advanceRequestSchema>;
 
 // Business: The Track box needs BOTH the phone and the code together (decision 0004) — a code alone is
@@ -97,3 +102,46 @@ export const trackedRequestSchema = z.object({
 });
 
 export type TrackedRequestView = z.infer<typeof trackedRequestSchema>;
+
+// Business: what an internal admin screen needs about a job — the full record PLUS the customer
+// (who/where) and the assigned technician (who), resolved from their ids. This is the join the
+// static demo pages assumed but the API never returned.
+// Technical: extends the bare record with two small nested shapes; names come from the repositories,
+// never recomputed. Labels / next-action wording stay a frontend concern — this is data, not a view.
+export const adminRequestSchema = serviceRequestRecordSchema.extend({
+  customer: z.object({ name: z.string(), phone: z.string(), area: z.string() }).nullable(),
+  technician: z.object({ name: z.string(), phone: z.string() }).nullable(),
+});
+
+export type AdminRequestView = z.infer<typeof adminRequestSchema>;
+
+// Business: For the admin's one-job screen we ALSO suggest who could take it — derived live from the
+// Business: roster (skill matches the appliance, online now, fewest open jobs). This is computed from
+// Business: data the system already has; it is a projection, never a stored or hand-typed list.
+// Technical: Only exists on the detail view; the queue list stays lean (no recommendations per row).
+export const recommendedTechnicianSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  area: z.string(),
+  availability: z.enum(['online', 'offline']),
+  activeJobs: z.number().int().nonnegative(),
+  matchReason: z.string(),
+});
+
+export type RecommendedTechnicianView = z.infer<typeof recommendedTechnicianSchema>;
+
+export const adminRequestDetailSchema = adminRequestSchema.extend({
+  recommendedTechnicians: z.array(recommendedTechnicianSchema),
+});
+
+export type AdminRequestDetailView = z.infer<typeof adminRequestDetailSchema>;
+
+// Business: The technician's OWN job view — the full record PLUS who the customer is and how to reach
+// Business: them (name/phone/area), because a visit cannot happen without the number. This is the
+// Business: technician-safe join: only their assigned rows carry it, and it exposes nothing admin-only.
+// Technical: Same nested customer shape as the admin view so both screens read one contract for a name.
+export const technicianJobSchema = serviceRequestRecordSchema.extend({
+  customer: z.object({ name: z.string(), phone: z.string(), area: z.string() }).nullable(),
+});
+
+export type TechnicianJobView = z.infer<typeof technicianJobSchema>;

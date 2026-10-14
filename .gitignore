@@ -22,3 +22,9 @@ Thumbs.db
 
 # Local QA scratch (screenshots, slide dumps) — never commit
 .qa/
+verify-*.png
+hardproof-*.png
+retest-*.png
+test-accept-*.png
+probe-*.png
+admin-login-dashboard.png

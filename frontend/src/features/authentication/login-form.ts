@@ -1,6 +1,10 @@
 // Business: Admin and technician sign-in share one validation + loading behaviour.
-// Business: Real credential checking lands here when POST /api/auth/login exists.
+// Business: Credentials are checked by the real Worker (POST /api/auth/login); a wrong secret or an
+// Business: account for the other portal is explained inline — never a silent hop to a blank dashboard.
 // Technical: Wires any present login form by ID; pages keep only an import line.
+import { ApiError, staff } from '../../lib/api-client';
+import { saveSession, type SessionRole } from '../../lib/session';
+
 interface LoginFormConfig {
   formId: string;
   identityId: string;
@@ -9,6 +13,8 @@ interface LoginFormConfig {
   submitId: string;
   redirectTo: string;
   identityLabel: string;
+  // Business: Which portal this form belongs to — an admin login cannot open the technician portal.
+  portal: SessionRole;
 }
 
 export function validateLogin(
@@ -27,9 +33,17 @@ export function loginErrorMessage(code: string, identityLabel: string): string {
   return 'Password must be at least 8 characters.';
 }
 
+function showFormError(config: LoginFormConfig, message: string): void {
+  const error = document.getElementById(config.errorId);
+  if (error) {
+    error.textContent = message;
+    error.style.display = 'block';
+  }
+}
+
 export function initLoginForm(config: LoginFormConfig): void {
   // Business: Guard double-submit and show inline errors on staff sign-in.
-  // Technical: Frontend-only validation; demo redirect until the auth API exists.
+  // Technical: After local checks, POST the real credential and only redirect on a genuine success.
   const form = document.getElementById(config.formId);
   if (!form) return;
   form.addEventListener('submit', (submitEvent: SubmitEvent) => {
@@ -61,10 +75,38 @@ export function initLoginForm(config: LoginFormConfig): void {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Signing in…';
     }
-    // Demo only: no credential check until POST /api/auth/login exists.
-    window.setTimeout(() => {
-      window.location.href = config.redirectTo;
-    }, 350);
+    const restore = (): void => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in →';
+      }
+    };
+    staff
+      .login((identity?.value ?? '').trim(), password?.value ?? '')
+      .then((result) => {
+        // Business: A technician's credentials must not open the admin portal, or vice-versa.
+        if (result.role !== config.portal) {
+          restore();
+          showFormError(
+            config,
+            result.role === 'customer'
+              ? 'This is a staff-only portal. Use the website to track a request.'
+              : `That account belongs to the ${result.role} portal. Please sign in there.`,
+          );
+          return;
+        }
+        saveSession(result.token, config.portal);
+        window.location.href = config.redirectTo;
+      })
+      .catch((err: unknown) => {
+        restore();
+        if (err instanceof ApiError && err.status === 401) {
+          showFormError(config, 'Wrong email/phone or password.');
+          return;
+        }
+        // Business: Distinguish "server unreachable" so staff know it is not their mistake.
+        showFormError(config, 'Cannot reach the server. Please try again.');
+      });
   });
 }
 
@@ -112,6 +154,7 @@ function boot(): void {
     submitId: 'adminSubmitBtn',
     redirectTo: '/admin/dashboard',
     identityLabel: 'email or phone number',
+    portal: 'admin',
   });
   initLoginForm({
     formId: 'techLoginForm',
@@ -121,6 +164,7 @@ function boot(): void {
     submitId: 'techSubmitBtn',
     redirectTo: '/tech/dashboard',
     identityLabel: 'phone number or email',
+    portal: 'technician',
   });
   initAdminToggle();
   initTechToggle();

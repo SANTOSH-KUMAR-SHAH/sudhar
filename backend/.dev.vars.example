@@ -1,0 +1,14 @@
+# Copy this file to `backend/.dev.vars` (same folder) to run the Worker against Supabase locally.
+# `.dev.vars` is git-ignored, so real keys never get committed. Leave SUPABASE_URL empty (or skip this
+# file) to run with the in-memory demo data instead — nothing else changes.
+
+# From Supabase: Project Settings -> API -> Project URL
+SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
+
+# From Supabase: Project Settings -> API -> `service_role` secret. SERVER-ONLY. NEVER put this in the
+# frontend or commit it — it bypasses Row Level Security and can read/write every row.
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Optional: exact browser origin(s) allowed to call the API, comma-separated. Empty = mirror any origin
+# (fine for local dev). Set this before going live, e.g. http://localhost:4321 or https://sudhar.example.
+CORS_ORIGIN=

@@ -1,0 +1,317 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+// Business: One technician, LIVE. Static output means an authenticated per-record page cannot be baked at
+// Business: build, so this single always-emitted page reads ?id=, fetches the roster + queue, and renders the
+// Business: honest profile: only fields the Worker really returns (name, phone, area, availability, skills)
+// Business: plus jobs JOINED from the live queue. Fake demo extras (join date, workload, notes) are gone —
+// Business: we drop them rather than invent them. Unknown ids show "not found"; a dead token hits sign-in.
+// Technical: The current job / weekly count / avatar are taken from deriveRoster() — the exact same join
+// the roster list uses — so a card and its detail page can never disagree. This file only paints.
+---
+
+<AdminDashboardLayout title="Technician - Sudhar Lab Admin" activeNav="technicians">
+
+  <div class="breadcrumb-row">
+    <a href="/admin/technicians" class="breadcrumb-link">Technicians</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current" id="tpCrumb">…</span>
+  </div>
+
+  <div class="rq-status-cell" id="tpStatus">Loading this technician…</div>
+
+  <div class="profile-layout" id="tpRoot" hidden>
+    <div class="main-col" id="tpMain"></div>
+    <aside class="side-col" id="tpSide"></aside>
+  </div>
+
+</AdminDashboardLayout>
+
+<script>
+import { ApiError, staff, type ApiRequest } from '../../../lib/api-client';
+import { requireSession } from '../../../lib/session';
+import { getBadgeClass, SERVICE_STATUS_LABEL, type ServiceStatusKey } from '../../../lib/service-status';
+import { deriveRoster, type TechnicianCard } from '../../../features/staff/roster';
+
+const session = requireSession('admin');
+
+const statusEl = document.getElementById('tpStatus') as HTMLElement;
+const root = document.getElementById('tpRoot') as HTMLElement;
+const mainEl = document.getElementById('tpMain');
+const sideEl = document.getElementById('tpSide');
+const crumbEl = document.getElementById('tpCrumb');
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+const PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+const BOX = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>';
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+const USERS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" class="kpi-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>';
+
+const label = (status: string): string => SERVICE_STATUS_LABEL[status as ServiceStatusKey] ?? status;
+const badge = (status: string): string => getBadgeClass(status as ServiceStatusKey);
+const ago = (iso: string): string => {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.round(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
+function heroHtml(card: TechnicianCard): string {
+  const dot = card.currentJobId ? 'blue' : card.availability === 'online' ? 'green' : 'grey';
+  const statusText = card.currentJobId
+    ? `On a visit — ${label(card.currentJobStatus ?? '')}`
+    : card.availability === 'online' ? 'Available now' : 'Off duty';
+  return `<div class="hero-card card">
+    <div class="hero-content">
+      <div class="hero-left">
+        <div class="hero-avatar" style="background-color:${esc(card.avatarHue)}">${esc(card.initials)}</div>
+        <div class="hero-info">
+          <h1 class="hero-name">${esc(card.name)}</h1>
+          <div class="hero-sub">${esc(card.area)}</div>
+          <div class="hero-meta-row">
+            <div class="hero-meta">${PHONE}${esc(card.phone)}</div>
+            <div class="hero-meta">${PIN}${esc(card.area)}</div>
+            <div class="hero-meta">${esc(card.id)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="hero-status"><span class="status-dot ${dot}"></span><span class="status-text">${esc(statusText)}</span></div>
+        <div class="hero-active-time">${card.activeJobs} active job${card.activeJobs === 1 ? '' : 's'}</div>
+        <div class="hero-actions">
+          <a class="btn-primary" href="/admin/requests">${USERS_SMALL} Assign a request</a>
+          <a class="btn-secondary" href="tel:${esc(card.phone.replace(/\s/g, ''))}">${PHONE} Contact technician</a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+const USERS_SMALL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+
+function bannerHtml(card: TechnicianCard, jobs: ApiRequest[]): string {
+  const current = jobs.find((r) => r.code === card.currentJobId);
+  const area = current?.customer?.area ?? '';
+  const type = card.currentJobId ? 'busy' : card.availability === 'online' ? 'available' : 'offline';
+  const title = card.currentJobId ? 'Currently on a visit' : card.availability === 'online' ? 'Available now' : 'Off duty';
+  const desc = card.currentJobId
+    ? `Working on Request ${card.currentJobId}${area ? ` in ${area}` : ''}.`
+    : card.availability === 'online' ? 'No active job. Ready to receive a new assignment.' : 'Not accepting visits right now.';
+  const icon = type === 'available'
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+    : '<span class="banner-bang">!</span>';
+  return `<div class="banner-card ${type}"><div class="banner-left"><div class="banner-icon">${icon}</div>
+    <div><div class="banner-title">${esc(title)}</div><div class="banner-desc">${esc(desc)}</div></div></div>
+    <div class="banner-right">${card.availability === 'online' ? 'Online' : 'Offline'}</div></div>`;
+}
+
+function kpiHtml(card: TechnicianCard, jobs: ApiRequest[]): string {
+  const completedCount = jobs.filter((r) => ['COMPLETED', 'INVOICED', 'PAID', 'CLOSED'].includes(r.status)).length;
+  const currentSub = card.currentJobId
+    ? label(card.currentJobStatus ?? '')
+    : card.availability === 'online' ? 'Available for assignment' : 'Offline';
+  const nextAvailable = card.currentJobId ? 'After current visit' : card.availability === 'online' ? 'Now' : 'Next shift';
+  return `<div class="kpi-grid">
+    <div class="kpi-card card"><div class="kpi-top">${USERS}<div class="kpi-val">${jobs.length}</div></div>
+      <div class="kpi-label">Assigned requests</div><div class="kpi-sub">${completedCount} completed</div></div>
+    <div class="kpi-card card"><div class="kpi-top">${BOX}<div class="kpi-val">${esc(card.currentJobId ?? 'None')}</div></div>
+      <div class="kpi-label">Current job</div><div class="kpi-sub teal">${esc(currentSub)}</div></div>
+    <div class="kpi-card card"><div class="kpi-top">${CHECK}<div class="kpi-val">${card.completedThisWeek}</div></div>
+      <div class="kpi-label">Completed this week</div><div class="kpi-sub">Last 7 days</div></div>
+    <div class="kpi-card card"><div class="kpi-top">${CLOCK}<div class="kpi-val">${esc(nextAvailable)}</div></div>
+      <div class="kpi-label">Next available</div><div class="kpi-sub">${card.currentJobId ? 'Once current visit ends' : 'Ready for assignment'}</div></div>
+  </div>`;
+}
+
+function assignedHtml(jobs: ApiRequest[]): string {
+  const rows = jobs.length === 0
+    ? '<div class="assigned-empty">No requests assigned to this technician yet.</div>'
+    : jobs.map((r) => {
+        const href = `/admin/requests/detail?code=${encodeURIComponent(r.code)}`;
+        const title = `${r.appliance.brand} ${r.appliance.type} — ${r.problem}`.trim();
+        const customer = `${r.customer?.name ?? 'Unknown'} · ${r.customer?.area ?? ''}`;
+        return `<div class="assigned-row">
+          <div class="assigned-left"><div class="assigned-id tnum">#${esc(r.code)}</div><div class="assigned-time">${esc(ago(r.updatedAt))}</div></div>
+          <div class="assigned-main"><div class="assigned-title">${esc(title)}</div><div class="assigned-customer">${esc(customer)}</div></div>
+          <div class="assigned-right"><span class="badge ${badge(r.status)}">${esc(label(r.status))}</span><a class="btn-link" href="${href}">Open request</a></div>
+        </div>`;
+      }).join('');
+  return `<div class="section-card card"><div class="section-header"><h2 class="section-title">Assigned requests</h2>
+    <div class="section-sub">Live work assigned to this technician</div></div><div class="assigned-list">${rows}</div></div>`;
+}
+
+function sideHtml(card: TechnicianCard): string {
+  const skills = card.skills.length
+    ? card.skills.map((s) => `<span class="chip">${esc(s)}</span>`).join('')
+    : '<span class="info-text">No skills recorded.</span>';
+  return `<div class="side-card card"><h3 class="side-card-title">Technician information</h3>
+    <div class="info-group"><div class="info-label">Appliance skills</div><div class="chip-list">${skills}</div></div>
+    <div class="info-group"><div class="info-label">Service area</div><div class="chip-list"><span class="chip">${PIN}${esc(card.area)}</span></div></div>
+    <div class="info-group"><div class="info-label">Availability</div><div class="info-text">${card.availability === 'online' ? 'Online — accepting visits' : 'Offline — not accepting visits'}</div></div>
+  </div>`;
+}
+
+function setStatus(text: string, crumb: string): void {
+  // Business: A not-found/error/no-selection state still shows the breadcrumb, so clear the "…" placeholder.
+  statusEl.textContent = text;
+  statusEl.style.display = '';
+  if (crumbEl) crumbEl.textContent = crumb;
+  root.hidden = true;
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) { setStatus('No technician selected.', '—'); return; }
+  try {
+    const [technicians, requests] = await Promise.all([
+      staff.listTechnicians(),
+      staff.listAdminRequests(),
+    ]);
+    const card = deriveRoster(technicians, requests).find((t) => t.id === id);
+    if (!card) { setStatus('Technician not found.', id); return; }
+    const jobs = requests
+      .filter((r) => r.technicianId === id)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+    if (crumbEl) crumbEl.textContent = card.name;
+    document.title = `${card.name} - Technicians - Sudhar Lab`;
+    mainEl!.innerHTML = `${heroHtml(card)}${bannerHtml(card, jobs)}${kpiHtml(card, jobs)}${assignedHtml(jobs)}`;
+    sideEl!.innerHTML = sideHtml(card);
+    statusEl.style.display = 'none';
+    root.hidden = false;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return; // authorizedFetch already redirected
+    setStatus('Could not load this technician. Please refresh.', '—');
+  }
+}
+
+if (session) void load();
+</script>
+
+<style is:global>
+  .profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.5rem; align-items: flex-start; }
+  .main-col { display: flex; flex-direction: column; gap: 1.5rem; }
+  .side-col { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .hero-card { padding: 1.5rem 2rem; }
+  .hero-content { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 2rem; }
+  .hero-left { display: flex; gap: 1.5rem; align-items: center; }
+  .hero-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-h); font-size: 2rem; font-weight: 700; color: var(--pure-white); flex-shrink: 0;
+  }
+  .hero-name { font-family: var(--font-h); font-size: 1.75rem; font-weight: 700; color: var(--navy); margin-bottom: 0.25rem; }
+  .hero-sub { font-size: 0.9375rem; color: var(--graphite-mid); margin-bottom: 0.75rem; }
+  .hero-meta-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+  .hero-meta { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--graphite-mid); font-weight: 500; }
+
+  .hero-right { display: flex; flex-direction: column; align-items: flex-end; }
+  .hero-status { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .status-dot.green { background: #22C55E; }
+  .status-dot.blue { background: #0284C7; }
+  .status-dot.grey { background: #9CA3AF; }
+  .status-text { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+  .hero-active-time { font-size: 0.75rem; color: var(--graphite-lt); margin-bottom: 1rem; }
+  .hero-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+  .btn-primary {
+    display: flex; align-items: center; gap: 0.5rem; background: var(--teal); color: var(--pure-white);
+    border: none; padding: 0.5625rem 1rem; border-radius: 6px; font-family: var(--font-b); font-size: 0.8125rem;
+    font-weight: 600; cursor: pointer; text-decoration: none; transition: background-color 0.2s;
+  }
+  .btn-primary:hover { background: var(--teal-hover); }
+  .btn-secondary {
+    display: flex; align-items: center; gap: 0.5rem; background: var(--pure-white); color: var(--teal);
+    border: 1px solid var(--teal); padding: 0.5625rem 1rem; border-radius: 6px; font-family: var(--font-b);
+    font-size: 0.8125rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background-color 0.2s;
+  }
+  .btn-secondary:hover { background: var(--teal-light); }
+
+  .banner-card { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-radius: 10px; border: 1px solid transparent; }
+  .banner-card.available { background: var(--teal-light); border-color: rgba(12, 124, 130, 0.2); }
+  .banner-card.busy { background: #FEF3C7; border-color: rgba(217, 119, 6, 0.2); }
+  .banner-card.offline { background: var(--bg); border-color: var(--border); }
+  .banner-left { display: flex; align-items: center; gap: 1rem; }
+  .banner-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--pure-white); }
+  .banner-card.available .banner-icon { background: var(--teal); }
+  .banner-card.busy .banner-icon { background: #D97706; }
+  .banner-card.offline .banner-icon { background: #9CA3AF; }
+  .banner-bang { font-weight: 700; font-size: 0.875rem; color: var(--pure-white); }
+  .banner-title { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 0.125rem; }
+  .banner-desc { font-size: 0.875rem; color: var(--navy); opacity: 0.8; }
+  .banner-right { font-size: 0.8125rem; font-weight: 500; color: var(--teal); }
+  .banner-card.busy .banner-right { color: #D97706; }
+  .banner-card.offline .banner-right { color: var(--graphite-lt); }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+  .kpi-card { padding: 1.25rem; display: flex; flex-direction: column; }
+  .kpi-top { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .kpi-icon { color: var(--teal); }
+  .kpi-val { font-family: var(--font-h); font-size: 1.375rem; font-weight: 700; color: var(--navy); }
+  .kpi-label { font-size: 0.8125rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
+  .kpi-sub { font-size: 0.75rem; color: var(--graphite-mid); }
+  .kpi-sub.teal { color: var(--teal); font-weight: 500; }
+
+  .section-card { padding: 1.5rem 2rem; }
+  .section-header { margin-bottom: 1.5rem; }
+  .section-title { font-family: var(--font-h); font-size: 1.125rem; font-weight: 700; color: var(--navy); margin-bottom: 0.25rem; }
+  .section-sub { font-size: 0.875rem; color: var(--graphite-mid); }
+
+  .assigned-list { display: flex; flex-direction: column; }
+  .assigned-row { display: flex; align-items: center; gap: 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+  .assigned-row:last-child { border-bottom: none; }
+  .assigned-empty { font-size: 0.875rem; color: var(--graphite-lt); padding: 0.75rem 0; }
+  .assigned-left { width: 120px; }
+  .assigned-id { font-size: 0.8125rem; font-weight: 600; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .assigned-time { font-size: 0.75rem; color: var(--graphite-lt); }
+  .assigned-main { flex: 1; }
+  .assigned-title { font-size: 0.875rem; font-weight: 600; color: var(--navy); margin-bottom: 0.25rem; }
+  .assigned-customer { font-size: 0.8125rem; color: var(--graphite-mid); }
+  .assigned-right { display: flex; align-items: center; gap: 2rem; }
+  .btn-link { background: none; border: none; color: var(--teal); font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn-link:hover { text-decoration: underline; }
+
+  .side-card { padding: 1.5rem; }
+  .side-card-title { font-family: var(--font-h); font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 1.25rem; }
+  .info-group { margin-bottom: 1.25rem; }
+  .info-group:last-child { margin-bottom: 0; }
+  .info-label { font-size: 0.75rem; font-weight: 700; color: var(--graphite-mid); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.375rem; }
+  .info-text { font-size: 0.875rem; color: var(--navy); line-height: 1.4; }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip { padding: 0.375rem 0.75rem; background: var(--bg-off); border-radius: 20px; font-size: 0.75rem; font-weight: 500; color: var(--navy); display: inline-flex; align-items: center; gap: 0.375rem; }
+  .chip svg { color: var(--graphite-lt); }
+
+  .rq-status-cell { padding: 2rem; text-align: center; color: var(--graphite-lt); font-size: 0.875rem; }
+
+  @media (max-width: 1024px) {
+    .profile-layout { grid-template-columns: minmax(0, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767px) {
+    .hero-actions { width: 100%; }
+    .hero-actions .btn-primary, .hero-actions .btn-secondary { flex: 1 1 140px; justify-content: center; }
+    .section-card, .side-card { padding: 1rem; }
+    .section-header { margin-bottom: 1rem; }
+    .assigned-row { align-items: flex-start; gap: 0.75rem; }
+    .assigned-left { width: 88px; flex-shrink: 0; }
+    .assigned-right { flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+  }
+  @media (max-width: 420px) {
+    .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+    .hero-actions .btn-primary, .hero-actions .btn-secondary { flex-basis: 100%; }
+    .assigned-row { flex-wrap: wrap; }
+    .assigned-main { min-width: calc(100% - 96px); }
+    .assigned-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 92px; }
+  }
+</style>

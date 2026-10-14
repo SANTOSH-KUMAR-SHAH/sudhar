@@ -1,0 +1,343 @@
+---
+import TechDashboardLayout from '../../../layouts/TechDashboardLayout.astro';
+// Business: One of MY jobs, opened live by its request code (?code=). It reads only the technician's own
+// Business: job list from the Worker, so a code that is not yours simply is not found — nothing leaks.
+// Business: The technician's single allowed action is shown: ACCEPT a job the admin just assigned (a legal
+// Business: ASSIGNED -> TECHNICIAN_CONFIRMED step the server re-checks). The demo's diagnosis form is GONE:
+// Business: typing a fault/price is the admin's job, not the technician's, and no API exists for it.
+// Technical: Static output cannot prerender a per-user job, so the shell ships empty; the script resolves
+// the code against /me/jobs, paints, and the Accept button posts then re-reads so the status is the
+// Worker's truth, never an optimistic guess. Fields the API lacks (a clock time, photos) are not shown.
+---
+
+<TechDashboardLayout title="Job - Sudhar Lab" activeNav="jobs">
+  <div class="job-detail-container">
+    <div class="jd-status" id="jdStatus">Loading this job…</div>
+    <div id="jdRoot" hidden></div>
+  </div>
+</TechDashboardLayout>
+
+<script>
+import { ApiError, staff, type ApiTechnicianJob } from '../../../lib/api-client';
+import { requireSession } from '../../../lib/session';
+import { isActive, isDone, statusLabel } from '../../../features/requests/queue';
+import { isAwaitingAccept, visitLabel } from '../../../features/staff/tech-view';
+
+const session = requireSession('technician');
+const code = new URLSearchParams(window.location.search).get('code');
+const statusEl = document.getElementById('jdStatus') as HTMLElement;
+const root = document.getElementById('jdRoot') as HTMLElement;
+let jobs: ApiTechnicianJob[] = [];
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+// Business: The headline tells the technician what happens next, in the queue's own words.
+const GUIDANCE: Record<string, string> = {
+  ASSIGNED: 'Accept this job to confirm you will make the visit.',
+  TECHNICIAN_CONFIRMED: 'Accepted. Head out when you are ready.',
+  TECHNICIAN_ON_THE_WAY: 'Travel to the visit address.',
+  ARRIVED: 'You have arrived. Admin drives the repair from here.',
+  DIAGNOSING: 'Admin is recording the diagnosis.',
+  PRICE_APPROVAL: 'Waiting on the customer\'s price decision.',
+  IN_PROGRESS: 'Repair underway — the admin updates the outcome.',
+  WAITING_FOR_PARTS: 'Parts pending — the admin will follow up.',
+};
+
+const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+const CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+const PIN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+const BOX_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>';
+const PHONE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+const BACK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>';
+
+function npr(amount: number): string {
+  return `NPR ${amount.toLocaleString('en-IN')}`;
+}
+
+function acceptBlock(job: ApiTechnicianJob): string {
+  if (!isAwaitingAccept(job)) return '';
+  return `<div class="accept-card">
+    <div class="accept-copy">This visit was assigned to you. Accepting tells the customer and the office you are on it.</div>
+    <button type="button" class="accept-btn" id="acceptBtn">Accept Job</button>
+    <div class="accept-note" id="acceptNote" hidden></div>
+  </div>`;
+}
+
+function outcomeCard(job: ApiTechnicianJob): string {
+  if (!isDone(job)) return '';
+  const price = job.price;
+  return `<div class="info-card">
+    <div class="card-row">
+      <div class="icon-wrap">${CHECK_ICON}</div>
+      <div class="content-wrap">
+        <label>Outcome recorded by admin</label>
+        <div class="val">${esc(job.fault ?? 'Work completed')}</div>
+        ${price ? `<div class="diag-meta tnum">${esc(npr(price.amount))} &middot; ${esc(price.paymentStatus)}</div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(job: ApiTechnicianJob | null): void {
+  if (!job) {
+    statusEl.style.display = '';
+    statusEl.textContent = 'This job is not in your assigned list.';
+    root.hidden = true;
+    return;
+  }
+  const done = isDone(job);
+  const active = isActive(job);
+  const statusIcon = done ? CHECK_ICON : CLOCK_ICON;
+  const statusTitle = done ? 'Completed' : statusLabel(job);
+  const statusDesc = done
+    ? 'Work recorded. This visit is read-only for you.'
+    : GUIDANCE[job.status] ?? 'Review the details before you travel.';
+  const c = job.customer;
+  const callHref = c?.phone ? `tel:${esc(c.phone.replace(/\s/g, ''))}` : '#';
+  root.innerHTML = `
+    <div class="top-bar">
+      <a href="/tech/jobs" class="back-btn">${BACK_ICON}</a>
+      <div class="job-id tnum">${esc(job.code)}</div>
+      <div style="width: 24px;"></div>
+    </div>
+
+    <div class="status-hero">
+      <div class="status-icon">${statusIcon}</div>
+      <h2>${esc(statusTitle)}</h2>
+      <p>${esc(statusDesc)}</p>
+      <p class="time-label">${esc(visitLabel(job))}</p>
+    </div>
+
+    ${acceptBlock(job)}
+
+    <div class="info-card">
+      <div class="card-row">
+        <div class="icon-wrap">${USER_ICON}</div>
+        <div class="content-wrap">
+          <label>Customer</label>
+          <div class="val">${esc(c?.name ?? 'Being confirmed')}</div>
+        </div>
+        ${c?.phone ? `<a href="${callHref}" class="action-circle bg-green" aria-label="Call ${esc(c.name)}">${PHONE_ICON}</a>` : '<span></span>'}
+      </div>
+      <div class="divider"></div>
+      <div class="card-row">
+        <div class="icon-wrap">${PIN_ICON}</div>
+        <div class="content-wrap">
+          <label>Location</label>
+          <div class="val">${esc(c?.area ?? '—')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="card-row">
+        <div class="icon-wrap">${BOX_ICON}</div>
+        <div class="content-wrap">
+          <label>Appliance</label>
+          <div class="val">${esc(job.appliance.brand)} ${esc(job.appliance.type)}${job.appliance.model ? ` · ${esc(job.appliance.model)}` : ''}</div>
+        </div>
+      </div>
+      <div class="problem-alert">
+        <strong>Problem:</strong> "${esc(job.problem)}"
+      </div>
+    </div>
+
+    ${outcomeCard(job)}
+  `;
+  statusEl.style.display = 'none';
+  root.hidden = false;
+  if (active && isAwaitingAccept(job)) wireAccept(job.code);
+}
+
+function wireAccept(jobCode: string): void {
+  const btn = document.getElementById('acceptBtn') as HTMLButtonElement | null;
+  const note = document.getElementById('acceptNote') as HTMLElement | null;
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Accepting…';
+    try {
+      // Business: Accepting is the technician's one legal write — the server drives ASSIGNED -> TECHNICIAN_CONFIRMED.
+      // Technical: Await the POST, THEN re-read /me/jobs so the painted status is the Worker's truth, not an optimistic guess.
+      await staff.acceptJob(jobCode);
+      jobs = await staff.myJobs();
+      render(jobs.find((j) => j.code === jobCode) ?? null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) return;
+      btn.disabled = false;
+      btn.textContent = 'Accept Job';
+      if (note) {
+        note.hidden = false;
+        note.textContent = err instanceof ApiError && err.status === 409
+          ? 'This job moved on and can no longer be accepted. Refresh to see its latest status.'
+          : 'Could not accept right now. Please try again.';
+      }
+    }
+  });
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  if (!code) { statusEl.textContent = 'No job selected.'; return; }
+  try {
+    jobs = await staff.myJobs();
+    render(jobs.find((j) => j.code === code) ?? null);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return;
+    statusEl.textContent = 'Could not load this job. Please refresh.';
+  }
+}
+
+if (session) void load();
+</script>
+
+<style is:global>
+  .job-detail-container {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+  }
+
+  .jd-status { text-align: center; color: var(--graphite-mid); font-size: 0.875rem; padding: 1.5rem 1rem; }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-off);
+    z-index: 10;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--pure-white);
+    color: var(--navy);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .job-id {
+    font-family: var(--font-h);
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--navy);
+  }
+
+  /* Status Hero */
+  .status-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+
+  .status-icon {
+    width: 72px;
+    height: 72px;
+    background-color: var(--teal);
+    color: var(--pure-white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 8px 16px rgba(12, 124, 130, 0.3);
+  }
+
+  .status-hero h2 {
+    font-family: var(--font-h);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+
+  .time-label { font-size: 0.8125rem; font-weight: 700; color: var(--teal); margin-top: 0.25rem; }
+  .status-hero p { color: var(--graphite-mid); font-size: 0.9375rem; }
+
+  /* Accept */
+  .accept-card { margin: 0 1rem 1rem 1rem; background-color: var(--pure-white); border: 1px solid var(--teal); border-radius: 16px; padding: 1.25rem; box-shadow: var(--shadow-sm); }
+  .accept-copy { font-size: 0.9375rem; color: var(--graphite-mid); margin-bottom: 1rem; line-height: 1.4; }
+  .accept-btn { width: 100%; background-color: var(--teal); color: var(--pure-white); border: none; padding: 1rem; border-radius: 12px; font-size: 1.0625rem; font-weight: 700; font-family: var(--font-h); cursor: pointer; }
+  .accept-btn:disabled { opacity: 0.7; cursor: default; }
+  .accept-note { margin-top: 0.75rem; font-size: 0.8125rem; color: #9A6A00; }
+
+  /* Info Cards */
+  .info-card {
+    background-color: var(--pure-white);
+    margin: 0 1rem 1rem 1rem;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .card-row {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 0 1.25rem;
+  }
+
+  .icon-wrap { color: var(--graphite-lt); display: flex; }
+  .icon-wrap svg { width: 20px; height: 20px; }
+
+  .content-wrap { flex: 1; }
+
+  .content-wrap label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--graphite-lt);
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+    display: block;
+  }
+
+  .content-wrap .val { font-size: 1.0625rem; font-weight: 600; color: var(--navy); }
+  .diag-meta { font-size: 0.8125rem; color: var(--graphite-mid); margin-top: 0.25rem; }
+
+  .action-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pure-white);
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .action-circle:active { transform: scale(0.95); }
+  .bg-green { background-color: var(--green); box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3); }
+
+  .problem-alert {
+    background-color: var(--gold-light);
+    color: #9A6A00;
+    padding: 1rem 1.25rem;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    border-top: 1px solid var(--border);
+  }
+</style>

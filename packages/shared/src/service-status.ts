@@ -59,3 +59,17 @@ export function isValidTransition(from: ServiceStatusKey, to: ServiceStatusKey):
 export function isServiceStatus(value: unknown): value is ServiceStatusKey {
   return typeof value === 'string' && (SERVICE_STATUSES as readonly string[]).includes(value);
 }
+
+// Business: A job counts toward a technician's live workload only while it is genuinely open — not once
+// Business: it is completed, invoiced, paid, closed, cancelled or unable-to-complete. Two callers now
+// Business: need this same category (the roster's active-job count and the admin's recommendation
+// Business: ranking), so it lives here once rather than as two lists that could drift apart.
+// Technical: A status GROUP, not a label or colour — pure domain, so it is allowed in the shared layer.
+export const ACTIVE_WORKLOAD_STATUSES: readonly ServiceStatusKey[] = [
+  'ASSIGNED', 'TECHNICIAN_CONFIRMED', 'TECHNICIAN_ON_THE_WAY', 'ARRIVED',
+  'DIAGNOSING', 'PRICE_APPROVAL', 'IN_PROGRESS', 'WAITING_FOR_PARTS',
+];
+
+export function isActiveWorkload(status: ServiceStatusKey): boolean {
+  return ACTIVE_WORKLOAD_STATUSES.includes(status);
+}

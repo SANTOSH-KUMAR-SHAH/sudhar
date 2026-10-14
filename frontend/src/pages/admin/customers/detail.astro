@@ -1,0 +1,423 @@
+---
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+// Business: Customer 360, LIVE and honest. This single always-emitted page reads ?id=, fetches the
+// Business: directory + request queue, and shows only what the Worker really has: contact (name/phone/area),
+// Business: the jobs JOINED to this customer, appliances + billing DERIVED from those jobs. Fake demo extras
+// Business: (address, join date, preferred contact, internal notes, logged calls) are dropped — not invented.
+// Business: Unknown ids show "not found"; a dead token is bounced to sign-in by the api client.
+// Technical: Everything derives from the same ApiRequest rows the queue/dashboard use, so counts can never
+// drift. This file only paints into the same markup/CSS the demo page used, keeping the design unchanged.
+---
+
+<AdminDashboardLayout title="Customer - Sudhar Lab Admin" activeNav="customers">
+
+  <div class="breadcrumb-row">
+    <a href="/admin/dashboard" class="breadcrumb-link">Operations</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <a href="/admin/customers" class="breadcrumb-link">Customers</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current" id="cdCrumb">…</span>
+  </div>
+
+  <div class="rq-status-cell" id="cdStatus">Loading this customer…</div>
+
+  <div id="cdRoot" hidden>
+    <div id="cdHead"></div>
+    <div class="content-grid">
+      <div class="main-col" id="cdMain"></div>
+      <div class="side-col" id="cdSide"></div>
+    </div>
+  </div>
+
+</AdminDashboardLayout>
+
+<script>
+import { ApiError, staff, type ApiRequest } from '../../../lib/api-client';
+import { requireSession } from '../../../lib/session';
+import { getBadgeClass, SERVICE_STATUS_LABEL, type ServiceStatusKey } from '../../../lib/service-status';
+import { isActive, isDone } from '../../../features/requests/queue';
+import { deriveDirectory, type CustomerRow } from '../../../features/staff/directory';
+
+const session = requireSession('admin');
+
+const statusEl = document.getElementById('cdStatus') as HTMLElement;
+const root = document.getElementById('cdRoot') as HTMLElement;
+const headEl = document.getElementById('cdHead');
+const mainEl = document.getElementById('cdMain');
+const sideEl = document.getElementById('cdSide');
+const crumbEl = document.getElementById('cdCrumb');
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+const label = (status: string): string => SERVICE_STATUS_LABEL[status as ServiceStatusKey] ?? status;
+const badge = (status: string): string => getBadgeClass(status as ServiceStatusKey);
+const npr = (amount: number): string => `NPR ${amount.toLocaleString('en-IN')}`;
+const ago = (iso: string): string => {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.round(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
+const PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+const REQ_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+
+function headHtml(cust: CustomerRow, jobs: ApiRequest[], active: ApiRequest | null): string {
+  const newest = jobs[0] ?? null;
+  const heroBadge = active
+    ? { label: 'Active Request', cls: 'badge-progress' }
+    : newest ? { label: label(newest.status), cls: badge(newest.status) } : { label: 'New customer', cls: 'badge-neutral' };
+  const phoneHref = `tel:${esc(cust.phone.replace(/\s/g, ''))}`;
+  return `<div class="hero-card">
+    <div class="hero-left">
+      <div class="hero-avatar" style="background-color:${esc(cust.avatarHue)}">${esc(cust.initials)}</div>
+      <div class="hero-info">
+        <div class="hero-name-row"><h1 class="hero-name">${esc(cust.name)}</h1><span class="badge ${heroBadge.cls}">${esc(heroBadge.label)}</span></div>
+        <div class="hero-meta-list">
+          <div class="hero-meta">${PIN}${esc(cust.area)}</div>
+          <div class="hero-meta">${PHONE}${esc(cust.phone)}</div>
+          <div class="hero-meta">${esc(cust.id)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <a class="btn-primary" href="${phoneHref}">${PHONE} Call Customer</a>
+      <button class="btn-outline" type="button" disabled title="Customer editing arrives with the backend API"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit Details</button>
+    </div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon-wrap">${REQ_ICON}</div><div><div class="kpi-num">${jobs.filter(isActive).length}</div><div class="kpi-label">Active Requests</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon-wrap">${USER_ICON}</div><div><div class="kpi-num">${cust.applianceCount}</div><div class="kpi-label">Appliances</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon-wrap">${REQ_ICON}</div><div><div class="kpi-num">${cust.totalRequests}</div><div class="kpi-label">Total Requests</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon-wrap teal">${CHECK_ICON}</div><div><div class="kpi-num">${jobs.filter(isDone).length}</div><div class="kpi-label">Completed Repairs</div></div></div>
+  </div>
+  ${active ? activeBanner(active, cust) : `<div class="no-request-banner">${REQ_ICON}<div><div class="no-req-title">No active service request</div><div class="no-req-desc">New requests from this customer will appear here.</div></div></div>`}`;
+}
+
+function activeBanner(active: ApiRequest, cust: CustomerRow): string {
+  const href = `/admin/requests/detail?code=${encodeURIComponent(active.code)}`;
+  return `<div class="active-req-banner">
+    <div class="banner-icon-wrap"><div class="banner-pulse"></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+    <div class="banner-label">Active service request</div><div class="banner-sep"></div>
+    <div class="banner-field"><div class="banner-key">Request No.</div><div class="banner-val tnum">${esc(active.code)}</div></div>
+    <div class="banner-field"><div class="banner-key">Appliance</div><div class="banner-val">${esc(active.appliance.brand)} ${esc(active.appliance.type)}</div></div>
+    <div class="banner-field"><div class="banner-key">Status</div><div class="banner-val"><span class="badge ${badge(active.status)}">${esc(label(active.status))}</span></div></div>
+    <div class="banner-field"><div class="banner-key">Technician</div><div class="banner-val">${esc(active.technician?.name ?? 'Not assigned yet')}</div></div>
+    <div class="banner-field"><div class="banner-key">Area</div><div class="banner-val">${esc(cust.area)}</div></div>
+    <a class="btn-open-req" href="${href}">Open Request <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg></a>
+  </div>`;
+}
+
+function infoHtml(cust: CustomerRow): string {
+  return `<div class="section-card"><div class="section-head"><div class="section-head-left">${USER_ICON_S}<h2 class="section-title">Customer Information</h2></div></div>
+    <div class="info-cols"><div class="info-col">
+      <div class="info-field"><div class="info-label">Full name</div><div class="info-val">${esc(cust.name)}</div></div>
+      <div class="info-field"><div class="info-label">Phone</div><div class="info-val">${esc(cust.phone)}</div></div>
+    </div><div class="info-col">
+      <div class="info-field"><div class="info-label">Area</div><div class="info-val">${esc(cust.area)}</div></div>
+      <div class="info-field"><div class="info-label">Customer ID</div><div class="info-val">${esc(cust.id)}</div></div>
+    </div></div></div>`;
+}
+const USER_ICON_S = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+
+function appliancesHtml(jobs: ApiRequest[]): string {
+  const byType = new Map<string, ApiRequest>();
+  for (const r of jobs) if (!byType.has(r.appliance.type)) byType.set(r.appliance.type, r); // jobs pre-sorted newest-first
+  const cards = [...byType.values()].map((r) => `<div class="appliance-card">
+    <div class="appliance-header"><div class="appliance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="18" rx="2" ry="2"></rect><line x1="2" y1="9" x2="22" y2="9"></line><path d="M12 3v6"></path></svg></div><div class="appliance-name">${esc(r.appliance.type)}</div></div>
+    <div class="appliance-details">
+      <div class="appl-detail"><span class="appl-key">Brand</span><span class="appl-val">${esc(r.appliance.brand)}</span></div>
+      <div class="appl-detail"><span class="appl-key">Model</span><span class="appl-val">${esc(r.appliance.model || 'Not provided')}</span></div>
+      <div class="appl-detail"><span class="appl-key">Latest service</span><span class="appl-val">${esc(ago(r.updatedAt))}</span></div>
+      <div class="appl-detail"><span class="appl-key">Latest outcome</span><span class="badge ${badge(r.status)}">${esc(label(r.status))}</span></div>
+    </div></div>`).join('');
+  const body = byType.size === 0
+    ? '<div class="appliance-empty">No appliance records yet — appliances appear after the first request.</div>'
+    : cards;
+  return `<div class="section-card"><div class="section-head"><div class="section-head-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg><div><h2 class="section-title">Appliances</h2><div class="section-desc">Appliances seen on this customer's requests, newest outcome each.</div></div></div></div><div class="appliance-grid">${body}</div></div>`;
+}
+
+function historyHtml(jobs: ApiRequest[]): string {
+  if (jobs.length === 0) {
+    return `<div class="section-card" id="service-history"><div class="section-head"><div class="section-head-left">${REQ_ICON_S}<h2 class="section-title">Service History</h2></div></div>
+      <div class="sh-empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><div class="sh-empty-text">No service history yet.</div><div class="sh-empty-desc">Requests from this customer will appear here.</div></div></div>`;
+  }
+  const groups = ['All', ...new Set(jobs.map((r) => label(r.status)))];
+  const tabs = groups.map((g, i) => `<button class="sh-tab ${i === 0 ? 'active' : ''}" type="button" data-sh="${esc(g)}">${esc(g)}</button>`).join('');
+  const rows = jobs.map((r) => {
+    const href = `/admin/requests/detail?code=${encodeURIComponent(r.code)}`;
+    return `<tr class="sh-row" data-sh="${esc(label(r.status))}">
+      <td><div class="req-id tnum">${esc(r.code)}</div></td>
+      <td><div class="cell-text">${esc(`${r.appliance.brand} ${r.appliance.type}`)}</div></td>
+      <td><div class="cell-text">${esc(r.problem)}</div></td>
+      <td><div class="cell-text">${esc(ago(r.updatedAt))}</div></td>
+      <td><div class="cell-text">${esc(r.technician?.name ?? 'Not assigned')}</div></td>
+      <td><span class="badge ${badge(r.status)}">${esc(label(r.status))}</span></td>
+      <td><div class="action-cell"><a class="btn-link-sm" href="${href}">Open Request</a></div></td>
+    </tr>`;
+  }).join('');
+  return `<div class="section-card" id="service-history"><div class="section-head"><div class="section-head-left">${REQ_ICON_S}<h2 class="section-title">Service History</h2></div></div>
+    <div class="sh-tabs">${tabs}</div>
+    <div class="sh-table-wrap"><table class="sh-table"><thead><tr><th>Request</th><th>Appliance</th><th>Problem</th><th>Date</th><th>Technician</th><th>Outcome</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+const REQ_ICON_S = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+
+function quickActions(cust: CustomerRow, active: ApiRequest | null): string {
+  const phoneHref = `tel:${esc(cust.phone.replace(/\s/g, ''))}`;
+  const openActive = active
+    ? `<a class="qa-item" href="/admin/requests/detail?code=${encodeURIComponent(active.code)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> View Active Request</a>`
+    : '';
+  return `<div class="side-card"><div class="side-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><h3 class="side-card-title">Quick Actions</h3></div>
+    <div class="quick-actions-list">
+      <a class="qa-item" href="${phoneHref}">${PHONE_S} Call Customer</a>
+      <button class="qa-item" type="button" disabled title="Manual request entry arrives with the backend API"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Add Request</button>
+      ${openActive}
+    </div></div>`;
+}
+const PHONE_S = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+
+function activityHtml(jobs: ApiRequest[]): string {
+  const items = jobs.slice(0, 6).map((r) => ({ text: `${r.appliance.brand} ${r.appliance.type} — ${label(r.status)}`, time: ago(r.updatedAt) }));
+  const body = items.length === 0
+    ? '<div class="empty-notes">No recent activity yet.</div>'
+    : items.map((a, i) => `<div class="act-row"><div class="act-node-wrap"><div class="act-node"></div>${i < items.length - 1 ? '<div class="act-line"></div>' : ''}</div><div class="act-body"><div class="act-text">${esc(a.text)}</div><div class="act-time">${esc(a.time)}</div></div></div>`).join('');
+  return `<div class="side-card"><div class="side-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><h3 class="side-card-title">Recent Activity</h3></div><div class="activity-timeline">${body}</div></div>`;
+}
+
+function billingHtml(jobs: ApiRequest[]): string {
+  let recorded = 0;
+  let paid = 0;
+  let pending = 0;
+  for (const r of jobs) {
+    const p = r.price;
+    if (!p) continue;
+    recorded += p.amount;
+    if (p.paymentStatus === 'Paid') paid += p.amount;
+    else pending += p.amount;
+  }
+  const priced = jobs.find((r) => r.price);
+  const invoice = priced?.price?.invoiceNumber ?? '—';
+  const payStatus = priced?.price?.paymentStatus ?? null;
+  return `<div class="side-card"><div class="side-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg><h3 class="side-card-title">Billing</h3></div>
+    <div class="billing-stats">
+      <div class="billing-stat"><div class="billing-stat-label">Quoted</div><div class="billing-stat-num">${npr(recorded)}</div></div>
+      <div class="billing-stat"><div class="billing-stat-label">Paid</div><div class="billing-stat-num">${npr(paid)}</div></div>
+      <div class="billing-stat"><div class="billing-stat-label">Pending</div><div class="billing-stat-num">${npr(pending)}</div></div>
+    </div>
+    ${payStatus ? `<div class="billing-invoice-row"><div><div class="billing-inv-label">Latest Invoice</div><div class="billing-inv-val tnum">${esc(invoice)}</div></div><div><div class="billing-inv-label">Payment status</div><span class="badge ${payStatus === 'Paid' ? 'badge-done' : 'badge-warn'}">${esc(payStatus)}</span></div></div>` : ''}
+  </div>`;
+}
+
+function setStatus(text: string, crumb: string): void {
+  // Business: A not-found/error/no-selection state still shows the breadcrumb, so clear the "…" placeholder.
+  statusEl.textContent = text;
+  statusEl.style.display = '';
+  if (crumbEl) crumbEl.textContent = crumb;
+  root.hidden = true;
+}
+
+function wireHistoryTabs(): void {
+  document.querySelectorAll('.sh-tab').forEach((tab) => tab.addEventListener('click', () => {
+    const group = tab.getAttribute('data-sh');
+    document.querySelectorAll('.sh-tab').forEach((t) => t.classList.toggle('active', t.getAttribute('data-sh') === group));
+    document.querySelectorAll('.sh-row').forEach((row) => {
+      const g = row.getAttribute('data-sh');
+      (row as HTMLElement).style.display = (group === 'All' || g === group) ? '' : 'none';
+    });
+  }));
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) { setStatus('No customer selected.', '—'); return; }
+  try {
+    const [customers, requests] = await Promise.all([
+      staff.listCustomers(),
+      staff.listAdminRequests(),
+    ]);
+    const cust = deriveDirectory(customers, requests).find((c) => c.id === id);
+    if (!cust) { setStatus('Customer not found.', id); return; }
+    const jobs = requests
+      .filter((r) => r.customerId === id)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const active = jobs.find(isActive) ?? null;
+
+    if (crumbEl) crumbEl.textContent = cust.name;
+    document.title = `${cust.name} - Customers - Sudhar Lab`;
+    headEl!.innerHTML = headHtml(cust, jobs, active);
+    mainEl!.innerHTML = `${infoHtml(cust)}${appliancesHtml(jobs)}${historyHtml(jobs)}`;
+    sideEl!.innerHTML = `${quickActions(cust, active)}${activityHtml(jobs)}${billingHtml(jobs)}`;
+    statusEl.style.display = 'none';
+    root.hidden = false;
+    wireHistoryTabs();
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return; // authorizedFetch already redirected
+    setStatus('Could not load this customer. Please refresh.', '—');
+  }
+}
+
+if (session) void load();
+</script>
+
+<style is:global>
+  .rq-status-cell { padding: 2rem; text-align: center; color: var(--graphite-lt); font-size: 0.875rem; }
+
+  /* HERO */
+  .hero-card { background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .hero-left { display: flex; align-items: center; gap: 1.25rem; }
+  .hero-avatar { width: 72px; height: 72px; border-radius: 50%; color: var(--pure-white); font-family: var(--font-h); font-size: 1.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hero-name-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .hero-name { font-family: var(--font-h); font-size: 1.75rem; font-weight: 700; color: var(--navy); }
+  .hero-meta-list { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .hero-meta { display: flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; color: var(--graphite-mid); }
+  .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn-primary { display: flex; align-items: center; gap: 0.5rem; background: var(--teal); color: var(--pure-white); border: none; padding: 0.625rem 1.25rem; border-radius: 6px; font-family: var(--font-b); font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn-primary:hover { background: var(--teal-hover); }
+  .btn-outline { display: flex; align-items: center; gap: 0.5rem; background: var(--pure-white); color: var(--navy); border: 1px solid var(--border); padding: 0.625rem 1.25rem; border-radius: 6px; font-family: var(--font-b); font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn-outline:hover { background: var(--bg-off); }
+  .btn-primary:disabled, .btn-outline:disabled { opacity: 0.65; cursor: not-allowed; }
+
+  /* KPI */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  .kpi-card { background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; }
+  .kpi-icon-wrap { width: 44px; height: 44px; border-radius: 8px; background: var(--bg-off); color: var(--navy); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .kpi-icon-wrap.teal { background: var(--teal-light); color: var(--teal); }
+  .kpi-num { font-family: var(--font-h); font-size: 1.5rem; font-weight: 700; color: var(--navy); }
+  .kpi-label { font-size: 0.8125rem; color: var(--graphite-mid); font-weight: 500; }
+
+  /* ACTIVE REQUEST BANNER */
+  .active-req-banner { background: linear-gradient(135deg, #E9F6F7 0%, #F0FAFB 100%); border: 1px solid rgba(12,124,130,0.25); border-radius: 10px; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .banner-icon-wrap { position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--teal); border-radius: 50%; color: var(--pure-white); flex-shrink: 0; }
+  .banner-pulse { position: absolute; width: 100%; height: 100%; border-radius: 50%; background: var(--teal); opacity: 0.3; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+  .banner-label { font-weight: 700; color: var(--navy); white-space: nowrap; }
+  .banner-sep { width: 1px; height: 32px; background: rgba(12,124,130,0.2); }
+  .banner-field { display: flex; flex-direction: column; gap: 0.125rem; }
+  .banner-key { font-size: 0.75rem; color: var(--graphite-lt); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .banner-val { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+  .btn-open-req { display: flex; align-items: center; gap: 0.375rem; background: var(--teal); color: var(--pure-white); border: none; padding: 0.5rem 1rem; border-radius: 6px; font-family: var(--font-b); font-size: 0.8125rem; font-weight: 600; cursor: pointer; margin-left: auto; white-space: nowrap; text-decoration: none; }
+  .btn-open-req:hover { background: var(--teal-hover); }
+  .no-request-banner { display: flex; align-items: center; gap: 1rem; background: var(--bg-off); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.5rem; color: var(--graphite-mid); margin-bottom: 1.5rem; }
+  .no-req-title { font-weight: 600; color: var(--navy); font-size: 0.9375rem; }
+  .no-req-desc { font-size: 0.8125rem; color: var(--graphite-lt); }
+
+  /* MAIN CONTENT GRID */
+  .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; align-items: flex-start; }
+  .main-col { display: flex; flex-direction: column; gap: 1.5rem; }
+  .side-col { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  /* SECTION CARDS */
+  .section-card { background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .section-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .section-head-left { display: flex; align-items: center; gap: 0.75rem; color: var(--navy); }
+  .section-head-left > svg { color: var(--teal); flex-shrink: 0; }
+  .section-head-right { display: flex; align-items: center; gap: 1rem; }
+  .section-title { font-family: var(--font-h); font-size: 1rem; font-weight: 700; color: var(--navy); }
+  .section-desc { font-size: 0.8125rem; color: var(--graphite-mid); margin-top: 0.125rem; }
+
+  /* CUSTOMER INFO GRID */
+  .info-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem 2rem; padding: 1.5rem; }
+  .info-field { margin-bottom: 1.25rem; }
+  .info-field:last-child { margin-bottom: 0; }
+  .info-label { font-size: 0.75rem; color: var(--graphite-mid); font-weight: 500; margin-bottom: 0.25rem; }
+  .info-val { font-size: 0.9375rem; color: var(--navy); font-weight: 500; }
+
+  /* APPLIANCES */
+  .appliance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, minmax(0, 1fr))); gap: 1rem; padding: 1.5rem; }
+  .appliance-card { border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .appliance-header { display: flex; align-items: center; gap: 0.75rem; }
+  .appliance-icon { width: 36px; height: 36px; border-radius: 6px; background: var(--bg-off); color: var(--navy); display: flex; align-items: center; justify-content: center; }
+  .appliance-name { font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
+  .appliance-details { display: flex; flex-direction: column; gap: 0.625rem; }
+  .appl-detail { display: flex; flex-direction: column; gap: 0.125rem; }
+  .appl-key { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--graphite-lt); font-weight: 600; }
+  .appl-val { font-size: 0.8125rem; color: var(--navy); font-weight: 500; }
+  .appliance-empty { grid-column: 1 / -1; font-size: 0.875rem; color: var(--graphite-lt); padding: 0.5rem 0; }
+
+  /* SERVICE HISTORY */
+  .sh-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); overflow-x: auto; padding: 0 1.5rem; }
+  .sh-tab { padding: 0.875rem 0.875rem; background: none; border: none; border-bottom: 2px solid transparent; color: var(--graphite-mid); font-family: var(--font-b); font-size: 0.8125rem; font-weight: 500; cursor: pointer; white-space: nowrap; margin-bottom: -1px; }
+  .sh-tab.active { color: var(--teal); border-bottom-color: var(--teal); font-weight: 700; }
+  .sh-table-wrap { overflow-x: auto; }
+  .sh-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  .sh-table thead th { padding: 0.75rem 1.5rem; text-align: left; font-size: 0.75rem; font-weight: 700; color: var(--navy); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em; }
+  .sh-row { border-bottom: 1px solid var(--border); }
+  .sh-row:last-child { border-bottom: none; }
+  .sh-table td { padding: 1rem 1.5rem; vertical-align: middle; }
+  .req-id { font-size: 0.8125rem; font-weight: 700; color: var(--teal); }
+  .cell-text { font-size: 0.8125rem; color: var(--graphite-mid); }
+  .action-cell { display: flex; align-items: center; gap: 0.5rem; }
+  .btn-link-sm { background: none; border: none; color: var(--teal); font-family: var(--font-b); font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none; padding: 0; }
+  .btn-link-sm:hover { text-decoration: underline; }
+  .sh-empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; margin: 1.5rem; padding: 2rem 1.5rem; background: var(--bg-off); border-radius: 8px; color: var(--graphite-lt); }
+  .sh-empty-text { font-size: 0.9375rem; font-weight: 600; color: var(--navy); }
+  .sh-empty-desc { font-size: 0.8125rem; }
+
+  /* SIDE CARDS */
+  .side-card { background: var(--pure-white); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+  .side-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 1.25rem; color: var(--navy); }
+  .side-card-header > svg { flex-shrink: 0; margin-top: 2px; color: var(--teal); }
+  .side-card-title { font-family: var(--font-h); font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
+
+  /* QUICK ACTIONS */
+  .quick-actions-list { display: flex; flex-direction: column; gap: 0.25rem; }
+  .qa-item { display: flex; align-items: center; gap: 0.75rem; background: none; border: none; padding: 0.625rem 0.5rem; border-radius: 6px; font-family: var(--font-b); font-size: 0.875rem; font-weight: 500; color: var(--navy); cursor: pointer; text-align: left; text-decoration: none; width: 100%; transition: background-color 0.15s; }
+  .qa-item:hover { background: var(--bg-off); }
+  .qa-item:disabled { opacity: 0.65; cursor: not-allowed; }
+  .qa-item svg { color: var(--teal); flex-shrink: 0; }
+
+  /* ACTIVITY */
+  .activity-timeline { display: flex; flex-direction: column; }
+  .act-row { display: flex; gap: 0.875rem; position: relative; padding-bottom: 1.25rem; }
+  .act-row:last-child { padding-bottom: 0; }
+  .act-node-wrap { display: flex; flex-direction: column; align-items: center; width: 10px; }
+  .act-node { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); flex-shrink: 0; z-index: 2; }
+  .act-line { flex: 1; width: 2px; background: var(--border); margin-top: 4px; }
+  .act-text { font-size: 0.8125rem; font-weight: 500; color: var(--navy); margin-bottom: 0.125rem; line-height: 1.4; }
+  .act-time { font-size: 0.75rem; color: var(--graphite-lt); }
+
+  /* BILLING */
+  .billing-stats { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; }
+  .billing-stat-label { font-size: 0.75rem; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .billing-stat-num { font-family: var(--font-h); font-size: 1.25rem; font-weight: 700; color: var(--navy); }
+  .billing-invoice-row { display: flex; gap: 1.5rem; }
+  .billing-inv-label { font-size: 0.75rem; color: var(--graphite-mid); margin-bottom: 0.25rem; }
+  .billing-inv-val { font-size: 0.875rem; font-weight: 600; color: var(--navy); }
+
+  @media (max-width: 1100px) {
+    .content-grid { grid-template-columns: minmax(0, 1fr); }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767px) {
+    .main-col, .side-col { min-width: 0; }
+    .hero-actions { width: 100%; }
+    .hero-actions .btn-primary, .hero-actions .btn-outline { flex: 1 1 145px; justify-content: center; }
+    .hero-meta-list { gap: 0.5rem 1rem; }
+    .active-req-banner, .no-request-banner { align-items: flex-start; gap: 0.875rem; padding: 1rem; }
+    .banner-sep { display: none; }
+    .btn-open-req { width: 100%; justify-content: center; margin-left: 0; }
+    .section-head { padding: 1rem; gap: 0.75rem; }
+    .info-cols { grid-template-columns: 1fr; gap: 0; padding: 1rem; }
+    .appliance-grid { grid-template-columns: 1fr; padding: 1rem; }
+    .sh-tabs { padding: 0 0.75rem; }
+    .sh-empty-state { margin: 1rem; padding: 1.5rem 1rem; }
+    .side-card { padding: 1rem; }
+  }
+  @media (max-width: 420px) {
+    .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+    .hero-actions .btn-primary, .hero-actions .btn-outline { flex-basis: 100%; }
+    .billing-stats, .billing-invoice-row { gap: 1rem; flex-wrap: wrap; }
+  }
+</style>

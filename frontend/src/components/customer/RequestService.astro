@@ -245,6 +245,14 @@ import { SITE_PHONE_HREF, SITE_WHATSAPP_HREF } from '../../lib/site';
               <input type="text" id="f-notes" name="notes" placeholder="Anything else that might help our team" />
             </div>
 
+            <!-- Business: An honest urgency flag the customer chooses; it is stored, never inferred. -->
+            <div class="field field-urgent">
+              <label class="urgent-row">
+                <input type="checkbox" id="f-urgent" name="urgent" />
+                <span>This is urgent — please prioritise the visit</span>
+              </label>
+            </div>
+
             <div class="summary-box" id="sumBox">
               <div class="summary-title">Your Request Summary</div>
               <div class="summary-row"><span>Appliance</span><span id="sum-app">—</span></div>

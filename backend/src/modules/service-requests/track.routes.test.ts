@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../../app';
 import { InMemoryRequestRepository } from './request.repository';
 import { InMemoryCustomerRepository } from '../customers/customer.repository';
+import { InMemoryTechnicianRepository } from '../technicians/technician.repository';
+import { seedTechnicians } from '../technicians/fixtures';
+import { ADMIN_TOKEN, authTestDeps } from '../authentication/testing';
 import { seedRequests } from './fixtures';
 import { serviceRequestRecordSchema, trackedRequestSchema } from './request.schema';
 
@@ -15,8 +18,10 @@ function makeApp() {
   return createApp({
     requests: new InMemoryRequestRepository(seedRequests()),
     customers: new InMemoryCustomerRepository(),
+    technicians: new InMemoryTechnicianRepository(seedTechnicians()),
     notifier: { send: async () => {} },
     clock: () => CLOCK,
+    ...authTestDeps(),
   });
 }
 
@@ -55,7 +60,10 @@ describe('GET /api/track (customer-safe)', () => {
   it('reflects a status the admin just advanced', async () => {
     const app = makeApp();
     const created = await submit(app);
-    await app.request(`/api/requests/${created.code}/status`, post({ to: 'UNDER_REVIEW' }));
+    await app.request(`/api/requests/${created.code}/status`, {
+      ...post({ to: 'UNDER_REVIEW' }),
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
 
     const view = trackedRequestSchema.parse(await (await app.request(trackUrl('9812345678', created.code))).json());
     expect(view.status).toBe('UNDER_REVIEW');

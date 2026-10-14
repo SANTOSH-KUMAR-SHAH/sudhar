@@ -35,6 +35,9 @@ export interface ServiceRequestRecord {
   fault?: string;
   price?: PriceRecord;
   visitDate?: string;
+  // Business: A customer-flagged urgency is captured at submission and never changed by the workflow;
+  // Business: it is absent (not `false`) when the customer raised an ordinary job, so we never store noise.
+  urgent?: boolean;
   createdAt: string;
   updatedAt: string;
   timeline: StatusEvent[];
@@ -47,6 +50,7 @@ export interface NewServiceRequestInput {
   appliance: { type: string; brand: string; model?: string };
   problem: string;
   visitDate?: string;
+  urgent?: boolean;
   at: string;
 }
 
@@ -76,6 +80,7 @@ export class ServiceRequest {
       appliance: input.appliance,
       problem: input.problem,
       visitDate: input.visitDate,
+      ...(input.urgent ? { urgent: true } : {}),
       createdAt: input.at,
       updatedAt: input.at,
       timeline: [event],

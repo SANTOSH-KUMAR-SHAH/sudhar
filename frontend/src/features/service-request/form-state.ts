@@ -189,6 +189,8 @@ export function submitRequest(): void {
     area: getEl<HTMLInputElement>('f-area')?.value || '',
     visitDate: getEl<HTMLInputElement>('f-date')?.value || '',
     visitWindow: document.querySelector('.time-row')?.getAttribute('data-chosen-time') || '',
+    // Business: The only urgency we know is the one the customer ticks — sent as a real boolean, not guessed.
+    urgent: getEl<HTMLInputElement>('f-urgent')?.checked ?? false,
     notes: getEl<HTMLTextAreaElement>('f-notes')?.value || '',
     attachments: files
       ? Array.from(files).map((f) => ({ name: f.name, size: f.size, type: f.type }))

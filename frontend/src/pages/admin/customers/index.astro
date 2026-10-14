@@ -1,30 +1,10 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
-import {
-  getCustomerSummaries,
-  isRequestActive,
-  isRequestCancelled,
-  isRequestDone,
-  requestsForCustomer,
-  statusBadgeClass,
-  statusLabel,
-} from '../../../lib/demo-data';
-
-// Business: The directory answers "who have we served" from the same store the detail
-// pages read — request counts and last outcomes are joined, never retyped.
-// Technical: Quick-filter membership is stamped per row (data-filters) at render time,
-// so the client script never re-lists statuses and can't drift from the data layer.
-const customers = getCustomerSummaries();
-const filtersFor = (id: string) => {
-  const reqs = requestsForCustomer(id);
-  return [
-    reqs.some((r) => isRequestActive(r.status)) && 'active',
-    reqs.some((r) => isRequestDone(r.status)) && 'completed',
-    reqs.some((r) => isRequestCancelled(r.status)) && 'cancelled',
-  ]
-    .filter(Boolean)
-    .join(' ');
-};
+// Business: The directory is now LIVE — after sign-in we fetch customers and the request queue and JOIN
+// Business: each customer's request count / appliances / last outcome in the browser. Static build means
+// Business: nothing is baked; the shell renders empty and fills client-side. Search + quick filters read
+// Business: data attributes stamped per row, so the script never re-learns what a status key is.
+// Technical: The join lives in features/staff/directory.ts (pure). This page only guards the session and paints.
 ---
 
 <AdminDashboardLayout title="Customers - Sudhar Lab Admin" activeNav="customers">
@@ -48,7 +28,7 @@ const filtersFor = (id: string) => {
       <input type="text" id="csSearch" class="cs-search" placeholder="Search by name, phone number or area…" autofocus />
     </div>
     <div class="cs-search-meta">
-      <span class="text-sm text-muted" id="csCount">{customers.length} customer records</span>
+      <span class="text-sm text-muted" id="csCount">Loading…</span>
       <div class="cs-quick-filters">
         <button class="qf-btn active" data-qf="all" type="button">All</button>
         <button class="qf-btn" data-qf="active" type="button">Active requests</button>
@@ -58,157 +38,154 @@ const filtersFor = (id: string) => {
     </div>
   </div>
 
-  <!-- CUSTOMER LIST -->
-  <div class="cs-list card">
-    {customers.map(cust => (
-      <a class="cs-row" href={`/admin/customers/${cust.id}`} data-filters={filtersFor(cust.id)} data-text={`${cust.name} ${cust.phone} ${cust.area}`.toLowerCase()}>
-
-        <!-- Left: Identity -->
-        <div class="cs-identity">
-          <div class="cs-avatar" style={`background: ${cust.avatarHue}`}>{cust.id}</div>
-          <div>
-            <div class="cs-name">{cust.name}</div>
-            <div class="cs-meta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-              {cust.phone}
-              <span class="dot-sep">·</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>
-              {cust.area}
-            </div>
-          </div>
-        </div>
-
-        <!-- Middle: Stats -->
-        <div class="cs-stats">
-          <div class="cs-stat">
-            <div class="cs-stat-num">{cust.applianceCount}</div>
-            <div class="cs-stat-label">Appliances</div>
-          </div>
-          <div class="cs-stat">
-            <div class="cs-stat-num">{cust.totalRequests}</div>
-            <div class="cs-stat-label">Requests</div>
-          </div>
-        </div>
-
-        <!-- Right: Last status + action -->
-        <div class="cs-right">
-          <div class="cs-last">
-            <span class={`badge ${statusBadgeClass(cust.lastOutcomeStatus)}`}>{statusLabel(cust.lastOutcomeStatus)}</span>
-            <div class="cs-last-date">{cust.lastDate}</div>
-          </div>
-          <span class="btn btn-secondary btn-sm">
-            Open Record
-          </span>
-        </div>
-
-      </a>
-    ))}
-    <div class="cs-empty" id="csEmpty" hidden>No customers match this search.</div>
+  <!-- CUSTOMER LIST (filled live by the script below) -->
+  <div class="cs-list card" id="csList">
+    <div class="cs-status">Loading customers…</div>
   </div>
 
 </AdminDashboardLayout>
 
-<script is:inline>
-// Business: Search text and quick filters combine, like the requests queue works.
-// Technical: Row membership lives in data-filters/data-text (stamped at render);
-// this script only reads attributes — it never learns what a status key is.
+<script>
+// Business: Only a signed-in admin sees this directory, and what they see is the live Worker truth joined
+// Business: in the browser — never a cached demo. Search + quick filters then narrow the same live rows.
+// Technical: Astro bundles this as a module. Row membership (searchable text + which filters apply) is
+// stamped at render into data-text / data-filters, so filtering reads attributes and cannot drift.
+import { ApiError, staff } from '../../../lib/api-client';
+import { requireSession } from '../../../lib/session';
+import { getBadgeClass, SERVICE_STATUS_LABEL, type ServiceStatusKey } from '../../../lib/service-status';
+import { deriveDirectory, type CustomerRow } from '../../../features/staff/directory';
+
+const session = requireSession('admin');
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+const PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>';
+
+const label = (status: string): string => SERVICE_STATUS_LABEL[status as ServiceStatusKey] ?? status;
+const badge = (status: string): string => getBadgeClass(status as ServiceStatusKey);
+
+function rowHtml(cust: CustomerRow): string {
+  const href = `/admin/customers/detail?id=${encodeURIComponent(cust.id)}`;
+  const last = cust.lastOutcomeStatus
+    ? `<span class="badge ${badge(cust.lastOutcomeStatus)}">${esc(label(cust.lastOutcomeStatus))}</span><div class="cs-last-date">${esc(cust.lastDate)}</div>`
+    : '<span class="badge badge-neutral">No requests</span>';
+  return `<a class="cs-row" href="${href}" data-filters="${esc(cust.filters)}" data-text="${esc(`${cust.name} ${cust.phone} ${cust.area}`.toLowerCase())}">
+    <div class="cs-identity">
+      <div class="cs-avatar" style="background:${esc(cust.avatarHue)}">${esc(cust.initials)}</div>
+      <div>
+        <div class="cs-name">${esc(cust.name)}</div>
+        <div class="cs-meta">${PHONE}${esc(cust.phone)}<span class="dot-sep">·</span>${PIN}${esc(cust.area)}</div>
+      </div>
+    </div>
+    <div class="cs-stats">
+      <div class="cs-stat"><div class="cs-stat-num">${cust.applianceCount}</div><div class="cs-stat-label">Appliances</div></div>
+      <div class="cs-stat"><div class="cs-stat-num">${cust.totalRequests}</div><div class="cs-stat-label">Requests</div></div>
+    </div>
+    <div class="cs-right">
+      <div class="cs-last">${last}</div>
+      <span class="btn btn-secondary btn-sm">Open Record</span>
+    </div>
+  </a>`;
+}
+
 let csFilter = 'all';
-function applyCustomerFilters() {
-  const input = document.getElementById('csSearch');
-  const q = (input.value || '').trim().toLowerCase();
-  let visible = 0;
+function applyCustomerFilters(): void {
+  const input = document.getElementById('csSearch') as HTMLInputElement | null;
+  const q = (input?.value || '').trim().toLowerCase();
   const rows = document.querySelectorAll('.cs-row');
+  let visible = 0;
   rows.forEach((row) => {
     const kinds = (row.getAttribute('data-filters') || '').split(' ');
     const text = row.getAttribute('data-text') || '';
     const show = (csFilter === 'all' || kinds.includes(csFilter)) && (!q || text.includes(q));
-    row.style.display = show ? '' : 'none';
+    (row as HTMLElement).style.display = show ? '' : 'none';
     if (show) visible++;
   });
   const count = document.getElementById('csCount');
-  count.textContent = (csFilter === 'all' && !q)
-    ? rows.length + ' customer records'
-    : visible + ' of ' + rows.length + ' customer records';
-  document.getElementById('csEmpty').hidden = visible > 0;
+  if (count) {
+    count.textContent = csFilter === 'all' && !q
+      ? `${rows.length} customer records`
+      : `${visible} of ${rows.length} customer records`;
+  }
 }
-function setCustomerFilter(kind) {
+function setCustomerFilter(kind: string): void {
   csFilter = kind;
   document.querySelectorAll('.qf-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-qf') === kind));
   applyCustomerFilters();
 }
-document.getElementById('csSearch').addEventListener('input', applyCustomerFilters);
-document.querySelectorAll('.qf-btn').forEach((b) => b.addEventListener('click', () => setCustomerFilter(b.getAttribute('data-qf'))));
+
+function setStatus(text: string): void {
+  const list = document.getElementById('csList');
+  if (list) list.innerHTML = `<div class="cs-status">${esc(text)}</div>`;
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  try {
+    const [customers, requests] = await Promise.all([
+      staff.listCustomers(),
+      staff.listAdminRequests(),
+    ]);
+    const rows = deriveDirectory(customers, requests);
+    const list = document.getElementById('csList');
+    if (!list) return;
+    if (rows.length === 0) { setStatus('No customers yet.'); return; }
+    list.innerHTML = rows.map(rowHtml).join('') + '<div class="cs-empty" id="csEmpty" hidden>No customers match this search.</div>';
+
+    const search = document.getElementById('csSearch') as HTMLInputElement | null;
+    search?.addEventListener('input', () => {
+      applyCustomerFilters();
+      const empty = document.getElementById('csEmpty');
+      const anyVisible = [...document.querySelectorAll('.cs-row')].some((r) => (r as HTMLElement).style.display !== 'none');
+      if (empty) empty.hidden = anyVisible;
+    });
+    document.querySelectorAll('.qf-btn').forEach((b) => b.addEventListener('click', () => {
+      setCustomerFilter(b.getAttribute('data-qf') || 'all');
+      const anyVisible = [...document.querySelectorAll('.cs-row')].some((r) => (r as HTMLElement).style.display !== 'none');
+      const empty = document.getElementById('csEmpty');
+      if (empty) empty.hidden = anyVisible;
+    }));
+    applyCustomerFilters();
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return; // authorizedFetch already redirected
+    setStatus('Could not load customers. Please refresh.');
+  }
+}
+
+if (session) void load();
 </script>
 
 <style is:global>
-  .cs-header {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin-bottom: 1.25rem;
-  }
+  .cs-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; }
   .cs-title { font-family: var(--font-h); font-size: 1.75rem; font-weight: 800; color: var(--navy); }
   .cs-sub { color: var(--graphite-lt); font-size: 0.875rem; margin-top: 0.25rem; }
 
-  /* Search card */
-  .cs-search-card {
-    margin-bottom: 1.25rem;
-    display: flex; flex-direction: column; gap: 0.875rem;
-  }
-  .cs-search-wrap {
-    display: flex; align-items: center; gap: 0.75rem;
-  }
+  .cs-search-card { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.875rem; }
+  .cs-search-wrap { display: flex; align-items: center; gap: 0.75rem; }
   .cs-search-wrap svg { color: var(--graphite-lt); flex-shrink: 0; }
-  .cs-search {
-    flex: 1; border: none; outline: none;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-family: var(--font-b); font-size: 1.0625rem;
-    color: var(--navy); background: transparent;
-  }
+  .cs-search { flex: 1; border: none; outline: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-b); font-size: 1.0625rem; color: var(--navy); background: transparent; }
   .cs-search::placeholder { color: var(--graphite-lt); }
 
-  .cs-search-meta {
-    display: flex; align-items: center; justify-content: space-between;
-    padding-top: 0.75rem; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem;
-  }
+  .cs-search-meta { display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
   .cs-quick-filters { display: flex; gap: 0.375rem; }
-  .qf-btn {
-    padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
-    background: var(--bg); border: 1px solid var(--border); color: var(--graphite-mid);
-    cursor: pointer; transition: all 0.15s;
-  }
+  .qf-btn { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: var(--bg); border: 1px solid var(--border); color: var(--graphite-mid); cursor: pointer; transition: all 0.15s; }
   .qf-btn:hover { border-color: var(--teal); color: var(--teal); }
   .qf-btn.active { background: var(--teal-light); color: var(--teal); border-color: rgba(12,124,130,0.3); }
 
-  /* Customer list */
   .cs-list { overflow: hidden; }
-  /* Business: the whole row opens the record — a real anchor, keyboard focusable. */
-  .cs-row {
-    display: flex; align-items: center; gap: 1.25rem;
-    padding: 1.125rem 1.5rem;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer; transition: background 0.12s;
-    color: inherit; text-decoration: none;
-  }
+  .cs-row { display: flex; align-items: center; gap: 1.25rem; padding: 1.125rem 1.5rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; color: inherit; text-decoration: none; }
   .cs-row:last-child { border-bottom: none; }
   .cs-row:hover { background: #FAFBFC; }
-  .cs-empty {
-    padding: 1.25rem 1.5rem;
-    font-size: 0.875rem;
-    color: var(--graphite-lt);
-  }
+  .cs-empty, .cs-status { padding: 1.25rem 1.5rem; font-size: 0.875rem; color: var(--graphite-lt); }
 
   .cs-identity { display: flex; align-items: center; gap: 0.875rem; flex: 1; min-width: 0; }
-  .cs-avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    color: #fff; font-family: var(--font-h); font-size: 0.875rem; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
+  .cs-avatar { width: 40px; height: 40px; border-radius: 50%; color: #fff; font-family: var(--font-h); font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .cs-name { font-size: 0.9375rem; font-weight: 700; color: var(--navy); }
-  .cs-meta {
-    display: flex; align-items: center; gap: 0.375rem;
-    font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem;
-  }
+  .cs-meta { display: flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.125rem; }
   .dot-sep { color: var(--border); }
 
   .cs-stats { display: flex; gap: 1.5rem; flex-shrink: 0; }
@@ -216,42 +193,21 @@ document.querySelectorAll('.qf-btn').forEach((b) => b.addEventListener('click', 
   .cs-stat-num { font-family: var(--font-h); font-size: 1.125rem; font-weight: 700; color: var(--navy); }
   .cs-stat-label { font-size: 0.75rem; color: var(--graphite-lt); text-transform: uppercase; letter-spacing: 0.04em; }
 
-  .cs-right {
-    display: flex; align-items: center; gap: 1.25rem; flex-shrink: 0;
-  }
+  .cs-right { display: flex; align-items: center; gap: 1.25rem; flex-shrink: 0; }
   .cs-last { text-align: right; }
   .cs-last-date { font-size: 0.75rem; color: var(--graphite-lt); margin-top: 0.25rem; }
 
   @media (max-width: 767px) {
     .cs-header { flex-direction: column; gap: 0.75rem; }
     .cs-header .btn { align-self: flex-start; }
-    /* Search card — bigger input on mobile */
     .cs-search { font-size: 0.9375rem; }
     .cs-search-meta { flex-direction: column; align-items: flex-start; gap: 0.625rem; }
     .cs-quick-filters { flex-wrap: wrap; gap: 0.375rem; }
-
-    /* Each customer row simplifies on mobile */
-    .cs-row {
-      flex-wrap: wrap;
-      padding: 0.875rem 1rem;
-      gap: 0.75rem;
-    }
-    .cs-identity { flex: 1 1 100%; }  /* full width on top */
-
-    /* Hide stats on smallest screens, keep on larger mobile */
-    @media (max-width: 420px) {
-      .cs-stats { display: none; }
-    }
-
-    /* Right side stacks below identity */
-    .cs-right {
-      flex: 1 1 100%;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .cs-row { flex-wrap: wrap; padding: 0.875rem 1rem; gap: 0.75rem; }
+    .cs-identity { flex: 1 1 100%; }
+    @media (max-width: 420px) { .cs-stats { display: none; } }
+    .cs-right { flex: 1 1 100%; justify-content: space-between; align-items: center; }
     .cs-last { text-align: left; }
-
-    /* Full-width button on mobile */
     .cs-right .btn { flex: 1; justify-content: center; }
   }
 

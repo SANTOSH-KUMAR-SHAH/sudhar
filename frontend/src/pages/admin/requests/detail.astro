@@ -1,0 +1,252 @@
+---
+// Business: The admin's one-job screen, LIVE. Because the site is built statically, an authenticated
+// Business: per-record page cannot be baked at build — so this single page (always emitted) reads the
+// Business: job code from the URL (?code=SL-…), fetches the enriched record (joined customer/technician
+// Business: + the server-derived recommendations) and renders it in the browser. Unknown/other people's
+// Business: codes simply show "not found"; an expired token is bounced to sign-in by the api client.
+// Technical: The derivation lives in features/requests/detail.ts (pure, testable). This file only
+// renders that view-model into the same markup/CSS the demo page used, so the design is unchanged.
+import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
+import '../../../styles/admin-request.css';
+---
+
+<AdminDashboardLayout title="Request - Sudhar Lab Admin" activeNav="requests">
+
+  <div class="breadcrumb-row">
+    <a href="/admin/requests" class="breadcrumb-link">Requests</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    <span class="breadcrumb-current tnum" id="dtCode">#…</span>
+  </div>
+
+  <div class="rq-status-cell" id="dtStatus">Loading this request…</div>
+
+  <div class="request-layout" id="dtRoot" hidden>
+    <div class="main-col" id="dtMain"></div>
+    <aside class="sidebar-col" id="dtSide"></aside>
+  </div>
+
+</AdminDashboardLayout>
+
+<script>
+import { requireSession } from '../../../lib/session';
+import { ApiError, staff } from '../../../lib/api-client';
+import { deriveDetail, type DetailView } from '../../../features/requests/detail';
+
+const session = requireSession('admin');
+
+const statusEl = document.getElementById('dtStatus') as HTMLElement;
+const root = document.getElementById('dtRoot') as HTMLElement;
+const mainEl = document.getElementById('dtMain');
+const sideEl = document.getElementById('dtSide');
+const codeEl = document.getElementById('dtCode');
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>
+  )[c]!);
+}
+
+// Inline icons kept here so the generated markup matches the hand-authored demo one-for-one.
+const PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.13 6.13l.95-.88a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+const CHECK_S = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+const USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+const CAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
+const APPLIANCE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M5 5h2"/></svg>';
+const BOLT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
+const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+const DIAG_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>';
+
+// Business: The next-step button is only a live link when it needs no write we haven't wired here.
+// Technical: tel:/list routes only; anything else renders a genuinely disabled button.
+function nextActionHref(v: DetailView): string | null {
+  const tel = `tel:${v.phone.replace(/\s/g, '')}`;
+  if (v.nextAction === 'Call and confirm' || v.nextAction === 'Follow up with customer') return v.phone ? tel : null;
+  if (v.nextAction === 'Assign technician') return '/admin/technicians';
+  if (v.nextAction === 'View technician' && v.assignedTechnician) return '/admin/technicians';
+  return null;
+}
+
+function heroHtml(v: DetailView): string {
+  return `<div class="req-hero">
+    <div class="hero-left">
+      <div class="hero-top">
+        <h1 class="req-title">${esc(v.title)}</h1>
+        <span class="badge ${esc(v.badgeClass)}">${esc(v.statusLabel)}</span>
+        ${v.urgent ? '<span class="urgent-chip">Urgent</span>' : ''}
+      </div>
+      <div class="hero-meta">
+        <span class="meta-chip">${esc(v.customerName)}</span>
+        <span class="dot-sep">·</span>
+        <span class="meta-chip">${esc(v.address)}</span>
+        <span class="dot-sep">·</span>
+        <span class="meta-chip">Received ${esc(v.receivedAgo)}</span>
+      </div>
+    </div>
+    <div class="hero-actions">
+      ${v.phone ? `<a class="btn-call" href="tel:${esc(v.phone.replace(/\s/g, ''))}">${PHONE} Call customer</a>` : ''}
+    </div>
+  </div>`;
+}
+
+function progressHtml(v: DetailView): string {
+  const steps = v.steps.map((label, i) => {
+    const n = i + 1;
+    const done = n < v.currentStep;
+    const active = n === v.currentStep;
+    const line = i < v.steps.length - 1
+      ? `<div class="step-line ${done ? 'done' : ''}"></div>` : '';
+    return `<div class="progress-step ${done ? 'done' : ''} ${active ? 'active' : ''}">
+      <div class="step-circle">${done ? CHECK : `<span>${n}</span>`}</div>${line}
+      <div class="step-label">${esc(label)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="progress-tracker card">${steps}</div>`;
+}
+
+function row(label: string, value: string): string {
+  return `<div class="detail-row"><div class="detail-label">${esc(label)}</div><div class="detail-value">${esc(value)}</div></div>`;
+}
+
+function detailsHtml(v: DetailView): string {
+  return `<div class="card section-card">
+    <h2 class="section-title">Request details</h2>
+    <div class="details-grid">
+      <div class="details-left">
+        ${row('Appliance type', v.applianceType)}
+        ${row('Brand', v.brand)}
+        ${row('Model', v.model)}
+        ${row('Problem', v.problem)}
+        ${row('Preferred visit', v.preferredVisit)}
+        ${row('Submitted', v.submitted)}
+        ${row('Address', v.address)}
+      </div>
+      <div class="details-right">
+        <div class="detail-label">Problem description</div>
+        <p class="problem-desc">${esc(v.problem)}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function timelineHtml(v: DetailView): string {
+  const events = v.timeline.map((e) => `<div class="timeline-event ${e.done ? 'done' : ''} ${e.current ? 'current' : ''}">
+      <div class="tl-icon">${e.done && !e.current ? CHECK_S : ''}${e.current ? '<div class="tl-dot-inner"></div>' : ''}</div>
+      <div class="tl-body">
+        <div class="tl-title-row"><span class="tl-title">${esc(e.title)}</span>${e.current ? '<span class="next-action-badge">Next action</span>' : ''}</div>
+        <div class="tl-desc">${esc(e.desc)}</div>
+        ${e.time ? `<div class="tl-time">${esc(e.time)}</div>` : ''}
+      </div>
+    </div>`).join('');
+  return `<div class="card section-card"><h2 class="section-title">Activity timeline</h2><div class="activity-timeline">${events}</div></div>`;
+}
+
+function diagnosisHtml(v: DetailView): string {
+  const body = v.diagnosis
+    ? `<div class="details-grid">
+        <div class="details-left">
+          ${row('Fault identified', v.diagnosis.fault)}
+          ${row('Repair quote', v.diagnosis.quote)}
+        </div>
+        <div class="details-right">
+          ${row('Approval', v.diagnosis.approved)}
+          ${row('Assigned technician', v.assignedTechnician ?? 'Not assigned')}
+        </div>
+      </div>`
+    : `<div class="diagnosis-empty"><div class="diagnosis-icon">${DIAG_ICON}</div>
+        <div><div class="diagnosis-title">Diagnosis not submitted yet</div>
+        <div class="diagnosis-desc">The technician's findings and repair price will appear here after the visit.</div>
+        <div class="diagnosis-locked">${LOCK} Available after technician visit</div></div></div>`;
+  return `<div class="card section-card"><h2 class="section-title">Diagnosis and repair</h2>${body}</div>`;
+}
+
+function customerCard(v: DetailView): string {
+  return `<div class="side-card"><h3 class="side-card-title">Customer</h3>
+    <div class="side-field">${USER}<span class="side-value">${esc(v.customerName)}</span></div>
+    ${v.phone ? `<div class="side-field">${PHONE}<span class="side-value">${esc(v.phone)}</span></div>` : ''}
+    <div class="side-field">${PIN}<span class="side-value">${esc(v.address)}</span></div>
+    <div class="side-field">${CAL}<span class="side-label-inline">Preferred visit:</span><span class="side-value">${esc(v.preferredVisit)}</span></div>
+    ${v.phone ? `<a class="btn-side-call" href="tel:${esc(v.phone.replace(/\s/g, ''))}">${PHONE} Call customer</a>` : ''}
+  </div>`;
+}
+
+function applianceCard(v: DetailView): string {
+  return `<div class="side-card"><h3 class="side-card-title">Appliance</h3>
+    <div class="side-appliance"><div class="side-appliance-icon">${APPLIANCE}</div>
+      <div>
+        <div class="side-value">${esc(v.applianceType)}</div>
+        <div class="side-meta">${esc(v.brand)}</div>
+        <div class="side-meta">${v.model === 'Not provided' ? 'Model not provided' : `Model ${esc(v.model)}`}</div>
+        <div class="side-meta">Problem: ${esc(v.problem)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Business: The recommendation list is the payoff of the enriched read-model — the server already ranked
+// Business: these by skill + live workload. Once a technician is assigned we simply show who, not a list.
+function recommendCard(v: DetailView): string {
+  let inner: string;
+  if (v.assignedTechnician) {
+    inner = `<div class="side-field">${USER}<span class="side-value">Assigned to ${esc(v.assignedTechnician)}</span></div>`;
+  } else if (v.recommendations.length) {
+    inner = `<div class="recommend-list">${v.recommendations.map((t, i) => `<div class="recommend-item">
+        <div class="recommend-rank">${i + 1}</div>
+        <div class="recommend-body">
+          <div class="recommend-name">${esc(t.name)}</div>
+          <div class="recommend-meta">${esc(t.area)} · ${esc(t.availability)} · ${t.activeJobs} live job${t.activeJobs === 1 ? '' : 's'}</div>
+          <div class="recommend-reason">${esc(t.reason)}</div>
+        </div>
+      </div>`).join('')}</div>`;
+  } else {
+    inner = '<div class="recommend-empty">No online technician currently matches this appliance. Try again later or assign manually.</div>';
+  }
+  return `<div class="side-card"><h3 class="side-card-title">Recommended technician</h3>${inner}</div>`;
+}
+
+function nextStepCard(v: DetailView): string {
+  const href = nextActionHref(v);
+  const action = href
+    ? `<a class="btn-next-action" href="${esc(href)}">${v.nextAction === 'Assign technician' || v.nextAction === 'View technician' ? USER : PHONE} ${esc(v.nextAction)}</a>`
+    : `<button class="btn-next-action" type="button" disabled title="Handled from the Requests queue for now">${CHECK} ${esc(v.nextAction)}</button>`;
+  return `<div class="side-card next-step-card">
+    <div class="next-step-header"><div class="next-step-icon">${BOLT}</div><h3 class="side-card-title" style="margin-bottom:0">Next step</h3></div>
+    <p class="next-step-desc">${esc(v.nextStep)}</p>
+    ${action}
+  </div>`;
+}
+
+function metadataCard(v: DetailView): string {
+  return `<div class="side-card metadata-card">
+    <div class="meta-row"><span class="meta-key">Request ID</span><span class="meta-val">${esc(v.code)}</span></div>
+    <div class="meta-row"><span class="meta-key">Created</span><span class="meta-val">${esc(v.createdAt)}</span></div>
+    <div class="meta-row"><span class="meta-key">Last updated</span><span class="meta-val">${esc(v.lastUpdated)}</span></div>
+    <div class="meta-row"><span class="meta-key">Source</span><span class="meta-val">${esc(v.sourceLabel)}</span></div>
+  </div>`;
+}
+
+async function load(): Promise<void> {
+  const code = new URLSearchParams(window.location.search).get('code');
+  if (!code) { statusEl.textContent = 'No request selected.'; return; }
+  if (codeEl) codeEl.textContent = `#${code}`;
+  try {
+    const row = await staff.getAdminRequest(code);
+    const v = deriveDetail(row);
+    document.title = `${v.title} - Sudhar Lab Admin`;
+    mainEl!.innerHTML = [heroHtml(v), progressHtml(v), detailsHtml(v), timelineHtml(v), diagnosisHtml(v)].join('');
+    sideEl!.innerHTML = [customerCard(v), applianceCard(v), recommendCard(v), nextStepCard(v), metadataCard(v)].join('');
+    statusEl.hidden = true;
+    root.hidden = false;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return; // api client already redirected to sign-in
+    statusEl.textContent = error instanceof ApiError && error.status === 404
+      ? 'Request not found.' : 'Could not load this request.';
+  }
+}
+
+if (session) {
+  // The phone link inside the hero is a real anchor; no dropdown to wire on this read-only view.
+  void load();
+}
+</script>

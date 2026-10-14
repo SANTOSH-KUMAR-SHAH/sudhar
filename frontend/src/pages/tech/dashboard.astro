@@ -1,145 +1,179 @@
 ---
 import TechDashboardLayout from '../../layouts/TechDashboardLayout.astro';
-import {
-  DEMO_LOGGED_IN_TECH_ID,
-  getDemoTechnician,
-  getDemoCustomer,
-  currentJobForTechnician,
-  requestsForTechnician,
-  isRequestActive,
-  isRequestDone,
-} from '../../lib/demo-data';
-
-// Business: The technician home screen is the same day the dispatcher sees — the
-// hero job, later visits and completed visits all come from the one request table.
-// Technical: Splits use the canonical status predicates so the portal and the
-// admin queue can never disagree about what counts as active or done.
-const me = getDemoTechnician(DEMO_LOGGED_IN_TECH_ID);
-const isOnline = me?.availability !== 'offline';
-const firstName = me?.name.split(' ')[0] ?? 'Technician';
-const myRequests = requestsForTechnician(DEMO_LOGGED_IN_TECH_ID);
-const nextJob = currentJobForTechnician(DEMO_LOGGED_IN_TECH_ID) ?? null;
-const nextCustomer = nextJob ? getDemoCustomer(nextJob.customerId) : null;
-const laterJobs = myRequests
-  .filter((r) => isRequestActive(r.status) && r.id !== nextJob?.id)
-  .map((r) => ({ r, cust: getDemoCustomer(r.customerId) }));
-const completedJobs = myRequests
-  .filter((r) => isRequestDone(r.status))
-  .map((r) => ({ r, cust: getDemoCustomer(r.customerId) }));
+// Business: The technician's home, LIVE and honest. This always-emitted page asks the Worker who I am
+// Business: and what my jobs are, then paints the same day the dispatcher sees — next visit, later open
+// Business: visits, finished visits — from the one joined job view. Nothing here is a stored or typed
+// Business: mock: availability comes from the roster, counts from live jobs, the customer's phone from
+// Business: their record. Fields the API does not return (a clock "visit time", photos) are simply absent.
+// Technical: Static output cannot prerender a per-user page, so the shell ships empty and a module script
+// fetches, derives (features/staff/tech-view) and renders. The availability flip is a REAL self-serve
+// write (POST /me/availability); on failure the banner just reverts, never a fake local success.
 ---
 
 <TechDashboardLayout title="Home - Sudhar Lab" activeNav="home">
   <div class="feed-container">
-    
-    <!-- Top Availability Banner -->
-    <div class={`availability-banner ${isOnline ? 'online' : 'offline'}`} id="availBanner">
-      <div class="avail-content">
-        <div class="pulse-ring"></div>
-        <div class="status-dot"></div>
-        <span id="availLabel">You are {isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+    <div class="tb-status" id="tbStatus">Loading your day…</div>
+
+    <div id="tbRoot" hidden>
+      <div id="tbBanner"></div>
+
+      <div class="greeting">
+        <h2 id="tbGreet">Hello</h2>
+        <p id="tbToday"></p>
       </div>
-      <button type="button" class="toggle-switch" id="availToggle">{isOnline ? 'Go Offline' : 'Go Online'}</button>
+
+      <div id="tbHero"></div>
+
+      <div class="section-heading">Later Today</div>
+      <div class="job-list" id="tbLater"></div>
+
+      <div class="section-heading">Completed</div>
+      <div class="job-list" id="tbCompleted"></div>
     </div>
-
-    <div class="greeting">
-      <h2 id="techGreet">Hello, {firstName}</h2>
-      <p id="techToday">Welcome back on shift.</p>
-    </div>
-
-    <!-- Massive Next Visit Hero Card -->
-    {nextJob ? (
-      <div class="hero-card">
-        <div class="hero-header">
-          <div class="badge assigned">Next Visit</div>
-          <div class="time tnum">{nextJob.visitTime}</div>
-        </div>
-        
-        <div class="hero-body">
-          <h3 class="appliance">{nextJob.brand} {nextJob.applianceType}</h3>
-          <p class="customer">{nextCustomer?.name ?? 'Customer'} &middot; {nextCustomer?.area ?? ''}</p>
-          <div class="problem-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            {nextJob.problem}
-          </div>
-        </div>
-
-        <div class="hero-footer">
-          <a href={`/tech/jobs/${nextJob.id}`} class="btn-primary massive">Open Job</a>
-        </div>
-      </div>
-    ) : (
-      <div class="hero-card">
-        <div class="hero-empty">No open job right now. New assignments from the dispatcher appear here.</div>
-      </div>
-    )}
-
-    <!-- Later Today -->
-    <div class="section-heading">Later Today</div>
-    
-    <div class="job-list">
-      {laterJobs.length > 0 ? laterJobs.map(({ r, cust }) => (
-        <a href={`/tech/jobs/${r.id}`} class="job-item">
-          <div class="time-col tnum">{r.visitTime}</div>
-          <div class="details-col">
-            <h4>{r.brand} {r.applianceType}</h4>
-            <p>{cust?.area ?? ''}</p>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </a>
-      )) : (
-        <div class="list-empty">Nothing else scheduled for today.</div>
-      )}
-    </div>
-
-    <!-- Completed -->
-    <div class="section-heading">Completed</div>
-    
-    <div class="job-list">
-      {completedJobs.length > 0 ? completedJobs.map(({ r, cust }) => (
-        <a href={`/tech/jobs/${r.id}`} class="job-item completed">
-          <div class="time-col"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="color:var(--green)"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-          <div class="details-col">
-            <h4>{r.brand} {r.applianceType}</h4>
-            <p>{cust?.area ?? ''}</p>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </a>
-      )) : (
-        <div class="list-empty">No completed visits yet today.</div>
-      )}
-    </div>
-
   </div>
 </TechDashboardLayout>
 
-<script is:inline define:vars={{ firstName }}>
-  // Business: Greeting and date track the technician's real clock, not the build date.
-  // Technical: The availability flip is session-only until the backend PATCH lands;
-  // it changes this device's state honestly and never claims dispatcher sync yet.
-  (function () {
-    var now = new Date();
-    var day = document.getElementById('techToday');
-    if (day) {
-      day.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    }
-    var greet = document.getElementById('techGreet');
-    if (greet) {
-      var h = now.getHours();
-      var part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
-      greet.textContent = 'Good ' + part + ', ' + firstName;
-    }
-    var banner = document.getElementById('availBanner');
-    var label = document.getElementById('availLabel');
-    var toggle = document.getElementById('availToggle');
-    if (banner && label && toggle) {
-      toggle.addEventListener('click', function () {
-        var online = banner.classList.toggle('online');
-        banner.classList.toggle('offline', !online);
-        label.textContent = online ? 'You are ONLINE' : 'You are OFFLINE';
-        toggle.textContent = online ? 'Go Offline' : 'Go Online';
-      });
-    }
-  })();
+<script>
+import { ApiError, staff, type ApiTechnician, type ApiTechnicianJob } from '../../lib/api-client';
+import { requireSession } from '../../lib/session';
+import { deriveBoard, visitLabel, type TechJobRow } from '../../features/staff/tech-view';
+import { statusLabel } from '../../features/requests/queue';
+
+const session = requireSession('technician');
+
+const statusEl = document.getElementById('tbStatus') as HTMLElement;
+const root = document.getElementById('tbRoot') as HTMLElement;
+const bannerEl = document.getElementById('tbBanner') as HTMLElement;
+const greetEl = document.getElementById('tbGreet') as HTMLElement;
+const todayEl = document.getElementById('tbToday') as HTMLElement;
+const heroEl = document.getElementById('tbHero') as HTMLElement;
+const laterEl = document.getElementById('tbLater') as HTMLElement;
+const completedEl = document.getElementById('tbCompleted') as HTMLElement;
+
+let me: ApiTechnician | null = null;
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+function firstName(tech: ApiTechnician): string {
+  return tech.name.trim().split(/\s+/)[0] ?? 'Technician';
+}
+
+function greeting(tech: ApiTechnician): string {
+  const h = new Date().getHours();
+  const part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  return `Good ${part}, ${firstName(tech)}`;
+}
+
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="color:var(--green)"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" style="color: var(--graphite-lt)"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+const WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+
+function bannerHtml(tech: ApiTechnician): string {
+  const online = tech.availability === 'online';
+  return `<div class="availability-banner ${online ? 'online' : 'offline'}" id="availBanner">
+    <div class="avail-content"><div class="pulse-ring"></div><div class="status-dot"></div><span id="availLabel">You are ${online ? 'ONLINE' : 'OFFLINE'}</span></div>
+    <button type="button" class="toggle-switch" id="availToggle">${online ? 'Go Offline' : 'Go Online'}</button>
+  </div>`;
+}
+
+function customerLine(job: ApiTechnicianJob): string {
+  const c = job.customer;
+  if (!c) return 'Customer being confirmed';
+  return `${esc(c.name)}${c.area ? ` &middot; ${esc(c.area)}` : ''}`;
+}
+
+function heroHtml(next: ApiTechnicianJob | null): string {
+  if (!next) {
+    return '<div class="hero-card"><div class="hero-empty">No open job right now. New assignments from the dispatcher appear here.</div></div>';
+  }
+  const detailHref = `/tech/jobs/detail?code=${encodeURIComponent(next.code)}`;
+  return `<div class="hero-card">
+    <div class="hero-header">
+      <div class="badge assigned">Next Visit</div>
+      <div class="time tnum" style="font-size:1.25rem">${esc(visitLabel(next))}</div>
+    </div>
+    <div class="hero-body">
+      <h3 class="appliance">${esc(next.appliance.brand)} ${esc(next.appliance.type)}</h3>
+      <p class="customer">${customerLine(next)}</p>
+      <div class="problem-box">${WARN}${esc(next.problem)}</div>
+    </div>
+    <div class="hero-footer"><a href="${detailHref}" class="btn-primary massive">Open Job</a></div>
+  </div>`;
+}
+
+function laterItem(row: TechJobRow): string {
+  const href = `/tech/jobs/detail?code=${encodeURIComponent(row.job.code)}`;
+  const area = row.job.customer?.area ?? statusLabel(row.job);
+  return `<a href="${href}" class="job-item">
+    <div class="time-col tnum">${esc(row.job.visitDate ? new Date(row.job.visitDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—')}</div>
+    <div class="details-col"><h4>${esc(row.job.appliance.brand)} ${esc(row.job.appliance.type)}</h4><p>${esc(area)}</p></div>
+    ${CHEVRON}
+  </a>`;
+}
+
+function completedItem(row: TechJobRow): string {
+  const href = `/tech/jobs/detail?code=${encodeURIComponent(row.job.code)}`;
+  return `<a href="${href}" class="job-item completed">
+    <div class="time-col">${CHECK}</div>
+    <div class="details-col"><h4>${esc(row.job.appliance.brand)} ${esc(row.job.appliance.type)}</h4><p>${esc(row.job.customer?.area ?? '')}</p></div>
+    ${CHEVRON}
+  </a>`;
+}
+
+async function toggleAvailability(): Promise<void> {
+  if (!me) return;
+  const target = me.availability === 'online' ? 'offline' : 'online';
+  const button = document.getElementById('availToggle') as HTMLButtonElement | null;
+  if (button) button.disabled = true;
+  try {
+    me = await staff.setAvailability(target);
+    bannerEl.innerHTML = bannerHtml(me);
+    wireBanner();
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return;
+    if (button) button.disabled = false; // revert: never claim a flip the server refused
+  }
+}
+
+function wireBanner(): void {
+  const button = document.getElementById('availToggle');
+  if (button) button.addEventListener('click', () => void toggleAvailability());
+}
+
+function paint(jobs: ApiTechnicianJob[]): void {
+  if (!me) return;
+  const board = deriveBoard(jobs);
+  bannerEl.innerHTML = bannerHtml(me);
+  greetEl.textContent = greeting(me);
+  todayEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  heroEl.innerHTML = heroHtml(board.next);
+  laterEl.innerHTML = board.later.length
+    ? board.later.map(laterItem).join('')
+    : '<div class="list-empty">Nothing else scheduled for today.</div>';
+  completedEl.innerHTML = board.completed.length
+    ? board.completed.map(completedItem).join('')
+    : '<div class="list-empty">No completed visits yet.</div>';
+  wireBanner();
+}
+
+async function load(): Promise<void> {
+  if (!session) return;
+  try {
+    const [tech, jobs] = await Promise.all([staff.me(), staff.myJobs()]);
+    me = tech;
+    statusEl.style.display = 'none';
+    root.hidden = false;
+    paint(jobs);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return; // authorizedFetch already redirected
+    statusEl.textContent = 'Could not load your dashboard. Please refresh.';
+  }
+}
+
+if (session) void load();
 </script>
 
 <style is:global>
@@ -149,6 +183,8 @@ const completedJobs = myRequests
     flex-direction: column;
     gap: 1.25rem;
   }
+
+  .tb-status { text-align: center; color: var(--graphite-mid); font-size: 0.875rem; padding: 1.5rem 0; }
 
   /* Availability Banner */
   .availability-banner {
@@ -227,6 +263,7 @@ const completedJobs = myRequests
     cursor: pointer;
     background-color: var(--pure-white);
   }
+  .toggle-switch:disabled { opacity: 0.6; cursor: default; }
 
   /* Greeting */
   .greeting h2 {
@@ -398,7 +435,7 @@ const completedJobs = myRequests
     font-size: 0.8125rem;
     color: var(--graphite-mid);
   }
-  
+
   .job-item.completed {
     background-color: #FAFAFA;
   }
@@ -406,4 +443,3 @@ const completedJobs = myRequests
     color: var(--graphite-mid);
   }
 </style>
-

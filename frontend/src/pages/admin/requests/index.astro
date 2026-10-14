@@ -1,31 +1,9 @@
 ---
 import AdminDashboardLayout from '../../../layouts/AdminDashboardLayout.astro';
-import StatusBadge from '../../../components/common/StatusBadge.astro';
-import {
-  DEMO_REQUESTS,
-  completedRequests,
-  getRequestSummary,
-  liveJobRequests,
-  needsActionRequests,
-} from '../../../lib/demo-data';
-
-// Business: This table is the full queue — the same records the dashboard and detail
-// Business: pages show, read from one store so an ID or status can never disagree.
-// Technical: Rows and every filter/tab option derive from demo-data selectors; adding
-// a request in the data layer appears here, in the pills and in the dropdowns at once.
-const rows = DEMO_REQUESTS.map(getRequestSummary);
-const actionIds = new Set(needsActionRequests().map((r) => r.id));
-const activeIds = new Set(liveJobRequests().map((r) => r.id));
-const doneIds = new Set(completedRequests().map((r) => r.id));
-// Business: A row can need action and be "live" at once (e.g. price approval).
-// Technical: Membership is stamped per row; the client filter never re-lists statuses.
-const tabsFor = (id: string) =>
-  [actionIds.has(id) && 'action', activeIds.has(id) && 'active', doneIds.has(id) && 'done']
-    .filter(Boolean)
-    .join(' ');
-const applianceTypes = [...new Set(DEMO_REQUESTS.map((r) => r.applianceType))];
-const technicianNames = [...new Set(rows.map((r) => r.technicianName).filter((n): n is string => !!n))];
-const areaNames = [...new Set(rows.map((r) => r.area).filter(Boolean))];
+// Business: This table is the live queue — every row is fetched from the API after sign-in, so an
+// Business: admin and the backend can never show two different truths about the same job.
+// Technical: With static output the shell renders empty; the client script (bottom) guards the session,
+// fetches /api/admin/requests, and fills the table, tab counts and filter dropdowns from the real rows.
 ---
 
 <AdminDashboardLayout title="Requests - Sudhar Lab Admin" activeNav="requests">
@@ -46,11 +24,11 @@ const areaNames = [...new Set(rows.map((r) => r.area).filter(Boolean))];
   <div class="rq-tabs">
     <button class="rq-tab" id="tab-action" onclick="switchTab('action')">
       Needs Action
-      <span class="tab-pill urgent">{actionIds.size}</span>
+      <span class="tab-pill urgent" id="pill-action">0</span>
     </button>
     <button class="rq-tab active" id="tab-all" onclick="switchTab('all')">
       All
-      <span class="tab-pill">{rows.length}</span>
+      <span class="tab-pill" id="pill-all">0</span>
     </button>
     <button class="rq-tab" id="tab-active" onclick="switchTab('active')">In Progress</button>
     <button class="rq-tab" id="tab-done" onclick="switchTab('done')">Completed</button>
@@ -65,15 +43,12 @@ const areaNames = [...new Set(rows.map((r) => r.area).filter(Boolean))];
     <div class="rq-filter-chips">
       <select class="filter-select" id="rqFilterAppliance">
         <option value="">All Appliances</option>
-        {applianceTypes.map((type) => <option>{type}</option>)}
       </select>
       <select class="filter-select" id="rqFilterTech">
         <option value="">All Technicians</option>
-        {technicianNames.map((name) => <option>{name}</option>)}
       </select>
       <select class="filter-select" id="rqFilterArea">
         <option value="">All Areas</option>
-        {areaNames.map((name) => <option>{name}</option>)}
       </select>
     </div>
   </div>
@@ -90,100 +65,163 @@ const areaNames = [...new Set(rows.map((r) => r.area).filter(Boolean))];
           <th>Action</th>
         </tr>
       </thead>
-      <tbody>
-        {rows.map(req => (
-          <tr class={`rq-row ${req.urgent ? 'row-urgent' : ''}`} tabindex="0" role="link" aria-label={`Open request ${req.id}`} data-href={`/admin/requests/${req.id}`} data-tabs={tabsFor(req.id)} data-appliance={req.appliance} data-technician={req.technicianName ?? ''} data-area={req.area} data-search={`${req.id} ${req.customerName} ${req.area} ${req.appliance}`.toLowerCase()} onclick={`window.location.href='/admin/requests/${req.id}'`} onkeydown={`if(event.key==='Enter'||event.key===' '){event.preventDefault();window.location.href='/admin/requests/${req.id}'}`}>
-            <td>
-              <div class="req-id-cell">
-                {req.urgent && <div class="urgent-dot"></div>}
-                <div>
-                  <div class="req-id tnum">{req.id}</div>
-                  <div class="req-appliance">{req.appliance}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <div class="req-customer">{req.customerName}</div>
-              <div class="req-area">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>
-                {req.area}
-              </div>
-            </td>
-            <td>
-              <StatusBadge status={req.status} />
-              <div class="req-time">{req.updatedAgo}</div>
-            </td>
-            <td>
-              {req.technicianName
-                ? <div class="req-tech">
-                    <div class="req-tech-av">{req.technicianName.charAt(0)}</div>
-                    {req.technicianName}
-                  </div>
-                : <span class="no-tech">—</span>
-              }
-            </td>
-            <td data-stop-prop>
-              <div class="req-action-cell">
-                {req.status === 'NEW_REQUEST'     && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Call &amp; Confirm</a>}
-                {req.status === 'ORDER_CONFIRMED' && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Assign</a>}
-                {req.status === 'PRICE_APPROVAL'  && <a class="btn btn-primary btn-sm" href={`/admin/requests/${req.id}`}>Follow Up</a>}
-                {!['NEW_REQUEST', 'ORDER_CONFIRMED', 'PRICE_APPROVAL'].includes(req.status) && <a class="btn btn-secondary btn-sm" href={`/admin/requests/${req.id}`}>Open</a>}
-              </div>
-            </td>
-          </tr>
-        ))}
+      <tbody id="rqTbody">
+        <tr id="rqStatusRow"><td colspan="5" class="rq-status-cell">Loading your queue…</td></tr>
       </tbody>
     </table>
   </div>
 
 </AdminDashboardLayout>
 
-<script is:inline>
-// Business: Tabs + search + filters narrow the same table so admin finds work fast.
-// Technical: Single applyFilters() combining active tab, search text and 3 selects.
-// Tab membership lives in each row's data-tabs attribute, computed server-side from
-// demo-data — this script never re-lists statuses, so it cannot drift from the data.
+<script>
+// Business: Only a signed-in admin sees this queue, and what they see is the real backend truth — never
+// Business: a cached demo. Tabs, search and filters then narrow the same live rows client-side.
+// Technical: Astro bundles this as a module; we expose one global (switchTab) for the markup's inline
+// handlers. Row navigation is delegated so dynamically-created rows need no inline scripts.
+import { ApiError, staff, type ApiRequest } from '../../../lib/api-client';
+import { requireSession } from '../../../lib/session';
+import {
+  applianceLabel, areaLabel, badgeClass, customerName, relativeTime,
+  statusKey, statusLabel, tabsFor, technicianName,
+} from '../../../features/requests/queue';
+
+const session = requireSession('admin');
+
+function esc(value: string): string {
+  return value.replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+}
+
+function statusCell(text: string): void {
+  const body = document.getElementById('rqTbody');
+  if (body) body.innerHTML = `<tr id="rqStatusRow"><td colspan="5" class="rq-status-cell">${esc(text)}</td></tr>`;
+}
+
+function actionButton(row: ApiRequest, href: string): string {
+  const status = statusKey(row);
+  if (status === 'NEW_REQUEST') return `<a class="btn btn-primary btn-sm" href="${href}">Call &amp; Confirm</a>`;
+  if (status === 'ORDER_CONFIRMED') return `<a class="btn btn-primary btn-sm" href="${href}">Assign</a>`;
+  if (status === 'PRICE_APPROVAL') return `<a class="btn btn-primary btn-sm" href="${href}">Follow Up</a>`;
+  return `<a class="btn btn-secondary btn-sm" href="${href}">Open</a>`;
+}
+
+function rowHtml(row: ApiRequest): string {
+  // Business: Real jobs open on the LIVE detail page (?code=…); the demo [id] route only knows demo ids.
+  const href = `/admin/requests/detail?code=${encodeURIComponent(row.code)}`;
+  const tech = technicianName(row);
+  const search = `${row.code} ${customerName(row)} ${areaLabel(row)} ${applianceLabel(row)}`.toLowerCase();
+  const techCell = tech
+    ? `<div class="req-tech"><div class="req-tech-av">${esc(tech.charAt(0))}</div>${esc(tech)}</div>`
+    : '<span class="no-tech">—</span>';
+  return (
+    `<tr class="rq-row" tabindex="0" role="link" aria-label="Open request ${esc(row.code)}" data-href="${href}"`
+    + ` data-tabs="${tabsFor(row)}" data-appliance="${esc(row.appliance.type)}" data-technician="${esc(tech ?? '')}"`
+    + ` data-area="${esc(areaLabel(row))}" data-search="${esc(search)}">`
+    + `<td><div class="req-id-cell"><div><div class="req-id tnum">${esc(row.code)}</div>`
+    + `<div class="req-appliance">${esc(applianceLabel(row))}</div></div></div></td>`
+    + `<td><div class="req-customer">${esc(customerName(row))}</div>`
+    + `<div class="req-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path></svg>${esc(areaLabel(row))}</div></td>`
+    + `<td><span class="badge ${badgeClass(row)}" data-status="${esc(row.status)}">${esc(statusLabel(row))}</span>`
+    + `<div class="req-time">${esc(relativeTime(row.updatedAt))}</div></td>`
+    + `<td>${techCell}</td>`
+    + `<td data-stop-prop><div class="req-action-cell">${actionButton(row, href)}</div></td>`
+    + `</tr>`
+  );
+}
+
+function fillSelect(id: string, values: string[]): void {
+  const select = document.getElementById(id) as HTMLSelectElement | null;
+  if (!select) return;
+  for (const value of values) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  }
+}
+
 let activeTab = 'all';
-function matchesTab(row) {
+function matchesTab(row: Element): boolean {
   if (activeTab === 'all') return true;
   return (row.getAttribute('data-tabs') || '').split(' ').includes(activeTab);
 }
-function applyFilters() {
-  const q = (document.getElementById('rqSearch')?.value || '').toLowerCase().trim();
-  const fa = document.getElementById('rqFilterAppliance')?.value || '';
-  const ft = document.getElementById('rqFilterTech')?.value || '';
-  const ar = document.getElementById('rqFilterArea')?.value || '';
+function applyFilters(): void {
+  const q = (document.getElementById('rqSearch') as HTMLInputElement | null)?.value.toLowerCase().trim() || '';
+  const fa = (document.getElementById('rqFilterAppliance') as HTMLSelectElement | null)?.value || '';
+  const ft = (document.getElementById('rqFilterTech') as HTMLSelectElement | null)?.value || '';
+  const ar = (document.getElementById('rqFilterArea') as HTMLSelectElement | null)?.value || '';
   document.querySelectorAll('.rq-row').forEach((row) => {
-    const appliance = row.getAttribute('data-appliance') || '';
-    const tech = row.getAttribute('data-technician') || '';
-    const area = row.getAttribute('data-area') || '';
-    const search = row.getAttribute('data-search') || '';
     const ok =
       matchesTab(row) &&
-      (!fa || appliance.includes(fa)) &&
-      (!ft || tech === ft) &&
-      (!ar || area === ar) &&
-      (!q || search.includes(q));
-    row.style.display = ok ? '' : 'none';
+      (!fa || (row.getAttribute('data-appliance') || '') === fa) &&
+      (!ft || (row.getAttribute('data-technician') || '') === ft) &&
+      (!ar || (row.getAttribute('data-area') || '') === ar) &&
+      (!q || (row.getAttribute('data-search') || '').includes(q));
+    (row as HTMLElement).style.display = ok ? '' : 'none';
   });
 }
-function switchTab(tab) {
+function switchTab(tab: string): void {
   activeTab = tab;
-  document.querySelectorAll('.rq-tab').forEach(t => t.classList.remove('active'));
-  const el = document.getElementById(`tab-${tab}`);
-  if (el) el.classList.add('active');
+  document.querySelectorAll('.rq-tab').forEach((t) => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
   applyFilters();
 }
+// Expose to the markup's inline onclick handlers (modules do not leak globals by themselves).
+(window as unknown as { switchTab: (tab: string) => void }).switchTab = switchTab;
 
-// Business: Action buttons inside a row must not trigger the row navigation.
-// Technical: Stop click propagation on action cells (replaces deprecated inline event handler).
-document.querySelectorAll('[data-stop-prop]').forEach((cell) => {
-  cell.addEventListener('click', (e) => e.stopPropagation());
-});
-document.getElementById('rqSearch')?.addEventListener('input', applyFilters);
-document.getElementById('rqFilterAppliance')?.addEventListener('change', applyFilters);
-document.getElementById('rqFilterTech')?.addEventListener('change', applyFilters);
-document.getElementById('rqFilterArea')?.addEventListener('change', applyFilters);
+async function load(): Promise<void> {
+  if (!session) return;
+  try {
+    const rows = await staff.listAdminRequests();
+    const body = document.getElementById('rqTbody');
+    if (!body) return;
+    if (rows.length === 0) {
+      statusCell('No requests yet. New customer submissions will appear here.');
+      return;
+    }
+    body.innerHTML = rows.map(rowHtml).join('');
+    document.getElementById('pill-action')!.textContent = String(rows.filter((r) => tabsFor(r).includes('action')).length);
+    document.getElementById('pill-all')!.textContent = String(rows.length);
+    fillSelect('rqFilterAppliance', [...new Set(rows.map((r) => r.appliance.type))].sort());
+    fillSelect('rqFilterTech', [...new Set(rows.map(technicianName).filter((n): n is string => !!n))].sort());
+    fillSelect('rqFilterArea', [...new Set(rows.map(areaLabel).filter(Boolean))].sort());
+    applyFilters();
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return; // authorizedFetch already redirected to login
+    statusCell('Could not load your queue. Please refresh.');
+  }
+}
+
+function wireInteractions(): void {
+  const body = document.getElementById('rqTbody');
+  // Business: Rows and their buttons both live and navigate; a button click must not double-fire the row.
+  body?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-stop-prop]') || target.closest('a')) return;
+    const row = target.closest('.rq-row');
+    const href = row?.getAttribute('data-href');
+    if (href) window.location.href = href;
+  });
+  body?.addEventListener('keydown', (event) => {
+    const key = (event as KeyboardEvent).key;
+    if (key !== 'Enter' && key !== ' ') return;
+    const row = (event.target as HTMLElement).closest('.rq-row');
+    const href = row?.getAttribute('data-href');
+    if (href) {
+      event.preventDefault();
+      window.location.href = href;
+    }
+  });
+  document.getElementById('rqSearch')?.addEventListener('input', applyFilters);
+  document.getElementById('rqFilterAppliance')?.addEventListener('change', applyFilters);
+  document.getElementById('rqFilterTech')?.addEventListener('change', applyFilters);
+  document.getElementById('rqFilterArea')?.addEventListener('change', applyFilters);
+}
+
+if (session) {
+  wireInteractions();
+  void load();
+}
 </script>
 
 <style is:global>
@@ -302,6 +340,8 @@ document.getElementById('rqFilterArea')?.addEventListener('change', applyFilters
   .no-tech { color: var(--graphite-lt); font-size: 0.875rem; }
 
   .req-action-cell { display: flex; }
+  /* Business: The queue's transient states (loading / empty / error) read as one calm line. */
+  .rq-status-cell { padding: 2rem; text-align: center; color: var(--graphite-lt); font-size: 0.875rem; }
 
   /* ─── MOBILE ──────────────────────────────── */
   @media (max-width: 767px) {

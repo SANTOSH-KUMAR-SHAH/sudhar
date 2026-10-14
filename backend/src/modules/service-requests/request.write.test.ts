@@ -7,6 +7,9 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../../app';
 import { InMemoryRequestRepository } from './request.repository';
 import { InMemoryCustomerRepository } from '../customers/customer.repository';
+import { InMemoryTechnicianRepository } from '../technicians/technician.repository';
+import { seedTechnicians } from '../technicians/fixtures';
+import { ADMIN_TOKEN, authTestDeps } from '../authentication/testing';
 import { seedRequests } from './fixtures';
 import { serviceRequestRecordSchema, type ServiceRequestRecordView } from './request.schema';
 
@@ -16,13 +19,21 @@ function json(body: unknown) {
   return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
 }
 
+// The advance endpoint is staff-only; every move in these tests is signed as the admin.
+function authedJson(body: unknown) {
+  const init = json(body);
+  return { ...init, headers: { ...init.headers, authorization: `Bearer ${ADMIN_TOKEN}` } };
+}
+
 function makeApp() {
   const sent: { phone: string; code: string }[] = [];
   const app = createApp({
     requests: new InMemoryRequestRepository(seedRequests()),
     customers: new InMemoryCustomerRepository(),
+    technicians: new InMemoryTechnicianRepository(seedTechnicians()),
     notifier: { send: async (message) => { sent.push(message); } },
     clock: () => CLOCK,
+    ...authTestDeps(),
   });
   return { app, sent };
 }
@@ -51,11 +62,12 @@ describe('POST /api/requests (customer submit)', () => {
     expect(sent).toEqual([{ phone: validSubmission.phone, code: record.code }]);
   });
 
-  it('credits a phone-in to the admin, not the customer', async () => {
-    const { app } = makeApp();
+  it('credits a phone-in to the admin and sends no SMS (the admin reads the code aloud)', async () => {
+    const { app, sent } = makeApp();
     const response = await app.request('/api/requests', json({ ...validSubmission, source: 'Phone' }));
     const record = serviceRequestRecordSchema.parse(await response.json());
     expect(record.timeline[0]?.actor).toBe('admin');
+    expect(sent).toHaveLength(0);
   });
 
   it('rejects an invalid Nepal phone with a clean 400 before any record is made', async () => {
@@ -64,6 +76,19 @@ describe('POST /api/requests (customer submit)', () => {
     expect(response.status).toBe(400);
     expect((await response.json() as { error?: string }).error).toBe('contract_violation');
     expect(sent).toHaveLength(0);
+  });
+
+  it('stores a customer-flagged urgency, and leaves an ordinary job without the noise', async () => {
+    const { app } = makeApp();
+    const flagged = serviceRequestRecordSchema.parse(
+      await (await app.request('/api/requests', json({ ...validSubmission, urgent: true }))).json(),
+    );
+    expect(flagged.urgent).toBe(true);
+
+    const ordinary = serviceRequestRecordSchema.parse(
+      await (await app.request('/api/requests', json({ ...validSubmission, phone: '9898765432' }))).json(),
+    );
+    expect(ordinary.urgent).toBeUndefined();
   });
 
   it('reuses one customer by phone and never repeats a code', async () => {
@@ -78,7 +103,7 @@ describe('POST /api/requests (customer submit)', () => {
 describe('POST /api/requests/:code/status (admin advance)', () => {
   it('advances a legal move and appends the timeline event', async () => {
     const { app } = makeApp();
-    const response = await app.request('/api/requests/SL-2026-0001/status', json({ to: 'UNDER_REVIEW', note: 'Called customer' }));
+    const response = await app.request('/api/requests/SL-2026-0001/status', authedJson({ to: 'UNDER_REVIEW', note: 'Called customer' }));
     expect(response.status).toBe(200);
     const record = serviceRequestRecordSchema.parse(await response.json());
     expect(record.status).toBe('UNDER_REVIEW');
@@ -88,7 +113,7 @@ describe('POST /api/requests/:code/status (admin advance)', () => {
 
   it('refuses an illegal jump with 409 and leaves the record untouched', async () => {
     const { app } = makeApp();
-    const response = await app.request('/api/requests/SL-2026-0001/status', json({ to: 'COMPLETED' }));
+    const response = await app.request('/api/requests/SL-2026-0001/status', authedJson({ to: 'COMPLETED' }));
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: 'illegal_transition', from: 'NEW_REQUEST', to: 'COMPLETED' });
 
@@ -101,7 +126,7 @@ describe('POST /api/requests/:code/status (admin advance)', () => {
 
   it('returns 404 for an unknown code', async () => {
     const { app } = makeApp();
-    const response = await app.request('/api/requests/SL-2026-9999/status', json({ to: 'UNDER_REVIEW' }));
+    const response = await app.request('/api/requests/SL-2026-9999/status', authedJson({ to: 'UNDER_REVIEW' }));
     expect(response.status).toBe(404);
   });
 });

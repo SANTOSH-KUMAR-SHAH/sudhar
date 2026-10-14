@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../../app';
 import { InMemoryRequestRepository } from './request.repository';
 import { InMemoryCustomerRepository } from '../customers/customer.repository';
+import { InMemoryTechnicianRepository } from '../technicians/technician.repository';
+import { seedTechnicians } from '../technicians/fixtures';
+import { ADMIN_TOKEN, authTestDeps } from '../authentication/testing';
 import { seedRequests } from './fixtures';
 import { serviceRequestRecordSchema } from './request.schema';
 import type { AppDependencies } from '../../app';
@@ -14,10 +17,15 @@ function app(overrides: Partial<AppDependencies> = {}) {
   return createApp({
     requests: new InMemoryRequestRepository(seedRequests()),
     customers: new InMemoryCustomerRepository(),
+    technicians: new InMemoryTechnicianRepository(seedTechnicians()),
     notifier: { send: async () => {} },
+    ...authTestDeps(),
     ...overrides,
   });
 }
+
+// Technician views are staff-gated; these reads present the admin principal.
+const asAdmin = { headers: { authorization: `Bearer ${ADMIN_TOKEN}` } };
 
 describe('GET /api/requests', () => {
   it('lists every seeded job', async () => {
@@ -55,13 +63,13 @@ describe('GET /api/requests/:code', () => {
 
 describe('GET /api/technicians/:id/jobs', () => {
   it('returns only that technician\'s jobs', async () => {
-    const response = await app().request('/api/technicians/T-2001/jobs');
+    const response = await app().request('/api/technicians/T-2001/jobs', asAdmin);
     const jobs = serviceRequestRecordSchema.array().parse(await response.json());
     expect(jobs.map((job) => job.code)).toEqual(['SL-2026-0003']);
   });
 
   it('returns an empty list for a technician with no jobs', async () => {
-    const response = await app().request('/api/technicians/T-9999/jobs');
+    const response = await app().request('/api/technicians/T-9999/jobs', asAdmin);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([]);
   });
