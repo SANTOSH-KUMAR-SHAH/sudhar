@@ -125,6 +125,28 @@ describe('POST /api/admin/technicians', () => {
   });
 });
 
+describe('legacy auth surface is unmounted under Supabase (credential-oracle fix)', () => {
+  it('POST /api/auth/login is not routed at all — it cannot confirm or deny a password', async () => {
+    const { provisioner } = fakeProvisioner();
+    const response = await makeApp(provisioner).request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ identifier: 'admin', secret: 'anything' }),
+    });
+    // Unmounted → the app's uniform 404, not a 401/200 that would leak whether the credential is valid.
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: 'not_found' });
+  });
+
+  it('the legacy in-app /api/admin/staff collection is not routed either', async () => {
+    const { provisioner } = fakeProvisioner();
+    const response = await makeApp(provisioner).request('/api/admin/staff', {
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    expect(response.status).toBe(404);
+  });
+});
+
 describe('TechnicianAdminService — the unit of work', () => {
   it('undoes the just-created login when the roster insert fails (no orphan)', async () => {
     const { provisioner, created, deleted } = fakeProvisioner();
@@ -132,6 +154,7 @@ describe('TechnicianAdminService — the unit of work', () => {
     const failing: TechnicianRepository = {
       findAll: async () => [],
       findById: async () => null,
+      findManyByIds: async () => [],
       setAvailability: async () => {
         throw new Error('unused');
       },

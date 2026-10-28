@@ -7,7 +7,7 @@
 
 import type { ServiceStatusKey } from '../../../../packages/shared/src/service-status';
 import { ServiceRequest, type ServiceRequestRecord } from '../../domain/service-request';
-import { NotFoundError } from '../../domain/errors';
+import { ConflictError, NotFoundError } from '../../domain/errors';
 
 export interface RequestQuery {
   status?: ServiceStatusKey[];
@@ -19,9 +19,6 @@ export interface RequestRepository {
   update(request: ServiceRequest): Promise<void>;
   findByCode(code: string): Promise<ServiceRequest | null>;
   findAll(query?: RequestQuery): Promise<ServiceRequest[]>;
-  // Business: Issues the next human-friendly number in SL-YYYY-NNNN. Belongs to the store so the
-  // Technical: Supabase version can back it with a real sequence; callers only await a number.
-  nextSequence(): Promise<number>;
 }
 
 export class InMemoryRequestRepository implements RequestRepository {
@@ -38,8 +35,10 @@ export class InMemoryRequestRepository implements RequestRepository {
   }
 
   async create(request: ServiceRequest): Promise<void> {
+    // Business: A code is a public handle, so two jobs may never share one. The store refuses the second
+    // Business: write instead of overwriting — the caller then retries with fresh random digits.
     if (this.store.has(request.code)) {
-      throw new Error(`duplicate request code: ${request.code}`);
+      throw new ConflictError('ServiceRequest', request.code);
     }
     this.store.set(request.code, request.toRecord());
   }
@@ -66,10 +65,5 @@ export class InMemoryRequestRepository implements RequestRepository {
       matching = matching.filter((r) => allowed.has(r.status));
     }
     return matching.map((record) => ServiceRequest.fromRecord(record));
-  }
-
-  async nextSequence(): Promise<number> {
-    // Good enough for a single in-memory instance; the production sequence removes any race.
-    return this.store.size + 1;
   }
 }

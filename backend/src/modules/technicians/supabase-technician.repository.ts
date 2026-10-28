@@ -3,7 +3,7 @@
 // Technical: Implements TechnicianRepository over PostgREST. `skills` is a Postgres text[] which the REST
 // API returns as a plain array, so the mapping is direct. setAvailability updates just that one column.
 
-import { PostgrestClient, type RestRow } from '../../lib/supabase';
+import { PostgrestClient, inFilter, type RestRow } from '../../lib/supabase';
 import { NotFoundError } from '../../domain/errors';
 import {
   type Availability,
@@ -50,6 +50,13 @@ export class SupabaseTechnicianRepository implements TechnicianRepository {
   async findById(id: string): Promise<TechnicianRecord | null> {
     const rows = await this.client.select(TABLE, [`id=eq.${encodeURIComponent(id)}`]);
     return rows[0] ? toRecord(rows[0]) : null;
+  }
+
+  async findManyByIds(ids: string[]): Promise<TechnicianRecord[]> {
+    // Technical: One `id=in.(…)` query for the whole page; an empty page costs no round-trip at all.
+    if (ids.length === 0) return [];
+    const rows = await this.client.select(TABLE, [`id=${inFilter(ids)}`]);
+    return rows.map(toRecord);
   }
 
   async setAvailability(id: string, availability: Availability): Promise<TechnicianRecord> {

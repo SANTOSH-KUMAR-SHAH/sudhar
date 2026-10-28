@@ -146,3 +146,77 @@ describe('SupabaseJwtVerifier — refuses anything it cannot fully trust', () =>
     expect(await verifierFor([projectKey()], now).verify(token)).toBeNull();
   });
 });
+
+describe('SupabaseJwtVerifier — honours only short-lived access tokens (refresh replay fixed)', () => {
+  it('rejects a long-lived token (a refresh token replayed as a bearer credential)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    // Perfectly signed, right iss/aud, NOT expired — but valid for 30 days, which only a refresh token is.
+    const token = await signToken(keyPair.privateKey, { kid: KID }, {
+      iss: ISSUER, sub: 'auth-uuid', aud: 'authenticated', iat: now, exp: now + 30 * 86_400,
+      app_metadata: { role: 'admin', staffId: 'A-1' },
+    });
+    expect(await verifierFor([projectKey()], now).verify(token)).toBeNull();
+  });
+
+  it('rejects a short-lived token that self-declares a refresh type', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = await signToken(keyPair.privateKey, { kid: KID }, {
+      iss: ISSUER, sub: 'auth-uuid', aud: 'authenticated', iat: now, exp: now + 3600, type: 'refresh_token',
+      app_metadata: { role: 'admin', staffId: 'A-1' },
+    });
+    expect(await verifierFor([projectKey()], now).verify(token)).toBeNull();
+  });
+
+  it('still accepts a normal access token that carries type: "access"', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = await signToken(keyPair.privateKey, { kid: KID }, {
+      iss: ISSUER, sub: 'auth-uuid', aud: 'authenticated', iat: now, exp: now + 3600, type: 'access',
+      app_metadata: { role: 'technician', technicianId: 'T-2003' },
+    });
+    expect(await verifierFor([projectKey()], now).verify(token)).toEqual({ subject: 'T-2003', role: 'technician' });
+  });
+});
+
+describe('SupabaseJwtVerifier — key refresh survives a Supabase outage', () => {
+  it('rejects a token with no stated expiry rather than treating it as eternal', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = await signToken(keyPair.privateKey, { kid: KID }, {
+      iss: ISSUER, sub: 'auth-uuid', aud: 'authenticated', iat: now,
+      app_metadata: { role: 'admin', staffId: 'A-1' },
+    });
+    expect(await verifierFor([projectKey()], now).verify(token)).toBeNull();
+  });
+
+  it('keeps verifying with the last known-good keys when a later JWKS fetch fails', async () => {
+    const base = Math.floor(Date.now() / 1000);
+    let nowSeconds = base;
+    let fetches = 0;
+    const flakyFetch = (async () => {
+      fetches += 1;
+      if (fetches === 1) {
+        return new Response(JSON.stringify({ keys: [projectKey()] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error('supabase unreachable');
+    }) as unknown as typeof globalThis.fetch;
+
+    const verifier = new SupabaseJwtVerifier(URL, { fetchImpl: flakyFetch, now: () => nowSeconds * 1000 });
+    const token = await signToken(keyPair.privateKey, { kid: KID }, {
+      iss: ISSUER, sub: 'auth-uuid', aud: 'authenticated', iat: base, exp: base + 7200,
+      app_metadata: { role: 'admin', staffId: 'A-1' },
+    });
+
+    expect(await verifier.verify(token)).not.toBeNull();
+
+    // Past the 5-minute key cache the verifier tries again; the attempt fails, but the cached key must stand.
+    nowSeconds = base + 6 * 60;
+    expect(await verifier.verify(token)).not.toBeNull();
+    expect(fetches).toBe(2);
+
+    // …and the failure is not re-attempted on every subsequent request (30s backoff).
+    expect(await verifier.verify(token)).not.toBeNull();
+    expect(fetches).toBe(2);
+  });
+});

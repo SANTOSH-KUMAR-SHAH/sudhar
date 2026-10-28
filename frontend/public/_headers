@@ -1,0 +1,18 @@
+# Business: The browser, not just the code, should refuse to be framed, sniff, or run a stranger's script.
+# Business: These response headers are applied by the static host (Cloudflare Pages / Netlify read this file)
+# Business: to every asset. The dev server ignores them, so local work is unaffected; a deploy is hardened.
+# Technical: CSP keeps execution local: the app ships no CDN/analytics/remote fonts, and the only outbound
+# calls are to this same origin, the API, and Supabase (all HTTPS) — hence connect-src's tight allow-list.
+# 'unsafe-inline' for script/style is unavoidable: the Astro pages use inline event handlers (onclick=...)
+# and Astro emits scoped <style>. It is the one soft spot; frame-ancestors/object-src/base-uri below still
+# cut clickjacking, plugin and <base>-hijack attack surface to zero.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https: http://127.0.0.1:8787 http://localhost:8787; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; upgrade-insecure-requests
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Resource-Policy: same-origin
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

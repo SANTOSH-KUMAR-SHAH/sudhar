@@ -32,7 +32,14 @@ export async function hashCredential(secret: string, salt: string = randomSalt()
 // Business: Is this the right password? A stored hash is checked by re-hashing the guess with its salt;
 // Business: a legacy/dev plain secret is compared directly, so in-memory seeding keeps working untouched.
 export async function verifyCredential(stored: string, candidate: string): Promise<boolean> {
-  if (!stored.startsWith(PREFIX)) return stored === candidate;
+  if (!stored.startsWith(PREFIX)) {
+    // Business: A stored secret with no hash prefix is a dev/in-memory plaintext seed. We still must not let
+    // Business: `===` short-circuit on the first differing byte — that turns a wrong guess into a measurable
+    // Business: timing signal for guessing a secret one character at a time. Compare in (near) constant time.
+    // Security: Supabase rows are ALWAYS hashed; and under Supabase the legacy login route is not mounted,
+    // Security: so this branch is only ever reachable in the offline build — never on a deployed worker.
+    return timingEqual(stored, candidate);
+  }
   const [, salt, hex] = stored.split('$');
   if (!salt || !hex) return false;
   return timingEqual(await sha256Hex(`${salt}:${candidate}`), hex);

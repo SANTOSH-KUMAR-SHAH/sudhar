@@ -14,6 +14,10 @@ export interface IssuedSession {
   role: Role;
 }
 
+// Technical: `sha256$<salt>$<digest>` with a digest that is all zeros — a valid shape so verifyCredential takes
+// the same hashing path as a real account, and a value that cannot be produced by any password.
+const DUMMY_HASH = `sha256$0000000000000000$${'0'.repeat(64)}`;
+
 export class AuthService {
   constructor(
     private readonly staff: StaffRepository,
@@ -22,7 +26,13 @@ export class AuthService {
 
   async login(identifier: string, secret: string): Promise<IssuedSession | null> {
     const account = await this.staff.findByIdentifier(identifier);
-    if (!account || !(await verifyCredential(account.secret, secret))) return null;
+    // Business: Always spend one credential check, even when the account does not exist. Answering an unknown
+    // Business: identifier instantly and a wrong password slowly turns response time into a username oracle.
+    // Technical: A fixed, well-formed hash keeps the work identical (one SHA-256) on the miss path. It can never
+    // Technical: match, because its salt/digest pair is not derived from any real secret.
+    const stored = account?.secret ?? DUMMY_HASH;
+    const matches = await verifyCredential(stored, secret);
+    if (!account || !matches) return null;
 
     const token = await this.tokens.issue({ subject: account.id, role: account.role });
     return { token, role: account.role };

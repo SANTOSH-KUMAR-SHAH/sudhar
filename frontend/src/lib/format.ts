@@ -9,7 +9,8 @@ export function maskPhone(phone: string): string {
 
 export function requestRef(): string {
   // Business: Confirmation number the customer can quote on the phone call.
-  // Technical: Temporary client-side ref; backend will issue SL-000000 sequence.
+  // Technical: Offline/demo placeholder only — the real code is issued by the API as SL-<year>-<six random
+  // Technical: digits> and replaces this value in the success panel once the submit succeeds.
   const n = 100000 + Math.floor(Math.random() * 899999);
   return `SL-${n}`;
 }

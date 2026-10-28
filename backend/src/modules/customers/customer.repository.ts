@@ -19,6 +19,9 @@ export interface NewCustomer {
 
 export interface CustomerRepository {
   findAll(): Promise<CustomerRecord[]>;
+  // Business: Resolve a whole page of jobs' customers in ONE read. A list screen must never cost one query
+  // Business: per row, or its cost grows with the number of jobs rather than the size of the page.
+  findManyByIds(ids: string[]): Promise<CustomerRecord[]>;
   findOrCreate(input: NewCustomer): Promise<CustomerRecord>;
   findByPhone(phone: string): Promise<CustomerRecord | null>;
   findById(id: string): Promise<CustomerRecord | null>;
@@ -46,6 +49,14 @@ export class InMemoryCustomerRepository implements CustomerRepository {
 
   async findAll(): Promise<CustomerRecord[]> {
     return [...this.store.values()].map((record) => ({ ...record }));
+  }
+
+  async findManyByIds(ids: string[]): Promise<CustomerRecord[]> {
+    // Copies out, and silently skips ids that no longer resolve — the caller renders those as "unknown".
+    return ids.flatMap((id) => {
+      const record = this.store.get(id);
+      return record ? [{ ...record }] : [];
+    });
   }
 
   async findOrCreate(input: NewCustomer): Promise<CustomerRecord> {

@@ -49,8 +49,14 @@ export class TechnicianAdminService {
         authUserId,
       });
     } catch (error) {
-      // Undo the login we just made — best-effort, so a roster failure never leaves an orphaned account.
-      await this.users.deleteUser(authUserId).catch(() => {});
+      // Business: Undo the login we just made. If the undo itself fails we must NOT hide it — an auth account
+      // Business: with no roster row can still sign in and owns nothing, so an operator has to be told which id
+      // Business: to remove by hand. The original failure (the reason we are rolling back) is what we rethrow.
+      try {
+        await this.users.deleteUser(authUserId);
+      } catch (cleanupError) {
+        console.error('[technician-admin] orphaned auth user (delete failed):', authUserId, cleanupError);
+      }
       throw error;
     }
   }

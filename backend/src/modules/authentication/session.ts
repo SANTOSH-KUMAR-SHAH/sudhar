@@ -8,14 +8,32 @@ import type { AuthVerifier, Principal, TokenStore } from './principal';
 
 export class InMemorySessionTokens implements TokenStore {
   private readonly sessions = new Map<string, Principal>();
+  private readonly expiries = new Map<string, number>();
+  // Business: an in-memory token should not live forever — a stolen one would be usable until the process
+  // Business: restarts. Bound it to a working session by default (12h) so replay has a hard deadline.
+  private readonly ttlMs: number;
+  private readonly now: () => number;
+
+  constructor(options: { ttlMs?: number; now?: () => number } = {}) {
+    this.ttlMs = options.ttlMs ?? 12 * 60 * 60_000;
+    this.now = options.now ?? (() => Date.now());
+  }
 
   async issue(principal: Principal): Promise<string> {
     const token = crypto.randomUUID();
     this.sessions.set(token, principal);
+    this.expiries.set(token, this.now() + this.ttlMs);
     return token;
   }
 
   async resolve(token: string): Promise<Principal | null> {
+    const expiry = this.expiries.get(token);
+    if (expiry === undefined || expiry <= this.now()) {
+      // Expired (or never issued): drop it entirely so a dead token cannot be resurrected by retry.
+      this.sessions.delete(token);
+      this.expiries.delete(token);
+      return null;
+    }
     return this.sessions.get(token) ?? null;
   }
 }

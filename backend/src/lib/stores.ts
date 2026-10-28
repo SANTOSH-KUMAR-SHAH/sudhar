@@ -1,6 +1,7 @@
 // Business: The one place that decides WHERE the data lives for a given run. With Supabase credentials present
-// Business: it wires the Supabase stores; without them it wires today's in-memory seeds. Same ports either way,
-// Business: so `wrangler dev` and the whole test suite keep working with no project, yet production is permanent.
+// Business: it wires the Supabase stores. With NONE present it refuses to start unless the run explicitly opted
+// Business: into demo mode — because silently falling back to seeded data means a misconfigured deploy serves a
+// Business: working admin login and plausible customer records, which is worse than being down.
 // Technical: Returns just the store slots of AppDependencies; the caller (index.ts) adds the cross-cutting
 // pieces (notifier, clock, rate limiter, CORS). Nothing here reads process.env — values arrive from Worker bindings.
 
@@ -30,6 +31,23 @@ export interface SupabaseEnv {
   SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_ANON_KEY?: string;
   CORS_ORIGIN?: string;
+  // Business: The ONLY way to get the seeded in-memory build. It must be set deliberately (the `dev` script
+  // Business: passes it), never inherited from a deploy config, so a missing database binding can never
+  // Business: quietly turn production into a demo with known credentials.
+  DEMO_MODE?: string;
+}
+
+// Business: Raised when the Worker cannot tell where data lives. Deliberately loud: the process must stop
+// Business: serving rather than answer requests from a store the operator did not choose.
+export class ConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConfigurationError';
+  }
+}
+
+export function demoModeEnabled(env: SupabaseEnv): boolean {
+  return env.DEMO_MODE === 'true';
 }
 
 // The store slots of the app — exactly the pieces that differ between memory and Supabase.
@@ -55,7 +73,17 @@ function memoryStores(): StoreSlots {
 }
 
 export function buildStores(env: SupabaseEnv): StoreSlots {
-  if (!supabaseConfigured(env)) return memoryStores();
+  // Business: Fail CLOSED. The old behaviour — "no database configured, so use the demo seeds" — is how a
+  // Business: preview deploy or a misspelled binding becomes an open door with a published admin password.
+  if (!supabaseConfigured(env)) {
+    if (!demoModeEnabled(env)) {
+      throw new ConfigurationError(
+        'No data store configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (production), or DEMO_MODE=true (local demo).',
+      );
+    }
+    console.warn('[config] DEMO_MODE=true — serving seeded in-memory data. Never enable this on a deployed Worker.');
+    return memoryStores();
+  }
 
   // Both bindings are guaranteed here by supabaseConfigured(); read them as definite for the client.
   const client = new PostgrestClient({
@@ -79,6 +107,7 @@ export function buildStores(env: SupabaseEnv): StoreSlots {
 // Business: The service-role config the admin "create technician" path needs to mint a Supabase login. Returns
 // null when Supabase isn't configured, so the in-memory build simply can't offer that endpoint.
 export function supabaseAdminConfig(env: SupabaseEnv): SupabaseAdminConfig | null {
+  // A demo build has no Admin API to call, so "add technician with a login" is simply not offered there.
   if (!supabaseConfigured(env)) return null;
   return { url: env.SUPABASE_URL as string, serviceKey: env.SUPABASE_SERVICE_ROLE_KEY as string };
 }

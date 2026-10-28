@@ -1,19 +1,19 @@
 // Business: Prove the Supabase job store moves rows faithfully: a stored job comes back as the exact same
 // Business: aggregate (nested appliance/price/timeline intact, absent optionality stays absent), the technician
-// Business: "my jobs" query asks for the right people and statuses, and the next code comes from the database
-// Business: sequence — so two simultaneous submits can't be handed the same number.
+// Business: "my jobs" query asks for the right people and statuses. Codes are drawn at random by the Worker
+// Business: (never a database sequence), so a collision — the 409 unique violation — is the retry signal.
 // Technical: Runs the real repository over a fake PostgREST fetch, asserting BOTH the mapped object and the
 // request we sent, so the snake_case<->camelCase boundary and the query grammar are locked without a live DB.
 
 import { describe, expect, it } from 'vitest';
 import { PostgrestClient } from '../../lib/supabase';
 import { createFakePostgrest, TEST_CONFIG, type RecordedCall } from '../../lib/postgrest-test-double';
-import { NotFoundError } from '../../domain/errors';
+import { ConflictError, NotFoundError } from '../../domain/errors';
 import { ServiceRequest } from '../../domain/service-request';
 import { SupabaseRequestRepository } from './supabase-request.repository';
 
-function repoFor(handler: (call: RecordedCall) => unknown) {
-  const { fetchImpl, calls } = createFakePostgrest(handler);
+function repoFor(handler: (call: RecordedCall) => unknown, status = 200) {
+  const { fetchImpl, calls } = createFakePostgrest(handler, status);
   return { repo: new SupabaseRequestRepository(new PostgrestClient(TEST_CONFIG, { fetchImpl })), calls };
 }
 
@@ -79,6 +79,23 @@ describe('SupabaseRequestRepository.findAll', () => {
     expect(calls[0].url.search).toBe('');
     expect(all).toHaveLength(1);
   });
+
+  it('drops any status not on the whitelist — a service_role query cannot be injected', async () => {
+    const { repo, calls } = repoFor(() => []);
+    await repo.findAll({
+      status: ['CLOSED', '",urgent=is.true",technician_id=like."T-*'] as never,
+    });
+    // Only the canonical value survives; the injected fragment never reaches the query string.
+    expect(calls[0].url.searchParams.get('status')).toBe('in.("CLOSED")');
+    expect(calls[0].url.search).not.toContain('urgent');
+    expect(calls[0].url.search).not.toContain('like');
+  });
+
+  it('sends no status filter when every supplied value is invalid', async () => {
+    const { repo, calls } = repoFor(() => []);
+    await repo.findAll({ status: ['not-a-status', 'DROP TABLE'] as never });
+    expect(calls[0].url.searchParams.get('status')).toBeNull();
+  });
 });
 
 describe('SupabaseRequestRepository.update', () => {
@@ -96,16 +113,17 @@ describe('SupabaseRequestRepository.update', () => {
   });
 });
 
-describe('SupabaseRequestRepository.nextSequence', () => {
-  it('calls the database sequence via RPC and returns a number', async () => {
-    const { repo, calls } = repoFor(() => 4);
-    expect(await repo.nextSequence()).toBe(4);
-    expect(calls[0].method).toBe('POST');
-    expect(calls[0].url.pathname).toBe('/rest/v1/rpc/next_request_sequence');
-  });
-
-  it('coerces a stringly-typed sequence value to a number', async () => {
-    const { repo } = repoFor(() => '7');
-    expect(await repo.nextSequence()).toBe(7);
+describe('SupabaseRequestRepository.create', () => {
+  it('maps a 409 unique violation to ConflictError so the service can retry a fresh code', async () => {
+    const { repo } = repoFor(() => ({ message: 'duplicate key value', code: '23505' }), 409);
+    const request = ServiceRequest.open({
+      code: 'SL-2026-445120',
+      source: 'Website',
+      customerId: 'C-1001',
+      appliance: { type: 'Fridge', brand: 'Haier' },
+      problem: 'no cooling',
+      at: '2026-10-03T09:00+05:45',
+    });
+    await expect(repo.create(request)).rejects.toBeInstanceOf(ConflictError);
   });
 });

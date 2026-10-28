@@ -31,10 +31,13 @@ export interface NewTechnician {
 
 export interface TechnicianRepository {
   findAll(): Promise<TechnicianRecord[]>;
+  // Business: Resolve a page of jobs' assignees in ONE read, so a queue of N jobs does not cost N queries.
+  findManyByIds(ids: string[]): Promise<TechnicianRecord[]>;
   findById(id: string): Promise<TechnicianRecord | null>;
   setAvailability(id: string, availability: Availability): Promise<TechnicianRecord>;
   // Business: Persist a brand-new technician. nextTechnicianCode issues the next human id so two adds can't
-  // Technical: collide — the Supabase version backs it with a real sequence, mirroring the request codes.
+  // Technical: collide — the Supabase version backs it with a real sequence. (Request codes no longer follow
+  // Technical: this pattern: they are random, so a customer-facing code is not derivable from its neighbour.)
   create(record: TechnicianRecord): Promise<TechnicianRecord>;
   nextTechnicianCode(): Promise<number>;
 }
@@ -56,6 +59,13 @@ export class InMemoryTechnicianRepository implements TechnicianRepository {
   async findById(id: string): Promise<TechnicianRecord | null> {
     const record = this.store.get(id);
     return record ? { ...record, skills: [...record.skills] } : null;
+  }
+
+  async findManyByIds(ids: string[]): Promise<TechnicianRecord[]> {
+    return ids.flatMap((id) => {
+      const record = this.store.get(id);
+      return record ? [{ ...record, skills: [...record.skills] }] : [];
+    });
   }
 
   async setAvailability(id: string, availability: Availability): Promise<TechnicianRecord> {

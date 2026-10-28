@@ -91,17 +91,25 @@ export async function createAuthUser(
 }
 
 // Business: Undo a user we just made when the matching profile row couldn't be saved — no orphaned logins.
+// Business: This call MUST be able to fail LOUDLY: a silent failure leaves a working Supabase login whose owner
+// Business: has no roster row, i.e. an account nobody can see in the admin screen and nobody will remember.
 export async function deleteUser(
   config: SupabaseAdminConfig,
   userId: string,
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
 ): Promise<void> {
-  const endpoint = new URL('/auth/v1/admin/users', config.url);
-  endpoint.searchParams.set('user_id', userId);
-  await fetchImpl(endpoint.toString(), {
+  // Technical: GoTrue's Admin API addresses a single user by PATH (`/admin/users/{id}`). The previous form
+  // Technical: (`?user_id=`) is silently accepted as a listing call, so the delete never happened — and the
+  // Technical: response was never inspected, so no one found out. Both mistakes are fixed here.
+  const endpoint = new URL(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, config.url);
+  const response = await fetchImpl(endpoint.toString(), {
     method: 'DELETE',
     headers: { ...JSON_HEADERS, apikey: config.serviceKey, authorization: `Bearer ${config.serviceKey}` },
   });
+  // Business: 404 means the user is already gone — that is exactly the outcome we wanted.
+  if (response.ok || response.status === 404) return;
+  const detail = await response.text().catch(() => '');
+  throw new SupabaseAuthError(`auth delete failed: ${response.status} ${detail}`, response.status);
 }
 
 // Business/Technical: The port the technician-admin service depends on — "make a login, or undo one". Wrapping

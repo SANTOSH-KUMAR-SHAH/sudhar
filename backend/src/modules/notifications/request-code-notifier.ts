@@ -16,6 +16,11 @@ export interface RequestCodeNotifier {
 export class LoggingRequestCodeNotifier implements RequestCodeNotifier {
   async send(message: RequestCodeMessage): Promise<void> {
     // Stub of the real gateway. The bytes leave here later; the shape is already final.
-    console.log(`[notify] request code ${message.code} queued for ${message.phone}`);
+    // Security: the code is the customer's tracking reference and the phone is personal data — neither
+    // belongs in plaintext application logs, which are copied far wider than the database. Mask the phone
+    // to its last four digits; keep the code (needed to correlate an op) since it is only ever shown to
+    // that one customer and is not a secret credential.
+    const masked = message.phone.length > 4 ? `****${message.phone.slice(-4)}` : '****';
+    console.log(`[notify] request code ${message.code} queued for ${masked}`);
   }
 }

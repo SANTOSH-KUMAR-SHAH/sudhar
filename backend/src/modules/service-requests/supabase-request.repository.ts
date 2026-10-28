@@ -2,11 +2,12 @@
 // Business: price and the full timeline — is saved as real JSON so rehydrating it gives back the exact same
 // Business: ServiceRequest the in-memory store would. Nothing about the state machine lives here; we only move rows.
 // Technical: Implements RequestRepository over PostgREST. Column names are snake_case; the aggregate's camelCase
-// record is mapped at this one boundary. Codes come from a Postgres sequence via an RPC so two submits can't collide.
+// record is mapped at this one boundary. Codes are random (see lib/random), never a counter, so a code
+// cannot be guessed from its neighbour; a unique collision is surfaced as a ConflictError for retry.
 
-import { PostgrestClient, type RestRow } from '../../lib/supabase';
-import type { ServiceStatusKey } from '../../../../packages/shared/src/service-status';
-import { NotFoundError } from '../../domain/errors';
+import { PostgrestClient, SupabaseError, inFilter, type RestRow } from '../../lib/supabase';
+import { isServiceStatus, type ServiceStatusKey } from '../../../../packages/shared/src/service-status';
+import { ConflictError, NotFoundError } from '../../domain/errors';
 import { ServiceRequest, type ServiceRequestRecord } from '../../domain/service-request';
 import type { RequestQuery, RequestRepository } from './request.repository';
 
@@ -58,7 +59,16 @@ export class SupabaseRequestRepository implements RequestRepository {
   constructor(private readonly client: PostgrestClient) {}
 
   async create(request: ServiceRequest): Promise<void> {
-    await this.client.insert(TABLE, recordToRow(request.toRecord()));
+    try {
+      await this.client.insert(TABLE, recordToRow(request.toRecord()));
+    } catch (error) {
+      // Business: 409 is Postgres telling us the code is already taken (unique violation). That is not a
+      // Business: server fault — the service retries with fresh random digits, exactly as the memory store does.
+      if (error instanceof SupabaseError && error.status === 409) {
+        throw new ConflictError('ServiceRequest', request.code);
+      }
+      throw error;
+    }
   }
 
   async update(request: ServiceRequest): Promise<void> {
@@ -77,16 +87,15 @@ export class SupabaseRequestRepository implements RequestRepository {
     if (query.technicianId !== undefined) {
       filters.push(`technician_id=eq.${encodeURIComponent(query.technicianId)}`);
     }
-    if (query.status && query.status.length > 0) {
-      filters.push(`status=in.(${query.status.map((s) => `"${s}"`).join(',')})`);
+    // Security: this query runs under the service_role key (it bypasses RLS), so a status value must NEVER
+    // reach PostgREST as raw text — an injected `",x=like."*` would widen the filter to rows the caller has
+    // no right to read. We keep ONLY values on the canonical status whitelist; anything else is dropped, so
+    // the in.() list is assembled exclusively from known-safe enum strings that need no escaping.
+    const safeStatus = (query.status ?? []).filter(isServiceStatus);
+    if (safeStatus.length > 0) {
+      filters.push(`status=${inFilter(safeStatus)}`);
     }
     const rows = await this.client.select(TABLE, filters);
     return rows.map((row) => ServiceRequest.fromRecord(rowToRecord(row)));
-  }
-
-  async nextSequence(): Promise<number> {
-    // The Postgres sequence is the single source of the next number — atomic across every Worker instance.
-    const value = await this.client.rpc<number | string>('next_request_sequence');
-    return Number(value);
   }
 }

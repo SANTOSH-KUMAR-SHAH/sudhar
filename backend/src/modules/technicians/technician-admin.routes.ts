@@ -3,6 +3,7 @@
 // Technical: Mounted at /api/admin/technicians in app.ts, and only when a login provisioner is wired (Supabase).
 // Business: The response is the created roster card; the schema omits the password, so a credential can't leak.
 import { Hono } from 'hono';
+import { readJsonBody } from '../../lib/http';
 import { authenticate } from '../authentication/guard';
 import type { AuthVerifier } from '../authentication/principal';
 import { createTechnicianSchema, createdTechnicianSchema } from './technician-admin.schema';
@@ -13,7 +14,7 @@ export function technicianAdminRoutes(service: TechnicianAdminService, auth: Aut
 
   routes.post('/', async (context) => {
     await authenticate(auth, context.req.header('authorization'), ['admin']);
-    const input = createTechnicianSchema.parse(await context.req.json());
+    const input = createTechnicianSchema.parse(await readJsonBody(context));
     const created = await service.create(input);
     return context.json(createdTechnicianSchema.parse(created), 201);
   });

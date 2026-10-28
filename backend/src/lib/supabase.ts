@@ -13,6 +13,15 @@ export interface SupabaseConfig {
 // A row as the REST API returns it: snake_case columns, JSONB nested as real objects.
 export type RestRow = Record<string, unknown>;
 
+// Business: A list query ("these customers", "these technicians") must be ONE round-trip, not one per id —
+// Business: the per-id form is what multiplied every admin page into hundreds of subrequests.
+// Technical: PostgREST `in.()` grammar. Each value is quoted and its backslash/quote escaped, so a value can
+// Technical: never terminate the list and append a filter of the caller's choosing.
+export function inFilter(values: string[]): string {
+  const quoted = values.map((value) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
+  return `in.(${quoted.join(',')})`;
+}
+
 // Injectable so tests (and any future retry policy) can hand in a fake without a live database.
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -66,7 +75,9 @@ export class PostgrestClient {
     return rows?.[0] ?? null;
   }
 
-  // Business: Call a Postgres function by name (used for the atomic request-code sequence).
+  // Business: Call a Postgres function by name (used for the staff-only technician-id sequence).
+  // Technical: Request codes are NOT minted this way any more — they are random in the Worker, so the public
+  // Technical: request-code RPC was removed from the schema entirely (see migrations/0004_lock_down.sql).
   async rpc<T>(fn: string, params: RestRow = {}): Promise<T> {
     return this.request<T>('POST', `rpc/${fn}`, { body: params });
   }

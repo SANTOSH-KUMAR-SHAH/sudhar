@@ -54,6 +54,17 @@ describe('GET /api/technicians (roster)', () => {
     expect(roster.find((t) => t.id === 'T-2002')?.activeJobs).toBe(1);
     expect(roster.find((t) => t.id === 'T-2001')?.activeJobs).toBe(0);
   });
+
+  it('refuses a technician token — the roster is every colleague\'s mobile number', async () => {
+    // Regression: this used to be readable by any signed-in technician, i.e. a one-request PII dump.
+    const response = await makeApp().request('/api/technicians', asTech);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'forbidden' });
+  });
+
+  it('refuses an anonymous caller', async () => {
+    expect((await makeApp().request('/api/technicians')).status).toBe(401);
+  });
 });
 
 describe('GET /api/technicians/:id', () => {
@@ -65,6 +76,12 @@ describe('GET /api/technicians/:id', () => {
 
   it('404s for an unknown technician', async () => {
     expect((await makeApp().request('/api/technicians/T-9999', asAdmin)).status).toBe(404);
+  });
+
+  it('refuses a technician reading a colleague by id — /me is the only self path', async () => {
+    expect((await makeApp().request('/api/technicians/T-2002', asTech)).status).toBe(403);
+    // Their own profile still works, through the token-resolved route.
+    expect((await makeApp().request('/api/technicians/me', asTech)).status).toBe(200);
   });
 });
 

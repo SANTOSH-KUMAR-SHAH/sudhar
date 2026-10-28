@@ -4,6 +4,7 @@
 
 import { Hono } from 'hono';
 import { AuthorizationError } from '../../domain/errors';
+import { readJsonBody } from '../../lib/http';
 import { authenticate } from '../authentication/guard';
 import type { AuthVerifier } from '../authentication/principal';
 import { serviceRequestRecordSchema, technicianJobSchema } from '../service-requests/request.schema';
@@ -22,8 +23,11 @@ export function technicianRoutes(
 ): Hono {
   const routes = new Hono();
 
+  // Business: The whole roster — every colleague's name, mobile and area — is an ADMIN view. A technician
+  // Business: needs to reach their own customer, never their co-workers' phone numbers, so the roster is no
+  // Business: longer readable with a technician token (it was, and that is a colleague-PII dump in one request).
   routes.get('/', async (context) => {
-    await authenticate(auth, context.req.header('authorization'), ['admin', 'technician']);
+    await authenticate(auth, context.req.header('authorization'), ['admin']);
     const roster = await technicians.roster();
     return context.json(technicianRosterSchema.array().parse(roster));
   });
@@ -48,13 +52,15 @@ export function technicianRoutes(
   // Business: token subject, so there is no id in the path a technician could point at someone else.
   routes.post('/me/availability', async (context) => {
     const principal = await authenticate(auth, context.req.header('authorization'), ['technician']);
-    const { availability } = availabilityChangeSchema.parse(await context.req.json());
+    const { availability } = availabilityChangeSchema.parse(await readJsonBody(context));
     const updated = await technicians.setAvailability(principal.subject, availability);
     return context.json(technicianRecordSchema.parse(updated));
   });
 
+  // Business: Reading an arbitrary technician by id is also admin-only. A signed-in technician reads
+  // Business: THEMSELVES through /me above, where the id comes from the verified token, never from the URL.
   routes.get('/:id', async (context) => {
-    await authenticate(auth, context.req.header('authorization'), ['admin', 'technician']);
+    await authenticate(auth, context.req.header('authorization'), ['admin']);
     const technician = await technicians.getById(context.req.param('id'));
     if (!technician) return context.json({ error: 'not_found' }, 404);
     return context.json(technicianRecordSchema.parse(technician));
@@ -79,7 +85,7 @@ export function technicianRoutes(
     if (principal.role !== 'admin' && principal.subject !== id) {
       throw new AuthorizationError('forbidden', 'A technician may only change their own availability');
     }
-    const { availability } = availabilityChangeSchema.parse(await context.req.json());
+    const { availability } = availabilityChangeSchema.parse(await readJsonBody(context));
     const updated = await technicians.setAvailability(id, availability);
     return context.json(technicianRecordSchema.parse(updated));
   });

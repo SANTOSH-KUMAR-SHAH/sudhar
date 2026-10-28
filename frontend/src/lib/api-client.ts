@@ -337,11 +337,4 @@ export const api = {
     request<TrackedRequest>(
       `/api/track?phone=${encodeURIComponent(phone)}&code=${encodeURIComponent(code)}`,
     ),
-
-  // Business: The public, unauthenticated reads below predate the staff surface. Both portals now read the
-  // Business: authorized staff.* methods, so these remain a thin seam for any future public queue view.
-  // Technical: demo-data has been deleted — every staff screen is live; nothing falls back to mocks now.
-  listRequests: () => request<unknown[]>('/api/requests'),
-  getRequest: (code: string) =>
-    request<unknown>(`/api/requests/${encodeURIComponent(code)}`),
 };

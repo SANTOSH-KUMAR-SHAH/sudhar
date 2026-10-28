@@ -3,7 +3,7 @@
 // Technical: Implements the existing CustomerRepository port over the PostgREST client. Columns are snake_case
 // and are mapped here, so no caller above this file ever learns the database's spelling.
 
-import { PostgrestClient, type RestRow } from '../../lib/supabase';
+import { PostgrestClient, inFilter, type RestRow } from '../../lib/supabase';
 import {
   customerIdForPhone,
   type CustomerRecord,
@@ -27,6 +27,13 @@ export class SupabaseCustomerRepository implements CustomerRepository {
 
   async findAll(): Promise<CustomerRecord[]> {
     const rows = await this.client.select(TABLE);
+    return rows.map(toRecord);
+  }
+
+  async findManyByIds(ids: string[]): Promise<CustomerRecord[]> {
+    // Technical: One `id=in.(…)` query for the whole page; an empty page costs no round-trip at all.
+    if (ids.length === 0) return [];
+    const rows = await this.client.select(TABLE, [`id=${inFilter(ids)}`]);
     return rows.map(toRecord);
   }
 

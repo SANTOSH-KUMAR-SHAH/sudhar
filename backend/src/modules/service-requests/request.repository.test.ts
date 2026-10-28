@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { InMemoryRequestRepository } from './request.repository';
 import { seedRequests } from './fixtures';
 import { ServiceRequest } from '../../domain/service-request';
+import { ConflictError } from '../../domain/errors';
 
 const AT = '2026-10-08T09:00:00.000Z';
 
@@ -37,7 +38,8 @@ describe('InMemoryRequestRepository', () => {
   it('rejects a duplicate code instead of overwriting', async () => {
     const repo = new InMemoryRequestRepository();
     await repo.create(sample());
-    await expect(repo.create(sample())).rejects.toThrow(/duplicate/i);
+    // A Conflict (not an overwrite) is what tells the service to draw fresh random digits.
+    await expect(repo.create(sample())).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('persists an update that survives a reload', async () => {

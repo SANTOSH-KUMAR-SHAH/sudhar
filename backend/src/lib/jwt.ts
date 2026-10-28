@@ -20,6 +20,10 @@ export interface JwtClaims {
   exp?: number;
   iat?: number;
   role?: string;
+  // GoTrue tags the token kind here ("access" vs "refresh"); some versions use token_use instead. We read
+  // both so the verifier can refuse a long-lived refresh token replayed as a short-lived bearer credential.
+  type?: string;
+  token_use?: string;
   app_metadata?: Record<string, unknown>;
   user_metadata?: Record<string, unknown>;
 }

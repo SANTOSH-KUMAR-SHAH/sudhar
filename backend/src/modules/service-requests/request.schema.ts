@@ -49,18 +49,20 @@ export type ServiceRequestRecordView = z.infer<typeof serviceRequestRecordSchema
 
 // Business: What a customer is allowed to submit. The phone rule is the SHARED one, so the API can
 // Business: never accept a number the form would have rejected (and vice-versa).
-// Technical: Only fields the record actually stores are here — attachments/notes arrive with storage.
+// Business: Every free-text field now carries a hard ceiling: this endpoint is anonymous, so without a
+// Business: max one bot could store megabytes per row and grow the database / bill at our expense.
+// Technical: `.max()` bounds realistic form sizes; `source` is no longer a client field at all (see
+// service.create) — an unauthenticated submit can no longer stamp a job as a phone-in to skip the SMS.
 export const createRequestSchema = z.object({
-  appliance: z.string().min(1),
-  brand: z.string().min(1),
-  model: z.string().optional(),
-  problem: z.string().min(1),
-  name: z.string().min(1),
+  appliance: z.string().trim().min(1).max(60),
+  brand: z.string().trim().min(1).max(60),
+  model: z.string().trim().max(80).optional(),
+  problem: z.string().trim().min(1).max(4000),
+  name: z.string().trim().min(1).max(120),
   phone: z.string().refine(isValidNepalPhone, { message: 'Enter a valid Nepal mobile number' }),
-  area: z.string().min(1),
-  visitDate: z.string().optional(),
+  area: z.string().trim().min(1).max(120),
+  visitDate: z.string().trim().max(40).optional(),
   urgent: z.boolean().optional(),
-  source: z.enum(['Website', 'Phone']).default('Website'),
 });
 
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
@@ -71,9 +73,9 @@ export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 // Business: token in the route, never from the body, so no caller can claim to be someone they are not.
 export const advanceRequestSchema = z.object({
   to: serviceStatusSchema,
-  note: z.string().optional(),
-  technicianId: z.string().nullable().optional(),
-  fault: z.string().optional(),
+  note: z.string().trim().max(4000).optional(),
+  technicianId: z.string().trim().max(120).nullable().optional(),
+  fault: z.string().trim().max(4000).optional(),
   price: priceRecordSchema.optional(),
 });
 

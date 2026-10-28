@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../app';
-import { FixedWindowRateLimiter } from '../../lib/rate-limit';
+import { FixedWindowRateLimiter, PolicyRateLimiter } from '../../lib/rate-limit';
 import { InMemoryRequestRepository } from '../service-requests/request.repository';
 import { seedRequests } from '../service-requests/fixtures';
 import { InMemoryCustomerRepository } from '../customers/customer.repository';
@@ -112,5 +112,28 @@ describe('rate limiting (public endpoints)', () => {
     const third = await app.request('/api/track?phone=9812345678&code=SL-2026-0001');
     expect(third.status).toBe(429);
     expect(await third.json()).toEqual({ error: 'rate_limited' });
+  });
+
+  it('meters the legacy credential endpoint per IP, so a password guess gets a budget', async () => {
+    // Regression: the middleware was registered on the exact path `/api/auth`, which Hono never matches for
+    // `/api/auth/login` — the throttle did not exist. The wildcard is what makes the policy real.
+    const app = appWith({
+      rateLimiter: new PolicyRateLimiter(
+        {
+          'intake-ip': { limit: 100, windowMs: 60_000 },
+          'intake-phone': { limit: 100, windowMs: 60_000 },
+          'track-ip': { limit: 100, windowMs: 60_000 },
+          'track-phone': { limit: 100, windowMs: 60_000 },
+          'auth-ip': { limit: 2, windowMs: 60_000 },
+        },
+        () => 0,
+      ),
+    });
+    const attempt = () => app.request('/api/auth/login', json({ identifier: 'admin', secret: 'wrong' }));
+    expect((await attempt()).status).toBe(401);
+    expect((await attempt()).status).toBe(401);
+    const blocked = await attempt();
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toEqual({ error: 'rate_limited' });
   });
 });

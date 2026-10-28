@@ -2,6 +2,7 @@
 // Technical: admin-role-gated; the provision response is a StaffSummary (no secret), so the credential
 // is write-only from the API's point of view.
 import { Hono } from 'hono';
+import { readJsonBody } from '../../lib/http';
 import { authenticate } from './guard';
 import type { AuthVerifier } from './principal';
 import { staffProvisionSchema, staffSummarySchema } from './staff-admin.schema';
@@ -18,7 +19,7 @@ export function staffAdminRoutes(staff: StaffAdminService, auth: AuthVerifier): 
 
   routes.post('/', async (context) => {
     await authenticate(auth, context.req.header('authorization'), ['admin']);
-    const input = staffProvisionSchema.parse(await context.req.json());
+    const input = staffProvisionSchema.parse(await readJsonBody(context));
     const created = await staff.provision(input);
     return context.json(staffSummarySchema.parse(created), 201);
   });

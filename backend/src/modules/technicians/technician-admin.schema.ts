@@ -10,14 +10,18 @@ import { APPLIANCE_TYPES } from '../../../../packages/shared/src/appliances';
 import { isValidNepalPhone } from '../../../../packages/shared/src/validation';
 
 export const createTechnicianSchema = z.object({
-  name: z.string().trim().min(2, 'Name is required'),
-  phone: z.string().refine(isValidNepalPhone, 'Enter a valid Nepali mobile number'),
-  email: z.string().trim().toLowerCase().email('A valid sign-in email is required'),
-  area: z.string().trim().min(1, 'Area is required'),
+  name: z.string().trim().min(2, 'Name is required').max(80),
+  phone: z.string().trim().refine(isValidNepalPhone, 'Enter a valid Nepali mobile number').max(20),
+  email: z.string().trim().toLowerCase().email('A valid sign-in email is required').max(254),
+  area: z.string().trim().min(1, 'Area is required').max(120),
+  // Skills come from the shared enum (a typo can't break matching); the array is bounded so one submission
+  // can't smuggle an unbounded list into the roster row or the auth metadata.
   skills: z
     .array(z.enum(APPLIANCE_TYPES))
-    .min(1, 'Pick at least one skill'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+    .min(1, 'Pick at least one skill')
+    .max(APPLIANCE_TYPES.length, 'Too many skills'),
+  // Bounded both ways: >=8 matches the login form's own rule; <=128 keeps a huge value from a DoS/hash cost.
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
 });
 
 export type CreateTechnicianInput = z.infer<typeof createTechnicianSchema>;
